@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'screens/auth_screen.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -96,7 +97,7 @@ class WelcomeScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 28),
                   FilledButton.icon(
-                    onPressed: () => _showNotice(context),
+                    onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AuthScreen(initiallyRegister: false))),
                     icon: const Icon(Icons.login_rounded),
                     label: const Text('تسجيل الدخول'),
                     style: FilledButton.styleFrom(
@@ -106,7 +107,7 @@ class WelcomeScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 12),
                   OutlinedButton.icon(
-                    onPressed: () => _showNotice(context),
+                    onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AuthScreen(initiallyRegister: true))),
                     icon: const Icon(Icons.person_add_alt_1_rounded),
                     label: const Text('إنشاء حساب جديد'),
                     style: OutlinedButton.styleFrom(
