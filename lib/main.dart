@@ -1,8 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:intl/date_symbol_data_local.dart';
 import 'screens/visitor_form_screen.dart';
 
-void main() {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // تهيئة بيانات تنسيق التاريخ قبل بناء أي شاشة تستخدم DateFormat.
+  await initializeDateFormatting('en');
+
   runApp(const HospitalVisitorApp());
 }
 
