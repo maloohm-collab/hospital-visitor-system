@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'screens/auth_screen.dart';
-import 'screens/dashboard_screen.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -92,13 +91,17 @@ class WelcomeScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 10),
                   const Text(
-                    'نظام منظم وآمن لتسجيل زوار المستشفى ومتابعة الزيارات.',
+                    'نظام منظم لتسجيل حركة زوار المستشفى ومتابعة التقارير.',
                     textAlign: TextAlign.center,
                     style: TextStyle(fontSize: 16, height: 1.7),
                   ),
                   const SizedBox(height: 28),
                   FilledButton.icon(
-                    onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AuthScreen(initiallyRegister: false))),
+                    onPressed: () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => const AuthScreen(),
+                      ),
+                    ),
                     icon: const Icon(Icons.login_rounded),
                     label: const Text('تسجيل الدخول'),
                     style: FilledButton.styleFrom(
@@ -106,24 +109,9 @@ class WelcomeScreen extends StatelessWidget {
                       minimumSize: const Size.fromHeight(52),
                     ),
                   ),
-                  const SizedBox(height: 12),
-                  OutlinedButton.icon(
-                    onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AuthScreen(initiallyRegister: true))),
-                    icon: const Icon(Icons.person_add_alt_1_rounded),
-                    label: const Text('إنشاء حساب جديد'),
-                    style: OutlinedButton.styleFrom(
-                      minimumSize: const Size.fromHeight(52),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  TextButton.icon(
-                    onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const DashboardScreen())),
-                    icon: const Icon(Icons.dashboard_outlined),
-                    label: const Text('استعراض لوحة النظام'),
-                  ),
-                  const SizedBox(height: 14),
+                  const SizedBox(height: 18),
                   const Text(
-                    'الإصدار الأولي • سيتم تفعيل الحسابات والصلاحيات بعد إعداد Firebase.',
+                    'الدخول بالحسابات التي تنشئها إدارة النظام.',
                     textAlign: TextAlign.center,
                     style: TextStyle(fontSize: 12, color: Colors.black54),
                   ),
@@ -132,14 +120,6 @@ class WelcomeScreen extends StatelessWidget {
             ),
           ),
         ),
-      ),
-    );
-  }
-
-  void _showNotice(BuildContext context) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('سيتم تفعيل هذه الوظيفة في المرحلة التالية.'),
       ),
     );
   }
