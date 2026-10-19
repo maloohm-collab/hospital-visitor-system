@@ -1,23 +1,113 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isActiveAdmin() {
+      return signedIn()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.status == 'active';
+    }
+
     match /account_requests/{uid} {
-      allow create: if request.auth != null
+      // Applicants may create only their own pending request.
+      allow create: if signedIn()
         && request.auth.uid == uid
-        && request.resource.data.keys().hasOnly(['uid', 'displayName', 'email', 'requestedRole', 'status', 'createdAt'])
+        && request.resource.data.keys().hasOnly([
+          'uid', 'displayName', 'email', 'requestedRole', 'status', 'createdAt'
+        ])
+        && request.resource.data.keys().hasAll([
+          'uid', 'displayName', 'email', 'requestedRole', 'status', 'createdAt'
+        ])
         && request.resource.data.uid == request.auth.uid
         && request.resource.data.status == 'pending'
         && request.resource.data.requestedRole in ['security_officer', 'supervisor']
         && request.resource.data.displayName is string
+        && request.resource.data.displayName.size() >= 3
         && request.resource.data.email is string
         && request.resource.data.createdAt == request.time;
-      allow get: if request.auth != null && request.auth.uid == uid;
+
+      // Applicants can inspect their own request; active admins can review the queue.
+      allow get: if signedIn() && (request.auth.uid == uid || isActiveAdmin());
+      allow list: if isActiveAdmin();
+
+      // Admin decisions are constrained and committed atomically with profile creation.
+      allow update: if signedIn() && (
+        (
+          isActiveAdmin()
+          && resource.data.status == 'pending'
+          && request.resource.data.keys().hasOnly([
+            'uid', 'displayName', 'email', 'requestedRole', 'status',
+            'createdAt', 'reviewedAt', 'reviewedBy'
+          ])
+          && request.resource.data.uid == resource.data.uid
+          && request.resource.data.displayName == resource.data.displayName
+          && request.resource.data.email == resource.data.email
+          && request.resource.data.requestedRole == resource.data.requestedRole
+          && request.resource.data.createdAt == resource.data.createdAt
+          && request.resource.data.status in ['approved', 'rejected']
+          && request.resource.data.reviewedBy == request.auth.uid
+          && request.resource.data.reviewedAt == request.time
+          && (
+            request.resource.data.status == 'rejected'
+            || (
+              getAfter(/databases/$(database)/documents/users/$(uid)).data.status == 'active'
+              && getAfter(/databases/$(database)/documents/users/$(uid)).data.role == resource.data.requestedRole
+              && getAfter(/databases/$(database)/documents/users/$(uid)).data.approvedBy == request.auth.uid
+            )
+          )
+        )
+        ||
+        (
+          request.auth.uid == uid
+          && resource.data.status == 'rejected'
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'status', 'createdAt', 'reviewedAt', 'reviewedBy'
+          ])
+          && request.resource.data.status == 'pending'
+          && request.resource.data.uid == resource.data.uid
+          && request.resource.data.email == resource.data.email
+          && request.resource.data.displayName == resource.data.displayName
+          && request.resource.data.requestedRole == resource.data.requestedRole
+          && request.resource.data.createdAt == request.time
+          && !request.resource.data.keys().hasAny(['reviewedAt', 'reviewedBy'])
+        )
+      );
+
+      allow delete: if false;
+    }
+
+    match /users/{uid} {
+      allow get: if signedIn() && (request.auth.uid == uid || isActiveAdmin());
+
+      // A verified admin may create an applicant profile only as part of the same
+      // atomic batch that marks that applicant's pending request approved.
+      allow create: if isActiveAdmin()
+        && uid != request.auth.uid
+        && request.resource.data.keys().hasOnly([
+          'uid', 'displayName', 'email', 'role', 'status',
+          'createdAt', 'approvedAt', 'approvedBy'
+        ])
+        && request.resource.data.keys().hasAll([
+          'uid', 'displayName', 'email', 'role', 'status',
+          'createdAt', 'approvedAt', 'approvedBy'
+        ])
+        && request.resource.data.uid == uid
+        && request.resource.data.role in ['security_officer', 'supervisor']
+        && request.resource.data.status == 'active'
+        && request.resource.data.approvedBy == request.auth.uid
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.approvedAt == request.time
+        && getAfter(/databases/$(database)/documents/account_requests/$(uid)).data.status == 'approved'
+        && getAfter(/databases/$(database)/documents/account_requests/$(uid)).data.requestedRole == request.resource.data.role
+        && getAfter(/databases/$(database)/documents/account_requests/$(uid)).data.reviewedBy == request.auth.uid;
+
       allow list, update, delete: if false;
     }
-    match /users/{uid} {
-      allow get: if request.auth != null && request.auth.uid == uid;
-      allow list, create, update, delete: if false;
-    }
+
     match /{document=**} {
       allow read, write: if false;
     }
