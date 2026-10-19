@@ -1,12 +1,7 @@
-name: Build APK (temporary trigger for this requested build)
+name: Build APK (manual only)
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - main
-    paths:
-      - lib/main.dart
 
 permissions:
   contents: read
