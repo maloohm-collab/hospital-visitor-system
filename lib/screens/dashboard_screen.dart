@@ -3,7 +3,9 @@ import 'visitor_form_screen.dart';
 import 'admin_approval_screen.dart';
 
 class DashboardScreen extends StatelessWidget {
-  const DashboardScreen({super.key});
+  const DashboardScreen({super.key, this.userRole = 'security_officer'});
+
+  final String userRole;
 
   static const navy = Color(0xFF16324F);
   static const teal = Color(0xFF168C8C);
@@ -66,7 +68,8 @@ class DashboardScreen extends StatelessWidget {
           const SizedBox(height: 10),
           _ActionTile(icon: Icons.bar_chart_rounded, title: 'التقارير والإحصاءات', subtitle: 'ملخص حركة الزوار', color: const Color(0xFFD28A25), onTap: () => _notice(context, 'ستتوفر التقارير بعد تفعيل بيانات الزيارات')),
           const SizedBox(height: 10),
-          _ActionTile(icon: Icons.admin_panel_settings_outlined, title: 'إدارة طلبات الحسابات', subtitle: 'واجهة مراجعة المسؤول', color: const Color(0xFF7A58B5), onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AdminApprovalScreen()))),
+          if (userRole == 'admin')
+            _ActionTile(icon: Icons.admin_panel_settings_outlined, title: 'إدارة طلبات الحسابات', subtitle: 'واجهة مراجعة المسؤول', color: const Color(0xFF7A58B5), onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AdminApprovalScreen()))),
           const SizedBox(height: 20),
           const Center(child: Text('واجهة أولية • البيانات الفعلية تحتاج ربط قاعدة البيانات', textAlign: TextAlign.center, style: TextStyle(fontSize: 11, color: Colors.black45))),
         ],
