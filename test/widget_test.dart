@@ -11,4 +11,20 @@ void main() {
     expect(find.text('إنشاء حساب جديد'), findsNothing);
     expect(find.text('تسجيل الدخول'), findsNothing);
   });
+
+  testWidgets('tapping start opens the visitor registration form',
+      (tester) async {
+    await tester.pumpWidget(const HospitalVisitorApp());
+
+    final startButton = find.text('بدء تسجيل حركة الزوار');
+    expect(startButton, findsOneWidget);
+
+    await tester.tap(startButton);
+    await tester.pumpAndSettle();
+
+    expect(find.text('تسجيل حركة الزوار'), findsOneWidget);
+    expect(find.text('رقم الغرفة'), findsOneWidget);
+    expect(find.text('عدد الزوار'), findsOneWidget);
+    expect(find.text('سجل حركة الزوار'), findsOneWidget);
+  });
 }
