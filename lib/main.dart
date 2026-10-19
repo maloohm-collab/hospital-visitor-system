@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'screens/visitor_form_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // تهيئة Firebase قبل استخدام المصادقة أو قاعدة البيانات.
+  await Firebase.initializeApp();
 
   // تهيئة بيانات تنسيق التاريخ قبل بناء أي شاشة تستخدم DateFormat.
   await initializeDateFormatting('en');
