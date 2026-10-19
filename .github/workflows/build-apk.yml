@@ -2,14 +2,6 @@ name: Build APK
 
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
-    paths:
-      - "lib/main.dart"
-      - "lib/screens/visitor_form_screen.dart"
-      - "pubspec.yaml"
-      - "pubspec.lock"
-      - ".github/workflows/build-apk.yml"
 
 permissions:
   contents: read
