@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "226732172294",
+    "project_id": "hospital-visitor-system",
+    "storage_bucket": "hospital-visitor-system.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:226732172294:android:c3a2c074859cc4b9e3cf87",
+        "android_client_info": {
+          "package_name": "com.example.hospital_visitor_system"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC5GYcqDzLzdcw8ZKmg8nsrDdXPadgg_-k"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
