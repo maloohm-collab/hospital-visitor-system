@@ -29,6 +29,11 @@ jobs:
       - name: Generate missing Android project files
         run: flutter create --platforms=android .
 
+      - name: Configure Google Services Gradle plugin
+        run: |
+          sed -i '/^plugins {/a\    id("com.google.gms.google-services") version "4.4.3" apply false' android/settings.gradle.kts
+          sed -i '/^plugins {/a\    id("com.google.gms.google-services")' android/app/build.gradle.kts
+
       - name: Resolve dependencies
         run: flutter pub get
 
