@@ -61,16 +61,67 @@ class _AuthScreenState extends State<AuthScreen> {
         );
         final user = credential.user;
         if (user == null) throw FirebaseAuthException(code: 'user-not-found');
-        final profile = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+
+        final firestore = FirebaseFirestore.instance;
+        final profile = await firestore.collection('users').doc(user.uid).get();
         final data = profile.data();
         final role = data?['role'] as String?;
         final status = data?['status'] as String?;
         const roles = {'security_officer', 'supervisor', 'admin'};
+
         if (!profile.exists || status != 'active' || role == null || !roles.contains(role)) {
+          // A rejected applicant can submit again using the same authenticated account.
+          if (!profile.exists) {
+            final requestRef = firestore.collection('account_requests').doc(user.uid);
+            final request = await requestRef.get();
+            final requestStatus = request.data()?['status'];
+
+            if (requestStatus == 'rejected') {
+              final retry = await showDialog<bool>(
+                context: context,
+                builder: (dialogContext) => AlertDialog(
+                  title: const Text('إعادة تقديم الطلب'),
+                  content: const Text('تم رفض طلبك السابق. هل ترغب بإعادة تقديمه للمراجعة؟'),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(dialogContext, false),
+                      child: const Text('ليس الآن'),
+                    ),
+                    FilledButton(
+                      onPressed: () => Navigator.pop(dialogContext, true),
+                      child: const Text('إعادة التقديم'),
+                    ),
+                  ],
+                ),
+              );
+
+              if (retry == true) {
+                await requestRef.update({
+                  'status': 'pending',
+                  'createdAt': FieldValue.serverTimestamp(),
+                  'reviewedAt': FieldValue.delete(),
+                  'reviewedBy': FieldValue.delete(),
+                });
+                await FirebaseAuth.instance.signOut();
+                _message('تمت إعادة تقديم طلبك. انتظر مراجعة الإدارة.');
+                return;
+              }
+            }
+
+            await FirebaseAuth.instance.signOut();
+            _message(requestStatus == 'pending'
+                ? 'طلبك قيد المراجعة. انتظر موافقة الإدارة.'
+                : requestStatus == 'rejected'
+                    ? 'تم رفض طلبك. يمكنك إعادة تقديمه عند تسجيل الدخول مجددًا.'
+                    : 'الحساب غير معتمد. يرجى مراجعة مسؤول النظام.');
+            return;
+          }
+
           await FirebaseAuth.instance.signOut();
           _message('الحساب غير مفعّل أو لم تعتمد الإدارة صلاحياته بعد. يرجى مراجعة المسؤول.');
           return;
         }
+
         if (!mounted) return;
         Navigator.of(context).pushAndRemoveUntil(
           MaterialPageRoute(builder: (_) => DashboardScreen(userRole: role)),
@@ -81,7 +132,7 @@ class _AuthScreenState extends State<AuthScreen> {
       _message(_authError(e.code));
     } on FirebaseException catch (e) {
       _message(e.code == 'permission-denied'
-          ? 'قواعد أمان Firestore لم تُنشر بعد. راجع تعليمات إعداد الأمان.'
+          ? 'رفضت قواعد Firestore العملية. تأكد من نشر آخر نسخة من firestore.rules.'
           : 'تعذر الاتصال بخدمة البيانات (${e.code}). حاول مرة أخرى.');
     } catch (_) {
       _message('حدث خطأ غير متوقع. تحقق من إعدادات Firebase وقواعد الأمان.');
