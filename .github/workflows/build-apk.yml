@@ -1,12 +1,7 @@
-name: Build APK (manual or explicitly enabled build)
+name: Build APK (manual only)
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - main
-    paths:
-      - .github/workflows/build-apk.yml
 
 permissions:
   contents: read
@@ -30,6 +25,9 @@ jobs:
         with:
           channel: stable
           cache: true
+
+      - name: Generate missing Android project files
+        run: flutter create --platforms=android .
 
       - name: Resolve dependencies
         run: flutter pub get
