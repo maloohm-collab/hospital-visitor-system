@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'screens/auth_screen.dart';
+import 'screens/visitor_form_screen.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -54,9 +54,7 @@ class WelcomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('منظومة زوار المستشفى'),
-      ),
+      appBar: AppBar(title: const Text('منظومة زوار المستشفى')),
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -91,7 +89,7 @@ class WelcomeScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 10),
                   const Text(
-                    'نظام منظم لتسجيل حركة زوار المستشفى ومتابعة التقارير.',
+                    'سجّل حركة زوار المستشفى، وأنشئ تقرير PDF واحفظه على الهاتف ثم أرسله للمشرف عبر واتساب.',
                     textAlign: TextAlign.center,
                     style: TextStyle(fontSize: 16, height: 1.7),
                   ),
@@ -99,21 +97,15 @@ class WelcomeScreen extends StatelessWidget {
                   FilledButton.icon(
                     onPressed: () => Navigator.of(context).push(
                       MaterialPageRoute(
-                        builder: (_) => const AuthScreen(),
+                        builder: (_) => const VisitorFormScreen(),
                       ),
                     ),
-                    icon: const Icon(Icons.login_rounded),
-                    label: const Text('تسجيل الدخول'),
+                    icon: const Icon(Icons.picture_as_pdf_rounded),
+                    label: const Text('بدء تسجيل حركة الزوار'),
                     style: FilledButton.styleFrom(
                       backgroundColor: const Color(0xFF16324F),
                       minimumSize: const Size.fromHeight(52),
                     ),
-                  ),
-                  const SizedBox(height: 18),
-                  const Text(
-                    'الدخول بالحسابات التي تنشئها إدارة النظام.',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 12, color: Colors.black54),
                   ),
                 ],
               ),
