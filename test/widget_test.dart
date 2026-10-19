@@ -1,7 +1,12 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:intl/date_symbol_data_local.dart';
 import 'package:hospital_visitor_system/main.dart';
 
 void main() {
+  setUpAll(() async {
+    await initializeDateFormatting('en');
+  });
+
   testWidgets('welcome screen opens the visitor report workflow',
       (tester) async {
     await tester.pumpWidget(const HospitalVisitorApp());
