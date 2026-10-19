@@ -1,4 +1,5 @@
-import 'package:cloud_functions/cloud_functions.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 class AdminApprovalScreen extends StatefulWidget {
@@ -11,7 +12,8 @@ class AdminApprovalScreen extends StatefulWidget {
 class _AdminApprovalScreenState extends State<AdminApprovalScreen> {
   static const _navy = Color(0xFF16324F);
   static const _teal = Color(0xFF168C8C);
-  final FirebaseFunctions _functions = FirebaseFunctions.instance;
+
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   late Future<List<Map<String, dynamic>>> _requests;
 
   @override
@@ -21,22 +23,50 @@ class _AdminApprovalScreenState extends State<AdminApprovalScreen> {
   }
 
   Future<List<Map<String, dynamic>>> _loadRequests() async {
-    final result = await _functions.httpsCallable('listAccountRequests').call();
-    final data = Map<String, dynamic>.from(result.data as Map);
-    final rows = (data['requests'] as List<dynamic>? ?? const []);
-    return rows
-        .map((row) => Map<String, dynamic>.from(row as Map))
-        .toList(growable: false);
+    final snapshot = await _firestore
+        .collection('account_requests')
+        .where('status', isEqualTo: 'pending')
+        .get();
+
+    final requests = snapshot.docs.map((doc) {
+      final data = doc.data();
+      return <String, dynamic>{
+        'uid': doc.id,
+        'displayName': data['displayName'] ?? '',
+        'email': data['email'] ?? '',
+        'requestedRole': data['requestedRole'] ?? '',
+        'createdAt': data['createdAt'],
+      };
+    }).toList();
+
+    requests.sort((a, b) {
+      final aTime = a['createdAt'];
+      final bTime = b['createdAt'];
+      if (aTime is Timestamp && bTime is Timestamp) {
+        return aTime.compareTo(bTime);
+      }
+      return 0;
+    });
+    return requests;
   }
 
-  void _refresh() {
+  Future<void> _refresh() async {
     setState(() => _requests = _loadRequests());
+    try {
+      await _requests;
+    } catch (_) {
+      // FutureBuilder displays the error state.
+    }
   }
 
-  Future<void> _decide(Map<String, dynamic> request, String decision) async {
+  Future<void> _decide(
+    Map<String, dynamic> request,
+    String decision,
+  ) async {
     final uid = request['uid'] as String?;
-    if (uid == null || uid.isEmpty) {
-      _showMessage('تعذر تحديد هوية صاحب الطلب.');
+    final adminUid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null || uid.isEmpty || adminUid == null || uid == adminUid) {
+      _showMessage('تعذر تحديد هوية مقدم الطلب أو المسؤول.');
       return;
     }
 
@@ -63,34 +93,58 @@ class _AdminApprovalScreenState extends State<AdminApprovalScreen> {
     if (confirmed != true || !mounted) return;
 
     try {
-      await _functions.httpsCallable('decideAccountRequest').call({
-        'uid': uid,
-        'decision': decision,
+      final requestRef = _firestore.collection('account_requests').doc(uid);
+      final requestSnapshot = await requestRef.get();
+      if (!requestSnapshot.exists) {
+        _showMessage('الطلب غير موجود أو تمت معالجته مسبقًا.');
+        await _refresh();
+        return;
+      }
+
+      final data = requestSnapshot.data()!;
+      if (data['status'] != 'pending') {
+        _showMessage('تمت مراجعة هذا الطلب مسبقًا.');
+        await _refresh();
+        return;
+      }
+
+      final batch = _firestore.batch();
+      if (approve) {
+        final role = data['requestedRole'];
+        if (role != 'security_officer' && role != 'supervisor') {
+          _showMessage('الدور المطلوب غير مسموح به.');
+          return;
+        }
+        batch.set(_firestore.collection('users').doc(uid), {
+          'uid': uid,
+          'displayName': data['displayName'] ?? '',
+          'email': data['email'] ?? '',
+          'role': role,
+          'status': 'active',
+          'createdAt': FieldValue.serverTimestamp(),
+          'approvedAt': FieldValue.serverTimestamp(),
+          'approvedBy': adminUid,
+        });
+      }
+
+      batch.update(requestRef, {
+        'status': approve ? 'approved' : 'rejected',
+        'reviewedAt': FieldValue.serverTimestamp(),
+        'reviewedBy': adminUid,
       });
+      await batch.commit();
+
       if (!mounted) return;
-      _showMessage(approve ? 'تم اعتماد الحساب بنجاح.' : 'تم رفض الطلب.');
-      _refresh();
-    } on FirebaseFunctionsException catch (e) {
-      _showMessage(_functionError(e));
+      _showMessage(approve
+          ? 'تم اعتماد الحساب بنجاح.'
+          : 'تم رفض الطلب. يمكن لصاحبه إعادة تقديمه من شاشة الدخول.');
+      await _refresh();
+    } on FirebaseException catch (e) {
+      _showMessage(e.code == 'permission-denied'
+          ? 'رفضت قواعد الأمان العملية. تأكد من نشر آخر نسخة من firestore.rules وأن حسابك مسؤول مفعّل.'
+          : 'تعذر تنفيذ العملية (${e.code}). تحقق من الاتصال وحاول مجددًا.');
     } catch (_) {
       _showMessage('تعذر تنفيذ العملية. تحقق من الاتصال وحاول مجددًا.');
-    }
-  }
-
-  String _functionError(FirebaseFunctionsException error) {
-    switch (error.code) {
-      case 'unauthenticated':
-        return 'انتهت جلسة الدخول. سجّل الدخول مجددًا.';
-      case 'permission-denied':
-        return 'ليس لديك صلاحية تنفيذ هذه العملية.';
-      case 'not-found':
-        return 'الطلب غير موجود أو تمت معالجته مسبقًا.';
-      case 'failed-precondition':
-        return 'حالة الطلب لا تسمح بتنفيذ العملية.';
-      case 'unavailable':
-        return 'خدمة الإدارة غير منشورة أو غير متاحة حاليًا.';
-      default:
-        return 'تعذر تنفيذ العملية (${error.code}).';
     }
   }
 
@@ -125,7 +179,7 @@ class _AdminApprovalScreenState extends State<AdminApprovalScreen> {
               return _StatusPanel(
                 icon: Icons.cloud_off_outlined,
                 title: 'تعذر تحميل الطلبات',
-                message: 'تأكد من نشر Cloud Functions وتسجيل الدخول بحساب مسؤول مفعّل، ثم حاول مجددًا.',
+                message: 'تأكد من نشر قواعد Firestore المحدّثة وتسجيل الدخول بحساب مسؤول مفعّل، ثم حاول مجددًا.',
                 action: FilledButton.icon(
                   onPressed: _refresh,
                   icon: const Icon(Icons.refresh),
@@ -142,7 +196,7 @@ class _AdminApprovalScreenState extends State<AdminApprovalScreen> {
               );
             }
             return RefreshIndicator(
-              onRefresh: () async => _refresh(),
+              onRefresh: _refresh,
               child: ListView(
                 padding: const EdgeInsets.all(16),
                 children: [
