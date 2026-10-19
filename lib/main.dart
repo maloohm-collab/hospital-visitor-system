@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:intl/date_symbol_data_local.dart';
-import 'screens/visitor_form_screen.dart';
+import 'screens/auth_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -203,10 +203,10 @@ class WelcomeScreen extends StatelessWidget {
                   const SizedBox(height: 22),
                   FilledButton.icon(
                     onPressed: () => Navigator.of(context).push(
-                      MaterialPageRoute(builder: (_) => const VisitorFormScreen()),
+                      MaterialPageRoute(builder: (_) => const AuthScreen()),
                     ),
                     icon: const Icon(Icons.arrow_forward_rounded),
-                    label: const Text('بدء تسجيل حركة الزوار'),
+                    label: const Text('تسجيل الدخول إلى النظام'),
                     style: FilledButton.styleFrom(
                       backgroundColor: _teal,
                       foregroundColor: Colors.white,
