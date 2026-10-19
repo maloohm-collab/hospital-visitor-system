@@ -14,7 +14,6 @@ dependencies:
   firebase_core: ^4.13.0
   firebase_auth: ^6.5.7
   cloud_firestore: ^6.8.0
-  cloud_functions: ^6.0.0
   pdf: ^3.11.3
   printing: ^5.13.4
   path_provider: ^2.1.5
@@ -27,3 +26,4 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+}
