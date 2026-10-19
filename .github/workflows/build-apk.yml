@@ -1,4 +1,4 @@
-name: Build APK (one requested build)
+name: Build APK (temporary trigger for this requested build)
 
 on:
   workflow_dispatch:
@@ -6,7 +6,7 @@ on:
     branches:
       - main
     paths:
-      - .github/workflows/build-apk.yml
+      - lib/main.dart
 
 permissions:
   contents: read
