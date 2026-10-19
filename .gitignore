@@ -1,0 +1,22 @@
+# Flutter / Dart
+.dart_tool/
+.packages
+.pub-cache/
+.pub/
+build/
+.flutter-plugins
+.flutter-plugins-dependencies
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# Android / iOS local build artifacts
+android/.gradle/
+ios/Flutter/.last_build_id
+
+# Local secrets and machine-specific Firebase config
+.env
+.env.*
+!.env.example
