@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'screens/auth_screen.dart';
+import 'screens/dashboard_screen.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -114,7 +115,13 @@ class WelcomeScreen extends StatelessWidget {
                       minimumSize: const Size.fromHeight(52),
                     ),
                   ),
-                  const SizedBox(height: 22),
+                  const SizedBox(height: 12),
+                  TextButton.icon(
+                    onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const DashboardScreen())),
+                    icon: const Icon(Icons.dashboard_outlined),
+                    label: const Text('استعراض لوحة النظام'),
+                  ),
+                  const SizedBox(height: 14),
                   const Text(
                     'الإصدار الأولي • سيتم تفعيل الحسابات والصلاحيات بعد إعداد Firebase.',
                     textAlign: TextAlign.center,
