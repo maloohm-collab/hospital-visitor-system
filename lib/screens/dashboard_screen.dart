@@ -35,7 +35,7 @@ class DashboardScreen extends StatelessWidget {
                 const SizedBox(height: 8),
                 const Text('إدارة الزيارات\nبسهولة وأمان', style: TextStyle(color: Colors.white, fontSize: 23, height: 1.35, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 14),
-                Container(padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7), decoration: BoxDecoration(color: Colors.white.withValues(alpha: .13), borderRadius: BorderRadius.circular(30)), child: const Text('نظام تسجيل الزوار', style: TextStyle(color: Colors.white, fontSize: 12))),
+                Container(padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7), decoration: BoxDecoration(color: Colors.white.withOpacity(0.13), borderRadius: BorderRadius.circular(30)), child: const Text('نظام تسجيل الزوار', style: TextStyle(color: Colors.white, fontSize: 12))),
               ])),
               Container(width: 76, height: 76, decoration: BoxDecoration(color: Colors.white.withValues(alpha: .12), borderRadius: BorderRadius.circular(24)), child: const Icon(Icons.local_hospital_rounded, color: Colors.white, size: 42)),
             ]),
@@ -87,7 +87,7 @@ class _StatCard extends StatelessWidget {
     padding: const EdgeInsets.all(14),
     decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(18), border: Border.all(color: const Color(0xFFE4EAF0))),
     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Container(width: 38, height: 38, decoration: BoxDecoration(color: tint.withValues(alpha: .11), borderRadius: BorderRadius.circular(12)), child: Icon(icon, color: tint, size: 21)),
+      Container(width: 38, height: 38, decoration: BoxDecoration(color: tint.withOpacity(0.11), borderRadius: BorderRadius.circular(12)), child: Icon(icon, color: tint, size: 21)),
       const SizedBox(height: 14),
       Text(value, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: DashboardScreen.navy)),
       const SizedBox(height: 4),
@@ -114,7 +114,7 @@ class _ActionTile extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 14),
         decoration: BoxDecoration(borderRadius: BorderRadius.circular(16), border: Border.all(color: const Color(0xFFE4EAF0))),
         child: Row(children: [
-          Container(width: 46, height: 46, decoration: BoxDecoration(color: color.withValues(alpha: .1), borderRadius: BorderRadius.circular(14)), child: Icon(icon, color: color)),
+          Container(width: 46, height: 46, decoration: BoxDecoration(color: color.withOpacity(0.10), borderRadius: BorderRadius.circular(14)), child: Icon(icon, color: color)),
           const SizedBox(width: 13),
           Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text(title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: DashboardScreen.navy)),
