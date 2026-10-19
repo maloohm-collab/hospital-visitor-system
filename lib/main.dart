@@ -40,10 +40,12 @@ class HospitalVisitorApp extends StatelessWidget {
           ),
         ),
       ),
-      home: const Directionality(
+      // اجعل اتجاه العربية عامًا لكل الصفحات، بما فيها الصفحات التي تُفتح عبر Navigator.
+      builder: (context, child) => Directionality(
         textDirection: TextDirection.rtl,
-        child: WelcomeScreen(),
+        child: child ?? const SizedBox.shrink(),
       ),
+      home: const WelcomeScreen(),
     );
   }
 }
