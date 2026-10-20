@@ -176,6 +176,81 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    match /duty_reports/{reportId} {
+      // Security officers may submit only their own incident/shift reports to the supervisor.
+      // Supervisors may create internal reports or reports explicitly forwarded to administration.
+      allow create: if isActiveUser()
+        && request.resource.data.keys().hasOnly([
+          'reportId', 'type', 'title', 'body', 'employeeName', 'priority',
+          'destination', 'status', 'createdBy', 'createdByEmail',
+          'createdByRole', 'createdAt', 'updatedAt'
+        ])
+        && request.resource.data.keys().hasAll([
+          'reportId', 'type', 'title', 'body', 'employeeName', 'priority',
+          'destination', 'status', 'createdBy', 'createdByEmail',
+          'createdByRole', 'createdAt', 'updatedAt'
+        ])
+        && request.resource.data.reportId == reportId
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.updatedAt == request.time
+        && request.resource.data.title is string
+        && request.resource.data.title.size() >= 4
+        && request.resource.data.body is string
+        && request.resource.data.body.size() >= 10
+        && request.resource.data.employeeName is string
+        && request.resource.data.priority in ['normal', 'important', 'urgent']
+        && (
+          (
+            get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'security_officer'
+            && request.resource.data.createdByRole == 'security_officer'
+            && request.resource.data.type in ['security_incident', 'shift_summary']
+            && request.resource.data.destination == 'supervisor'
+            && request.resource.data.status == 'submitted'
+          )
+          ||
+          (
+            get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'supervisor'
+            && request.resource.data.createdByRole == 'supervisor'
+            && request.resource.data.type in [
+              'security_incident', 'shift_summary', 'technical_note',
+              'recommendation_positive', 'recommendation_concern'
+            ]
+            && request.resource.data.destination in ['internal', 'admin']
+            && request.resource.data.status == (request.resource.data.destination == 'admin' ? 'forwarded' : 'saved')
+          )
+        );
+
+      // Officers can read their own submissions; supervisors review all reports.
+      // Admin queries must be limited to reports explicitly forwarded to administration.
+      allow get, list: if isActiveUser() && (
+        resource.data.createdBy == request.auth.uid
+        || isActiveSupervisor()
+        || (
+          isActiveAdmin()
+          && resource.data.destination == 'admin'
+          && resource.data.status == 'forwarded'
+        )
+      );
+
+      // Only an active supervisor may review a submitted officer report.
+      allow update: if isActiveSupervisor()
+        && resource.data.createdByRole == 'security_officer'
+        && resource.data.status == 'submitted'
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'status', 'destination', 'reviewedBy', 'reviewedAt', 'updatedAt'
+        ])
+        && request.resource.data.status in ['saved', 'forwarded']
+        && request.resource.data.destination == (
+          request.resource.data.status == 'forwarded' ? 'admin' : resource.data.destination
+        )
+        && request.resource.data.reviewedBy == request.auth.uid
+        && request.resource.data.reviewedAt == request.time
+        && request.resource.data.updatedAt == request.time;
+
+      allow delete: if false;
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }
