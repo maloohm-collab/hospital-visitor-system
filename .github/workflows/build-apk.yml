@@ -2,6 +2,15 @@ name: Build APK
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - "lib/**"
+      - "pubspec.yaml"
+      - "pubspec.lock"
+      - "android/app/google-services.json"
+      - ".github/workflows/build-apk.yml"
 
 permissions:
   contents: read
@@ -18,7 +27,7 @@ jobs:
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '17'
+          java-version: "17"
 
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
@@ -37,13 +46,16 @@ jobs:
       - name: Resolve dependencies
         run: flutter pub get
 
-      - name: Build one release APK
+      - name: Run Flutter tests
+        run: flutter test --reporter expanded
+
+      - name: Build release APK
         run: flutter build apk --release
 
-      - name: Upload the single APK
+      - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: hospital-visitor-system-apk
           path: build/app/outputs/flutter-apk/app-release.apk
           if-no-files-found: error
-          retention-days: 1
+          retention-days: 7
