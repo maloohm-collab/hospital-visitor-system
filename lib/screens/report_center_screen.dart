@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:file_picker/file_picker.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -186,10 +187,21 @@ class _ReportCenterScreenState extends State<ReportCenterScreen> {
       if (share) {
         await Share.shareXFiles([XFile(file.path, mimeType: 'application/pdf')], text: 'تقرير المستشفى: ${d['title'] ?? ''}');
       } else if (mounted) {
-        await Navigator.push(context, MaterialPageRoute<void>(builder: (_) => Scaffold(
-          appBar: AppBar(title: const Text('معاينة وتنزيل PDF')),
-          body: PdfPreview(canChangeOrientation: false, canChangePageFormat: false,
-            allowPrinting: true, allowSharing: true, build: (_) => file.readAsBytes()))));
+        final savedPath = await FilePicker.platform.saveFile(
+          dialogTitle: 'حفظ نسخة PDF',
+          fileName: file.uri.pathSegments.last,
+          type: FileType.custom,
+          allowedExtensions: ['pdf'],
+          bytes: await file.readAsBytes(),
+        );
+        if (savedPath != null) {
+          _message('تم حفظ نسخة PDF في الموقع الذي اخترته.');
+        } else if (mounted) {
+          await Navigator.push(context, MaterialPageRoute<void>(builder: (_) => Scaffold(
+            appBar: AppBar(title: const Text('معاينة وطباعة PDF')),
+            body: PdfPreview(canChangeOrientation: false, canChangePageFormat: false,
+              allowPrinting: true, allowSharing: true, build: (_) => file.readAsBytes()))));
+        }
       }
     } catch (_) { _message('تعذر إنشاء PDF. تحقق من الاتصال لتحميل خط PDF ثم حاول مجددًا.'); }
   }
