@@ -180,7 +180,7 @@ class _AccountProfileScreenState extends State<AccountProfileScreen> {
                         ),
                         const SizedBox(height: 14),
                         TextFormField(
-                          controller: TextEditingController(text: _email),
+                          initialValue: _email,
                           readOnly: true,
                           decoration: const InputDecoration(
                             labelText: 'البريد الإلكتروني (غير قابل للتعديل)',
