@@ -173,17 +173,7 @@ class _DutyReportsScreenState extends State<DutyReportsScreen> {
               items: [
                 const DropdownMenuItem(value: 'security_incident', child: Text('حادث أو ملاحظة أمنية')),
                 const DropdownMenuItem(value: 'shift_summary', child: Text('تقرير سير المناوبة')),
-                const SizedBox(height: 22),
-        OutlinedButton.icon(
-          onPressed: _importReceivedPdf,
-          icon: const Icon(Icons.file_open_rounded),
-          label: Text(admin
-            ? 'حفظ تقرير وارد في الأرشيف المحلي'
-            : 'استيراد PDF وارد من ضابط الأمن أو واتساب'),
-        ),
-        const SizedBox(height: 18),
-        _buildLocalArchive(),
-        if (supervisor) ...[
+                if (supervisor) ...[
                   const DropdownMenuItem(value: 'technical_note', child: Text('ملاحظة فنية على موظف')),
                   const DropdownMenuItem(value: 'recommendation_positive', child: Text('توصية إيجابية / أداء متميز')),
                   const DropdownMenuItem(value: 'recommendation_concern', child: Text('ملاحظة مهنية سرية')),
@@ -394,6 +384,16 @@ class _DutyReportsScreenState extends State<DutyReportsScreen> {
           _info(Icons.warning_amber_rounded, 'رقم واتساب اختباري مؤقت',
             'الرقم الحالي: +962 79 000 0000. يجب استبداله برقم الإدارة الرسمي قبل الاستخدام الفعلي.'),
         ],
+        const SizedBox(height: 18),
+        OutlinedButton.icon(
+          onPressed: _importReceivedPdf,
+          icon: const Icon(Icons.file_open_rounded),
+          label: Text(admin
+            ? 'حفظ تقرير وارد في الأرشيف المحلي'
+            : 'استيراد PDF وارد من ضابط الأمن أو واتساب'),
+        ),
+        const SizedBox(height: 18),
+        _buildLocalArchive(),
       ]),
     );
   }
