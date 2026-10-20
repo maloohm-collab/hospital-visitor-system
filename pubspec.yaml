@@ -11,6 +11,7 @@ dependencies:
     sdk: flutter
   cupertino_icons: ^1.0.8
   intl: ^0.20.2
+  arabic_reshaper: ^0.0.1
   firebase_core: ^4.13.0
   firebase_auth: ^6.5.7
   cloud_firestore: ^6.8.0
