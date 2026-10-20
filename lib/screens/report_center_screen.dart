@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:pdf/widgets.dart' as pw;
+import 'package:arabic_reshaper/arabic_reshaper.dart';
 import 'package:printing/printing.dart';
 import 'package:share_plus/share_plus.dart';
 
@@ -153,6 +154,8 @@ class _ReportCenterScreenState extends State<ReportCenterScreen> {
     on FirebaseException catch (e) { _message('تعذر الحذف (${e.code})؛ قد لا تملك الصلاحية.'); }
   }
 
+  String _shapeArabic(String value) => ArabicReshaper.instance.reshape(value);
+
   Future<File> _pdf(Map<String, dynamic> d) async {
     final regular = await PdfGoogleFonts.cairoRegular(), bold = await PdfGoogleFonts.cairoBold();
     final pdf = pw.Document();
@@ -160,17 +163,17 @@ class _ReportCenterScreenState extends State<ReportCenterScreen> {
     pdf.addPage(pw.MultiPage(theme: pw.ThemeData.withFont(base: regular, bold: bold),
       build: (_) => [pw.Directionality(textDirection: pw.TextDirection.rtl, child: pw.Column(
         crossAxisAlignment: pw.CrossAxisAlignment.stretch, children: [
-          pw.Text('منظومة زوار المستشفى', style: pw.TextStyle(font: bold, fontSize: 20)),
+          pw.Text(_shapeArabic('منظومة زوار المستشفى'), style: pw.TextStyle(font: bold, fontSize: 20)),
           pw.Divider(),
-          pw.Text('عنوان التقرير: ${d['title'] ?? ''}', style: pw.TextStyle(font: bold, fontSize: 15)),
-          pw.Text('النوع: ${d['type'] ?? ''}'),
-          pw.Text('الأولوية: ${d['priority'] ?? 'normal'}'),
-          pw.Text('مقدم التقرير: ${d['createdByEmail'] ?? ''}'),
-          pw.Text('التاريخ: ${DateFormat('yyyy/MM/dd HH:mm').format(ts)}'),
-          if ((d['employeeName'] as String? ?? '').isNotEmpty) pw.Text('الموظف المعني: ${d['employeeName']}'),
-          pw.SizedBox(height: 12), pw.Text('التفاصيل:', style: pw.TextStyle(font: bold)),
-          pw.Text(d['body'] as String? ?? '', style: const pw.TextStyle(fontSize: 12, lineSpacing: 4)),
-          pw.SizedBox(height: 18), pw.Text('الرقم المرجعي: ${d['reportId'] ?? ''}'),
+          pw.Text(_shapeArabic('عنوان التقرير: ${d['title'] ?? ''}'), style: pw.TextStyle(font: bold, fontSize: 15)),
+          pw.Text(_shapeArabic('النوع: ${d['type'] ?? ''}')),
+          pw.Text(_shapeArabic('الأولوية: ${d['priority'] ?? 'normal'}')),
+          pw.Text(_shapeArabic('مقدم التقرير: ${d['createdByEmail'] ?? ''}')),
+          pw.Text(_shapeArabic('التاريخ: ${DateFormat('yyyy/MM/dd HH:mm').format(ts)}')),
+          if ((d['employeeName'] as String? ?? '').isNotEmpty) pw.Text(_shapeArabic('الموظف المعني: ${d['employeeName']}')),
+          pw.SizedBox(height: 12), pw.Text(_shapeArabic('التفاصيل:'), style: pw.TextStyle(font: bold)),
+          pw.Text(_shapeArabic(d['body'] as String? ?? ''), style: const pw.TextStyle(fontSize: 12, lineSpacing: 4)),
+          pw.SizedBox(height: 18), pw.Text(_shapeArabic('الرقم المرجعي: ${d['reportId'] ?? ''}')),
         ],
       ))]));
     final dir = await getApplicationDocumentsDirectory();
