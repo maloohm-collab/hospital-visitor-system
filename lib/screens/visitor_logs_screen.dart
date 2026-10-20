@@ -157,13 +157,12 @@ class VisitorLogsScreen extends StatelessWidget {
                         style: const TextStyle(color: Color(0xFF526579), height: 1.5),
                       ),
                     ],
-                    if (userRole != 'security_officer' &&
-                        (data['createdByEmail'] as String? ?? '').isNotEmpty) ...[
+                    if (userRole != 'security_officer') ...[
                       const SizedBox(height: 8),
-                      Text(
-                        'سُجّل بواسطة: ' + (data['createdByEmail'] as String),
-                        style: const TextStyle(fontSize: 12, color: Color(0xFF637487)),
-                      ),
+                      if ((data['createdByName'] as String? ?? '').trim().isNotEmpty)
+                        Text('سُجّل بواسطة: ${data['createdByName']}', style: const TextStyle(fontSize: 12, color: Color(0xFF637487))),
+                      if ((data['createdByPhone'] as String? ?? '').trim().isNotEmpty)
+                        Text('هاتف الموظف: ${data['createdByPhone']}', style: const TextStyle(fontSize: 12, color: Color(0xFF637487))),
                     ],
                   ],
                 ),
