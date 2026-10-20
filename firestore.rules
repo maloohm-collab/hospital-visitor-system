@@ -105,7 +105,7 @@ service cloud.firestore {
           'createdAt', 'approvedAt', 'approvedBy'
         ])
         && request.resource.data.keys().hasAll([
-          'uid', 'displayName', 'phone', 'photoURL', 'email', 'role', 'status',
+          'uid', 'displayName', 'phone', 'email', 'role', 'status',
           'createdAt', 'approvedAt', 'approvedBy'
         ])
         && request.resource.data.uid == uid
