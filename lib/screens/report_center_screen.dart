@@ -106,12 +106,18 @@ class _ReportCenterScreenState extends State<ReportCenterScreen> {
                 final ref = doc?.reference ?? FirebaseFirestore.instance.collection('duty_reports').doc();
                 final now = FieldValue.serverTimestamp();
                 if (doc == null) {
+                  final profileSnapshot = await FirebaseFirestore.instance.collection('users').doc(user!.uid).get();
+                  final profileData = profileSnapshot.data() ?? <String, dynamic>{};
+                  final profileName = (profileData['displayName'] as String? ?? user!.displayName ?? '').trim();
+                  final profilePhone = (profileData['phone'] as String? ?? '').trim();
                   await ref.set({
                     'reportId': ref.id, 'type': type, 'title': title.text.trim(),
                     'body': body.text.trim(), 'employeeName': employee.text.trim(),
                     'priority': priority, 'destination': widget.userRole == 'security_officer' ? 'supervisor' : supervisor ? destination : 'admin',
                     'status': widget.userRole == 'security_officer' ? 'submitted' : supervisor ? (destination == 'admin' ? 'forwarded' : 'saved') : 'forwarded',
                     'createdBy': user!.uid, 'createdByEmail': user!.email ?? '',
+                    'createdByName': profileName.isEmpty ? 'غير مسجل' : profileName,
+                    'createdByPhone': profilePhone,
                     'createdByRole': widget.userRole, 'createdAt': now, 'updatedAt': now,
                   });
                 } else {
@@ -168,7 +174,8 @@ class _ReportCenterScreenState extends State<ReportCenterScreen> {
           pw.Text(_shapeArabic('عنوان التقرير: ${d['title'] ?? ''}'), style: pw.TextStyle(font: bold, fontSize: 15)),
           pw.Text(_shapeArabic('النوع: ${d['type'] ?? ''}')),
           pw.Text(_shapeArabic('الأولوية: ${d['priority'] ?? 'normal'}')),
-          pw.Text(_shapeArabic('مقدم التقرير: ${d['createdByEmail'] ?? ''}')),
+          pw.Text(_shapeArabic('اسم مقدم التقرير: ${d['createdByName'] ?? d['createdByEmail'] ?? 'غير مسجل'}')),
+          pw.Text(_shapeArabic('رقم هاتف مقدم التقرير: ${d['createdByPhone'] ?? 'غير مسجل'}')),
           pw.Text(_shapeArabic('التاريخ: ${DateFormat('yyyy/MM/dd HH:mm').format(ts)}')),
           if ((d['employeeName'] as String? ?? '').isNotEmpty) pw.Text(_shapeArabic('الموظف المعني: ${d['employeeName']}')),
           pw.SizedBox(height: 12), pw.Text(_shapeArabic('التفاصيل:'), style: pw.TextStyle(font: bold)),
