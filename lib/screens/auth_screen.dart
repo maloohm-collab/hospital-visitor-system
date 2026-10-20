@@ -13,6 +13,7 @@ class AuthScreen extends StatefulWidget {
 class _AuthScreenState extends State<AuthScreen> {
   final _formKey = GlobalKey<FormState>();
   final _name = TextEditingController();
+  final _phone = TextEditingController();
   final _email = TextEditingController();
   final _password = TextEditingController();
   bool _obscure = true, _register = false, _loading = false;
@@ -23,6 +24,7 @@ class _AuthScreenState extends State<AuthScreen> {
   @override
   void dispose() {
     _name.dispose();
+    _phone.dispose();
     _email.dispose();
     _password.dispose();
     super.dispose();
@@ -42,6 +44,7 @@ class _AuthScreenState extends State<AuthScreen> {
               .doc(credential.user!.uid).set({
             'uid': credential.user!.uid,
             'displayName': _name.text.trim(),
+            'phone': _phone.text.trim(),
             'email': _email.text.trim(),
             'requestedRole': _role,
             'status': 'pending',
@@ -191,6 +194,15 @@ class _AuthScreenState extends State<AuthScreen> {
                 TextFormField(controller: _name, textInputAction: TextInputAction.next,
                   decoration: const InputDecoration(labelText: 'الاسم الكامل', prefixIcon: Icon(Icons.person_outline)),
                   validator: (v) => _register && (v == null || v.trim().length < 3) ? 'أدخل الاسم الكامل' : null),
+                const SizedBox(height: 14),
+                TextFormField(controller: _phone, keyboardType: TextInputType.phone,
+                  textInputAction: TextInputAction.next,
+                  decoration: const InputDecoration(labelText: 'رقم الهاتف', prefixIcon: Icon(Icons.phone_outlined), hintText: '07XXXXXXXX'),
+                  validator: (v) {
+                    if (!_register) return null;
+                    final digits = (v ?? '').replaceAll(RegExp(r'[^0-9+]'), '');
+                    return digits.length < 9 ? 'أدخل رقم هاتف صحيحًا' : null;
+                  }),
                 const SizedBox(height: 14),
               ],
               TextFormField(controller: _email, keyboardType: TextInputType.emailAddress,
