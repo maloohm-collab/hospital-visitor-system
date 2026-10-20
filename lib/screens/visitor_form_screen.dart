@@ -537,6 +537,8 @@ class _VisitorFormScreenState extends State<VisitorFormScreen> {
     setState(() => _isSavingVisit = true);
     try {
       final floor = _hospitalLocations[_selectedFloor!]!;
+      final staffSnapshot = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+      final staffData = staffSnapshot.data() ?? <String, dynamic>{};
       final visitRef = FirebaseFirestore.instance.collection('visitor_logs').doc();
       await visitRef.set({
         'visitId': visitRef.id,
@@ -552,6 +554,8 @@ class _VisitorFormScreenState extends State<VisitorFormScreen> {
         'status': 'inside',
         'createdBy': user.uid,
         'createdByEmail': user.email ?? '',
+        'createdByName': (staffData['displayName'] as String? ?? user.displayName ?? '').trim(),
+        'createdByPhone': (staffData['phone'] as String? ?? '').trim(),
         'createdAt': FieldValue.serverTimestamp(),
       });
       if (!mounted) return;
