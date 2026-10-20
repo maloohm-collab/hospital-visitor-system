@@ -6,7 +6,6 @@ import 'visitor_logs_screen.dart';
 import 'visitor_search_screen.dart';
 import 'visitor_reports_screen.dart';
 import 'admin_approval_screen.dart';
-import 'duty_reports_screen.dart';
 import 'report_center_screen.dart';
 import 'notifications_screen.dart';
 
@@ -140,10 +139,6 @@ class DashboardScreen extends StatelessWidget {
       case 'supervisor': return 'مشرف';
       default: return 'ضابط أمن';
     }
-  }
-
-  static void _notice(BuildContext context, String message) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
   }
 }
 
