@@ -114,7 +114,8 @@ service cloud.firestore {
         && getAfter(/databases/$(database)/documents/account_requests/$(uid)).data.requestedRole == request.resource.data.role
         && getAfter(/databases/$(database)/documents/account_requests/$(uid)).data.reviewedBy == request.auth.uid;
 
-      allow list, update, delete: if false;
+      allow list: if isActiveAdmin();
+      allow update, delete: if false;
     }
 
     match /visitor_logs/{visitId} {
@@ -267,6 +268,63 @@ service cloud.firestore {
         && request.resource.data.status == 'submitted'
         && request.resource.data.updatedAt == request.time
       );
+
+      // A report owner may edit only the text fields; routing and review state stay protected.
+      allow update: if isActiveUser()
+        && resource.data.createdBy == request.auth.uid
+        && !(resource.data.destination == 'admin' && resource.data.status == 'forwarded')
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'title', 'body', 'employeeName', 'priority', 'updatedAt'
+        ])
+        && request.resource.data.title is string
+        && request.resource.data.title.size() >= 4
+        && request.resource.data.body is string
+        && request.resource.data.body.size() >= 10
+        && request.resource.data.updatedAt == request.time;
+
+      // Owners may remove only their own report before it is forwarded to administration.
+      allow delete: if isActiveUser()
+        && resource.data.createdBy == request.auth.uid
+        && !(resource.data.destination == 'admin' && resource.data.status == 'forwarded');
+
+    }
+
+    match /notifications/{notificationId} {
+      // Only the administration can issue notices. A recipient must be an active user.
+      allow create: if isActiveAdmin()
+        && request.resource.data.keys().hasOnly([
+          'notificationId', 'recipientUid', 'recipientRole', 'senderUid',
+          'senderEmail', 'title', 'body', 'priority', 'read', 'createdAt'
+        ])
+        && request.resource.data.keys().hasAll([
+          'notificationId', 'recipientUid', 'recipientRole', 'senderUid',
+          'senderEmail', 'title', 'body', 'priority', 'read', 'createdAt'
+        ])
+        && request.resource.data.notificationId == notificationId
+        && request.resource.data.recipientUid is string
+        && exists(/databases/$(database)/documents/users/$(request.resource.data.recipientUid))
+        && get(/databases/$(database)/documents/users/$(request.resource.data.recipientUid)).data.status == 'active'
+        && request.resource.data.recipientRole in ['supervisor', 'security_officer']
+        && request.resource.data.senderUid == request.auth.uid
+        && request.resource.data.title is string
+        && request.resource.data.title.size() >= 3
+        && request.resource.data.body is string
+        && request.resource.data.body.size() >= 5
+        && request.resource.data.priority in ['normal', 'important', 'urgent']
+        && request.resource.data.read == false
+        && request.resource.data.createdAt == request.time;
+
+      allow get, list: if isActiveUser()
+        && (resource.data.recipientUid == request.auth.uid
+          || (isActiveAdmin() && resource.data.senderUid == request.auth.uid));
+
+      // Recipients may mark their own notice read, but cannot edit its content or recipient.
+      allow update: if isActiveUser()
+        && resource.data.recipientUid == request.auth.uid
+        && resource.data.read == false
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read', 'readAt'])
+        && request.resource.data.read == true
+        && request.resource.data.readAt == request.time;
 
       allow delete: if false;
     }
