@@ -36,37 +36,56 @@ class DashboardScreen extends StatelessWidget {
               final unread = (snapshot.data?.docs ?? [])
                   .where((doc) => doc.data()['read'] != true)
                   .length;
-              return IconButton(
-                tooltip: unread > 0 ? 'الإشعارات غير المقروءة: $unread' : 'الإشعارات',
-                onPressed: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => NotificationsScreen(userRole: userRole)),
-                ),
-                icon: Stack(
-                  clipBehavior: Clip.none,
-                  children: [
-                    const Icon(Icons.notifications_none_rounded),
-                    if (unread > 0)
-                      Positioned(
-                        top: -5,
-                        right: -7,
-                        child: Container(
-                          constraints: const BoxConstraints(minWidth: 17, minHeight: 17),
-                          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                          decoration: const BoxDecoration(
-                            color: Color(0xFFD92D20),
-                            shape: BoxShape.circle,
-                          ),
-                          child: Text(
-                            unread > 9 ? '9+' : '$unread',
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
-                          ),
-                        ),
+              return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+                stream: userRole == 'admin'
+                    ? FirebaseFirestore.instance.collection('account_requests')
+                        .where('status', isEqualTo: 'pending').snapshots()
+                    : null,
+                builder: (context, requestsSnapshot) {
+                  final pendingRequests = userRole == 'admin'
+                      ? (requestsSnapshot.data?.docs.length ?? 0)
+                      : 0;
+                  final badgeCount = unread + pendingRequests;
+                  return IconButton(
+                    tooltip: pendingRequests > 0
+                        ? 'طلبات جديدة بانتظار المراجعة: $pendingRequests'
+                        : unread > 0 ? 'الإشعارات غير المقروءة: $unread' : 'الإشعارات',
+                    onPressed: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => userRole == 'admin' && pendingRequests > 0
+                            ? const AdminApprovalScreen()
+                            : NotificationsScreen(userRole: userRole),
                       ),
-                  ],
-                ),
+                    ),
+                    icon: Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        const Icon(Icons.notifications_none_rounded),
+                        if (badgeCount > 0)
+                          Positioned(
+                            top: -5,
+                            right: -7,
+                            child: Container(
+                              constraints: const BoxConstraints(minWidth: 17, minHeight: 17),
+                              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                              decoration: const BoxDecoration(
+                                color: Color(0xFFD92D20),
+                                shape: BoxShape.circle,
+                              ),
+                              child: Text(
+                                badgeCount > 9 ? '9+' : '$badgeCount',
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  );
+                },
               );
+            }
             },
           ),
           const SizedBox(width: 4),
