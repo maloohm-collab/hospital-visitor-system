@@ -7,29 +7,32 @@ void main() {
     await initializeDateFormatting('en');
   });
 
-  testWidgets('welcome screen opens the visitor report workflow',
+  testWidgets('welcome screen displays the current sign-in entry point',
       (tester) async {
     await tester.pumpWidget(const HospitalVisitorApp());
 
     expect(find.text('منظومة زوار المستشفى'), findsOneWidget);
-    expect(find.text('بدء تسجيل حركة الزوار'), findsOneWidget);
-    expect(find.text('إنشاء حساب جديد'), findsNothing);
-    expect(find.text('تسجيل الدخول'), findsNothing);
+    expect(find.text('أهلاً بك'), findsOneWidget);
+    expect(find.text('تسجيل الدخول إلى النظام'), findsOneWidget);
+
+    // Account creation is intentionally available from the sign-in screen,
+    // not directly on the welcome screen.
+    expect(find.text('طلب إنشاء حساب جديد'), findsNothing);
   });
 
-  testWidgets('tapping start opens the visitor registration form',
+  testWidgets('tapping sign-in opens the authentication screen',
       (tester) async {
     await tester.pumpWidget(const HospitalVisitorApp());
 
-    final startButton = find.text('بدء تسجيل حركة الزوار');
-    expect(startButton, findsOneWidget);
+    final signInButton = find.text('تسجيل الدخول إلى النظام');
+    expect(signInButton, findsOneWidget);
 
-    await tester.tap(startButton);
+    await tester.tap(signInButton);
     await tester.pumpAndSettle();
 
-    expect(find.text('تسجيل حركة الزوار'), findsOneWidget);
-    expect(find.text('رقم الغرفة'), findsOneWidget);
-    expect(find.text('عدد الزوار'), findsOneWidget);
-    expect(find.text('سجل حركة الزوار'), findsOneWidget);
+    expect(find.text('تسجيل الدخول'), findsOneWidget);
+    expect(find.text('البريد الإلكتروني'), findsOneWidget);
+    expect(find.text('كلمة المرور'), findsOneWidget);
+    expect(find.text('طلب إنشاء حساب جديد'), findsOneWidget);
   });
 }
