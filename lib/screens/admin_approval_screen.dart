@@ -33,6 +33,7 @@ class _AdminApprovalScreenState extends State<AdminApprovalScreen> {
       return <String, dynamic>{
         'uid': doc.id,
         'displayName': data['displayName'] ?? '',
+        'phone': data['phone'] ?? '',
         'email': data['email'] ?? '',
         'requestedRole': data['requestedRole'] ?? '',
         'createdAt': data['createdAt'],
@@ -118,6 +119,7 @@ class _AdminApprovalScreenState extends State<AdminApprovalScreen> {
         batch.set(_firestore.collection('users').doc(uid), {
           'uid': uid,
           'displayName': data['displayName'] ?? '',
+          'phone': data['phone'] ?? '',
           'email': data['email'] ?? '',
           'role': role,
           'status': 'active',
@@ -309,6 +311,8 @@ class _RequestCard extends StatelessWidget {
                       Text(name, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                       const SizedBox(height: 4),
                       Text(email, style: const TextStyle(color: Color(0xFF64748B))),
+                      if ((request['phone'] as String? ?? '').trim().isNotEmpty)
+                        Text('الهاتف: ${request['phone']}', style: const TextStyle(color: Color(0xFF64748B))),
                     ],
                   ),
                 ),
