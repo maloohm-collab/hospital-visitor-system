@@ -1,7 +1,14 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'dart:io';
+
 import 'package:intl/intl.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:printing/printing.dart';
+import 'package:share_plus/share_plus.dart';
 
 class VisitorReportsScreen extends StatelessWidget {
   const VisitorReportsScreen({super.key, required this.userRole});
@@ -71,6 +78,22 @@ class VisitorReportsScreen extends StatelessWidget {
                 ]),
               ]),
             ),
+            if (userRole == 'security_officer') ...[
+              const SizedBox(height: 16),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  onPressed: () => _createDailyPdf(context, today, now, user),
+                  icon: const Icon(Icons.picture_as_pdf_rounded),
+                  label: const Text('إعداد التقرير اليومي وإرساله للمشرف (PDF)'),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: const Color(0xFF168C8C),
+                    foregroundColor: Colors.white,
+                    minimumSize: const Size.fromHeight(52),
+                  ),
+                ),
+              ),
+            ],
             const SizedBox(height: 14),
             Row(children: [
               Expanded(child: _ReportMetric(title: 'داخل المستشفى', value: inside.toString(), icon: Icons.meeting_room_outlined, color: const Color(0xFFD28A25))),
@@ -153,4 +176,169 @@ class _ReportEmpty extends StatelessWidget {
     decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(14), border: Border.all(color: const Color(0xFFE1E8EF))),
     child: Text(message, textAlign: TextAlign.center, style: const TextStyle(color: Color(0xFF637487))),
   );
+
+  Future<void> _createDailyPdf(
+    BuildContext context,
+    List<QueryDocumentSnapshot<Map<String, dynamic>>> visits,
+    DateTime now,
+    User user,
+  ) async {
+    if (visits.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('لا توجد زيارات مسجلة اليوم لإنشاء التقرير.')),
+      );
+      return;
+    }
+    try {
+      final arabicFont = await PdfGoogleFonts.cairoRegular();
+      final boldFont = await PdfGoogleFonts.cairoBold();
+      final dateKey = DateFormat('yyyyMMdd', 'en').format(now);
+      final dateLabel = DateFormat('yyyy/MM/dd', 'en').format(now);
+      final grouped = <String, List<Map<String, dynamic>>>{};
+      var visitorTotal = 0;
+      var insideCount = 0;
+      var completedCount = 0;
+      for (final visit in visits) {
+        final d = visit.data();
+        final floor = d['floorName'] as String? ?? 'غير محدد';
+        final department = d['department'] as String? ?? 'غير محدد';
+        final room = d['roomNumber'] as String? ?? 'غير محددة';
+        final key = floor + '||' + department + '||' + room;
+        grouped.putIfAbsent(key, () => <Map<String, dynamic>>[]).add(d);
+        final count = d['visitorCount'];
+        visitorTotal += count is int ? count : 0;
+        if (d['status'] == 'inside') insideCount++;
+        if (d['status'] == 'completed') completedCount++;
+      }
+      final groups = grouped.entries.toList()..sort((a, b) => a.key.compareTo(b.key));
+      String timeOf(dynamic value) => value is Timestamp
+          ? DateFormat('HH:mm', 'en').format(value.toDate()) : 'لم يسجل';
+      final staffName = user.displayName?.trim().isNotEmpty == true
+          ? user.displayName! : user.email ?? user.uid;
+      final reportId = 'daily_${user.uid}_$dateKey';
+      final reportRef = FirebaseFirestore.instance.collection('duty_reports').doc(reportId);
+      final summary = <String>[
+        'التقرير اليومي لحركة الزوار',
+        'التاريخ: $dateLabel',
+        'الموظف المسؤول: $staffName',
+        'عدد سجلات الزيارات: ${visits.length}',
+        'إجمالي الزوار: $visitorTotal',
+        'ما زالوا داخل المستشفى: $insideCount',
+        'سجلات مكتملة الخروج: $completedCount',
+        '',
+        for (final entry in groups)
+          '${entry.key.replaceAll('||', ' — ')}: ${entry.value.fold<int>(0, (sum, d) => sum + ((d['visitorCount'] is int) ? d['visitorCount'] as int : 0))} زائر / ${entry.value.length} سجل',
+      ].join('\\n');
+      final existing = await reportRef.get();
+      if (existing.exists) {
+        await reportRef.update({
+          'title': 'التقرير اليومي لحركة الزوار — $dateLabel',
+          'body': summary,
+          'priority': 'normal',
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
+      } else {
+        await reportRef.set({
+          'reportId': reportId,
+          'type': 'shift_summary',
+          'title': 'التقرير اليومي لحركة الزوار — $dateLabel',
+          'body': summary,
+          'employeeName': staffName,
+          'priority': 'normal',
+          'destination': 'supervisor',
+          'status': 'submitted',
+          'createdBy': user.uid,
+          'createdByEmail': user.email ?? '',
+          'createdByRole': 'security_officer',
+          'createdAt': FieldValue.serverTimestamp(),
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
+      }
+      final pdf = pw.Document();
+      pdf.addPage(pw.MultiPage(
+        theme: pw.ThemeData.withFont(base: arabicFont, bold: boldFont),
+        build: (_) => [
+          pw.Container(
+            padding: const pw.EdgeInsets.all(18),
+            decoration: const pw.BoxDecoration(
+              color: PdfColor.fromInt(0xFF16324F),
+              borderRadius: pw.BorderRadius.all(pw.Radius.circular(10)),
+            ),
+            child: pw.Column(children: [
+              pw.Text('منظومة زوار المستشفى', textAlign: pw.TextAlign.center,
+                style: pw.TextStyle(font: boldFont, fontSize: 20, color: PdfColors.white)),
+              pw.SizedBox(height: 6),
+              pw.Text('التقرير اليومي لحركة الزوار', textAlign: pw.TextAlign.center,
+                style: pw.TextStyle(font: arabicFont, fontSize: 15, color: PdfColors.white)),
+            ]),
+          ),
+          pw.SizedBox(height: 18),
+          pw.Directionality(textDirection: pw.TextDirection.rtl, child: pw.Column(
+            crossAxisAlignment: pw.CrossAxisAlignment.stretch,
+            children: [
+              pw.Text('التاريخ: $dateLabel', style: pw.TextStyle(font: boldFont, fontSize: 12)),
+              pw.SizedBox(height: 5),
+              pw.Text('اسم الموظف المسؤول: $staffName', style: pw.TextStyle(font: arabicFont, fontSize: 12)),
+              pw.SizedBox(height: 12),
+              pw.Text('عدد سجلات الزيارات: ${visits.length}  |  إجمالي الزوار: $visitorTotal',
+                style: pw.TextStyle(font: boldFont, fontSize: 12)),
+              pw.SizedBox(height: 5),
+              pw.Text('داخل المستشفى: $insideCount  |  مكتملة الخروج: $completedCount',
+                style: pw.TextStyle(font: arabicFont, fontSize: 11)),
+              pw.SizedBox(height: 14),
+              pw.Text('التفاصيل حسب الطابق والقسم والغرفة', style: pw.TextStyle(font: boldFont, fontSize: 14)),
+              pw.SizedBox(height: 8),
+              for (final entry in groups)
+                pw.Container(
+                  margin: const pw.EdgeInsets.only(bottom: 9),
+                  padding: const pw.EdgeInsets.all(10),
+                  decoration: pw.BoxDecoration(
+                    border: pw.Border.all(color: const PdfColor.fromInt(0xFFE1E8EF)),
+                    borderRadius: pw.BorderRadius.circular(6),
+                  ),
+                  child: pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.stretch, children: [
+                    pw.Text(entry.key.replaceAll('||', ' — '), style: pw.TextStyle(font: boldFont, fontSize: 11)),
+                    pw.Text('عدد الزوار: ${entry.value.fold<int>(0, (sum, d) => sum + ((d['visitorCount'] is int) ? d['visitorCount'] as int : 0))}  •  عدد السجلات: ${entry.value.length}',
+                      style: pw.TextStyle(font: arabicFont, fontSize: 10)),
+                    for (final item in entry.value)
+                      pw.Text(
+                        'دخول: ${timeOf(item['entryAt'])} | خروج: ${timeOf(item['exitAt'])} | العدد: ${item['visitorCount'] ?? 0}${(item['notes'] as String? ?? '').trim().isEmpty ? '' : ' | ملاحظة: ${item['notes']}'}',
+                        style: pw.TextStyle(font: arabicFont, fontSize: 9)),
+                  ]),
+                ),
+              pw.SizedBox(height: 10),
+              pw.Divider(),
+              pw.Text('تم إعداد التقرير من سجلات قاعدة بيانات المستشفى.',
+                textAlign: pw.TextAlign.center, style: pw.TextStyle(font: arabicFont, fontSize: 9)),
+            ],
+          )),
+        ],
+      ));
+      final directory = await getApplicationDocumentsDirectory();
+      final reportsDirectory = Directory('${directory.path}/تقارير_الزوار');
+      if (!await reportsDirectory.exists()) await reportsDirectory.create(recursive: true);
+      final file = File('${reportsDirectory.path}/visitor_daily_report_$dateKey.pdf');
+      await file.writeAsBytes(await pdf.save(), flush: true);
+      if (!context.mounted) return;
+      await Share.shareXFiles([XFile(file.path, mimeType: 'application/pdf')],
+        text: 'التقرير اليومي لحركة زوار المستشفى — $dateLabel',
+        subject: 'التقرير اليومي لحركة الزوار — $dateLabel');
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('حُفظ التقرير اليومي في صندوق تقارير المشرف. يمكنك مشاركة ملف PDF من نافذة المشاركة.')),
+        );
+      }
+    } on FirebaseException catch (error) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('تعذر حفظ التقرير للمشرف: ${error.code}')),
+      );
+    } catch (error) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('تعذر إعداد التقرير اليومي: $error')),
+      );
+    }
+  }
+
 }

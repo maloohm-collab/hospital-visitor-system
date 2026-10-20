@@ -234,7 +234,8 @@ service cloud.firestore {
       );
 
       // Only an active supervisor may review a submitted officer report.
-      allow update: if isActiveSupervisor()
+      allow update: if (
+        isActiveSupervisor()
         && resource.data.createdByRole == 'security_officer'
         && resource.data.status == 'submitted'
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
@@ -246,7 +247,26 @@ service cloud.firestore {
         )
         && request.resource.data.reviewedBy == request.auth.uid
         && request.resource.data.reviewedAt == request.time
-        && request.resource.data.updatedAt == request.time;
+        && request.resource.data.updatedAt == request.time
+      ) || (
+        isActiveUser()
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'security_officer'
+        && resource.data.createdBy == request.auth.uid
+        && resource.data.createdByRole == 'security_officer'
+        && resource.data.type == 'shift_summary'
+        && resource.data.destination == 'supervisor'
+        && resource.data.status == 'submitted'
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'title', 'body', 'priority', 'updatedAt'
+        ])
+        && request.resource.data.reportId == resource.data.reportId
+        && request.resource.data.createdBy == resource.data.createdBy
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.type == 'shift_summary'
+        && request.resource.data.destination == 'supervisor'
+        && request.resource.data.status == 'submitted'
+        && request.resource.data.updatedAt == request.time
+      );
 
       allow delete: if false;
     }

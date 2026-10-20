@@ -1,14 +1,7 @@
-import 'dart:io';
-
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:pdf/pdf.dart';
-import 'package:pdf/widgets.dart' as pw;
-import 'package:printing/printing.dart';
-import 'package:share_plus/share_plus.dart';
 
 class VisitorFormScreen extends StatefulWidget {
   const VisitorFormScreen({super.key});
@@ -27,7 +20,7 @@ class _VisitorFormScreenState extends State<VisitorFormScreen> {
   final _roomController = TextEditingController();
   final _visitorCountController = TextEditingController();
   final _notesController = TextEditingController();
-  final DateTime _recordDate = DateTime.now();
+  DateTime _recordDate = DateTime.now();
 
   // المسميات المعتمدة للمستشفى. CCU مستوى مستقل وليس تابعًا لطابق مرقّم.
   static const Map<String, Map<String, dynamic>> _hospitalLocations = {
@@ -61,7 +54,6 @@ class _VisitorFormScreenState extends State<VisitorFormScreen> {
   String? _selectedDepartment = 'العناية الحثيثة للحروق (ICU Burns)';
   DateTime? _entryTime;
   DateTime? _exitTime;
-  bool _isGenerating = false;
   bool _isSavingVisit = false;
   String? _savedVisitId;
 
@@ -238,7 +230,7 @@ class _VisitorFormScreenState extends State<VisitorFormScreen> {
                 ),
               ),
               const SizedBox(height: 24),
-              _buildReportButton(),
+              _buildNextVisitorButton(),
               const SizedBox(height: 14),
               const Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -247,7 +239,7 @@ class _VisitorFormScreenState extends State<VisitorFormScreen> {
                   SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      'يُحفظ سجل الزيارة في قاعدة بيانات المستشفى، ويُنشأ تقرير PDF للمشاركة.',
+                      'يُحفظ كل سجل دخول وخروج في قاعدة البيانات. يُعدّ التقرير اليومي من شاشة التقارير في نهاية المناوبة.',
                       style: TextStyle(fontSize: 12, height: 1.6, color: _muted),
                     ),
                   ),
@@ -624,169 +616,38 @@ class _VisitorFormScreenState extends State<VisitorFormScreen> {
     }
   }
 
-  Widget _buildReportButton() {
+
+  Widget _buildNextVisitorButton() {
+    if (_exitTime == null) return const SizedBox.shrink();
     return SizedBox(
       width: double.infinity,
       child: FilledButton.icon(
-        onPressed: _isGenerating ? null : _createAndSharePdf,
-        icon: _isGenerating
-            ? const SizedBox(
-                width: 19,
-                height: 19,
-                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-              )
-            : const Icon(Icons.picture_as_pdf_rounded, size: 21),
-        label: Text(
-          _isGenerating ? (_isSavingVisit ? 'جارٍ حفظ الزيارة...' : 'جارٍ تجهيز التقرير...') : 'إنشاء تقرير الزيارة (PDF)',
-        ),
+        onPressed: _isSavingVisit ? null : _resetForNextVisitor,
+        icon: const Icon(Icons.person_add_alt_1_rounded, size: 21),
+        label: const Text('إضافة / تسجيل زائر جديد'),
         style: FilledButton.styleFrom(
           backgroundColor: _teal,
           foregroundColor: Colors.white,
-          minimumSize: const Size.fromHeight(56),
+          minimumSize: const Size.fromHeight(54),
           textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-          elevation: 1,
         ),
       ),
     );
   }
 
-  Future<void> _createAndSharePdf() async {
-    if (!_formKey.currentState!.validate()) return;
-    if (_entryTime == null || _exitTime == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('سجّل وقت الدخول والخروج قبل إنشاء التقرير.')),
-      );
-      return;
-    }
-    if (_exitTime!.isBefore(_entryTime!)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('وقت الخروج لا يمكن أن يسبق وقت الدخول.')),
-      );
-      return;
-    }
-
-    if (_savedVisitId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('سجّل وقت الدخول أولًا لحفظ الزيارة في النظام.')),
-      );
-      return;
-    }
-    setState(() => _isGenerating = true);
-    try {
-      final arabicFont = await PdfGoogleFonts.cairoRegular();
-      final boldFont = await PdfGoogleFonts.cairoBold();
-      final pdf = pw.Document();
-      final notes = _notesController.text.trim().isEmpty
-          ? 'لا توجد ملاحظات'
-          : _notesController.text.trim();
-
-      pw.Widget reportRow(String label, String value) => pw.Container(
-            padding: const pw.EdgeInsets.symmetric(vertical: 10, horizontal: 12),
-            decoration: const pw.BoxDecoration(
-              border: pw.Border(bottom: pw.BorderSide(color: PdfColor.fromInt(0xFFE0E7EE))),
-            ),
-            child: pw.Row(
-              crossAxisAlignment: pw.CrossAxisAlignment.start,
-              children: [
-                pw.SizedBox(
-                  width: 115,
-                  child: pw.Text(label, style: pw.TextStyle(font: boldFont, fontSize: 12)),
-                ),
-                pw.SizedBox(width: 10),
-                pw.Expanded(
-                  child: pw.Text(value, style: pw.TextStyle(font: arabicFont, fontSize: 12)),
-                ),
-              ],
-            ),
-          );
-
-      pdf.addPage(
-        pw.Page(
-          pageFormat: PdfPageFormat.a4,
-          margin: const pw.EdgeInsets.all(36),
-          theme: pw.ThemeData.withFont(base: arabicFont, bold: boldFont),
-          build: (_) => pw.Directionality(
-            textDirection: pw.TextDirection.rtl,
-            child: pw.Column(
-              crossAxisAlignment: pw.CrossAxisAlignment.stretch,
-              children: [
-                pw.Container(
-                  padding: const pw.EdgeInsets.all(18),
-                  decoration: const pw.BoxDecoration(
-                    color: PdfColor.fromInt(0xFF16324F),
-                    borderRadius: pw.BorderRadius.all(pw.Radius.circular(12)),
-                  ),
-                  child: pw.Column(
-                    children: [
-                      pw.Text(
-                        'منظومة زوار المستشفى',
-                        textAlign: pw.TextAlign.center,
-                        style: pw.TextStyle(font: boldFont, fontSize: 21, color: PdfColors.white),
-                      ),
-                      pw.SizedBox(height: 7),
-                      pw.Text(
-                        'تقرير حركة الزوار',
-                        textAlign: pw.TextAlign.center,
-                        style: pw.TextStyle(font: arabicFont, fontSize: 15, color: PdfColors.white),
-                      ),
-                    ],
-                  ),
-                ),
-                pw.SizedBox(height: 24),
-                reportRow('تاريخ السجل', DateFormat('yyyy/MM/dd', 'en').format(_recordDate)),
-                reportRow('الطابق / المستوى', _hospitalLocations[_selectedFloor!]!['label'] as String),
-                reportRow('القسم', _selectedDepartment!),
-                reportRow('رقم الغرفة', _roomController.text.trim()),
-                reportRow('عدد الزوار', _visitorCountController.text.trim()),
-                reportRow('وقت الدخول', _formatDateTime(_entryTime)),
-                reportRow('وقت الخروج', _formatDateTime(_exitTime)),
-                reportRow('ملاحظات', notes),
-                pw.Spacer(),
-                pw.Divider(color: const PdfColor.fromInt(0xFFD8E0E8)),
-                pw.Text(
-                  'تم حفظ سجل الزيارة في قاعدة بيانات المستشفى.',
-                  textAlign: pw.TextAlign.center,
-                  style: pw.TextStyle(
-                    font: arabicFont,
-                    fontSize: 9,
-                    color: const PdfColor.fromInt(0xFF526579),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      );
-
-      final directory = await getApplicationDocumentsDirectory();
-      final reportsDirectory = Directory('${directory.path}/تقارير_الزوار');
-      if (!await reportsDirectory.exists()) {
-        await reportsDirectory.create(recursive: true);
-      }
-      final stamp = DateFormat('yyyyMMdd_HHmmss').format(DateTime.now());
-      final file = File('${reportsDirectory.path}/visitor_report_$stamp.pdf');
-      await file.writeAsBytes(await pdf.save(), flush: true);
-
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('تم حفظ سجل الزيارة في قاعدة البيانات وحفظ تقرير PDF على الهاتف.')),
-      );
-      await Share.shareXFiles(
-        [XFile(file.path, mimeType: 'application/pdf')],
-        text: 'تقرير حركة زوار المستشفى',
-        subject: 'تقرير حركة الزوار',
-      );
-    } catch (error) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('تعذر إنشاء التقرير أو مشاركته: $error')),
-      );
-    } finally {
-      if (mounted) setState(() {
-        _isGenerating = false;
-        _isSavingVisit = false;
-      });
-    }
+  void _resetForNextVisitor() {
+    setState(() {
+      _visitorCountController.clear();
+      _notesController.clear();
+      _entryTime = null;
+      _exitTime = null;
+      _savedVisitId = null;
+      _recordDate = DateTime.now();
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('أصبح السجل جاهزًا لإضافة زائر جديد. يمكنك تغيير الغرفة أو القسم قبل التسجيل.')),
+    );
   }
+
 }

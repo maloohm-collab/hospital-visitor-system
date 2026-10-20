@@ -1,16 +1,8 @@
 name: Build APK
 
 on:
+  # بناء APK يدوي فقط عند موافقة المستخدم.
   workflow_dispatch:
-  push:
-    branches:
-      - main
-    paths:
-      - "lib/**"
-      - "pubspec.yaml"
-      - "pubspec.lock"
-      - "android/app/google-services.json"
-      - ".github/workflows/build-apk.yml"
 
 permissions:
   contents: read
