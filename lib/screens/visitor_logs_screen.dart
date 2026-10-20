@@ -70,6 +70,9 @@ class VisitorLogsScreen extends StatelessWidget {
               final createdAt = data['createdAt'];
               final entryAt = data['entryAt'];
               final exitAt = data['exitAt'];
+              final isInside = data['status'] == 'inside';
+              final statusColor = isInside ? const Color(0xFFB54708) : const Color(0xFF27865B);
+              final statusLabel = isInside ? 'داخل المستشفى' : 'مكتملة';
               String formatTimestamp(dynamic value) {
                 if (value is Timestamp) {
                   return DateFormat('yyyy/MM/dd  HH:mm', 'en').format(value.toDate());
@@ -80,9 +83,9 @@ class VisitorLogsScreen extends StatelessWidget {
               return Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: isInside ? const Color(0xFFFFFAF0) : Colors.white,
                   borderRadius: BorderRadius.circular(18),
-                  border: Border.all(color: const Color(0xFFE2E8F0)),
+                  border: Border.all(color: isInside ? const Color(0xFFF5C56B) : const Color(0xFFB7E4CD)),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -124,6 +127,23 @@ class VisitorLogsScreen extends StatelessWidget {
                           style: const TextStyle(color: _teal, fontWeight: FontWeight.w800),
                         ),
                       ],
+                    ),
+                    const SizedBox(height: 10),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: statusColor.withOpacity(0.10),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: statusColor.withOpacity(0.35)),
+                        ),
+                        child: Row(mainAxisSize: MainAxisSize.min, children: [
+                          Icon(isInside ? Icons.schedule_rounded : Icons.check_circle_rounded, size: 16, color: statusColor),
+                          const SizedBox(width: 6),
+                          Text(statusLabel, style: TextStyle(color: statusColor, fontWeight: FontWeight.w800, fontSize: 12)),
+                        ]),
+                      ),
                     ),
                     const Divider(height: 24),
                     _LogDetail(label: 'رقم الغرفة', value: data['roomNumber'] as String? ?? '—'),
