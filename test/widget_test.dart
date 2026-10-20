@@ -30,7 +30,8 @@ void main() {
     await tester.tap(signInButton);
     await tester.pumpAndSettle();
 
-    expect(find.text('تسجيل الدخول'), findsOneWidget);
+    // The page title and submit button share this label.
+    expect(find.text('تسجيل الدخول'), findsNWidgets(2));
     expect(find.text('البريد الإلكتروني'), findsOneWidget);
     expect(find.text('كلمة المرور'), findsOneWidget);
     expect(find.text('طلب إنشاء حساب جديد'), findsOneWidget);
