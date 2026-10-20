@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'visitor_form_screen.dart';
+import 'visitor_logs_screen.dart';
 import 'admin_approval_screen.dart';
 
 class DashboardScreen extends StatelessWidget {
@@ -64,7 +65,20 @@ class DashboardScreen extends StatelessWidget {
           const SizedBox(height: 10),
           _ActionTile(icon: Icons.search_rounded, title: 'البحث عن زيارة', subtitle: 'الوصول إلى سجل الزيارات', color: const Color(0xFF4F67B1), onTap: () => _notice(context, 'سيتم تفعيل البحث وربطه بقاعدة البيانات في المرحلة التالية')),
           const SizedBox(height: 10),
-          _ActionTile(icon: Icons.assignment_outlined, title: 'سجل الزيارات', subtitle: 'عرض الدخول والخروج', color: const Color(0xFF27865B), onTap: () => _notice(context, 'سيظهر سجل الزيارات بعد ربط قاعدة البيانات')),
+          _ActionTile(
+            icon: Icons.assignment_outlined,
+            title: 'سجل الزيارات',
+            subtitle: userRole == 'security_officer'
+                ? 'عرض السجلات التي قمت بتسجيلها'
+                : 'عرض سجلات الزيارات المحفوظة في المستشفى',
+            color: const Color(0xFF27865B),
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => VisitorLogsScreen(userRole: userRole),
+              ),
+            ),
+          ),
           const SizedBox(height: 10),
           _ActionTile(icon: Icons.bar_chart_rounded, title: 'التقارير والإحصاءات', subtitle: 'ملخص حركة الزوار', color: const Color(0xFFD28A25), onTap: () => _notice(context, 'ستتوفر التقارير بعد تفعيل بيانات الزيارات')),
           const SizedBox(height: 10),
