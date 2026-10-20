@@ -304,7 +304,7 @@ class _LiveDateTimeCardState extends State<_LiveDateTimeCard> {
           style: TextStyle(fontSize: 11, color: Colors.blueGrey.shade600)),
       ])),
       Text('${_two(_now.hour)}:${_two(_now.minute)}:${_two(_now.second)}',
-        style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w900, color: _teal, fontFeatures: [FontFeature.tabularFigures()])),
+        style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w900, color: _teal)),
     ]),
   );
 }
