@@ -222,7 +222,7 @@ service cloud.firestore {
         ])
         && request.resource.data.keys().hasAll([
           'reportId', 'type', 'title', 'body', 'employeeName', 'priority',
-          'destination', 'status', 'createdBy', 'createdByEmail',
+          'destination', 'status', 'createdBy', 'createdByEmail', 'createdByName', 'createdByPhone',
           'createdByRole', 'createdAt', 'updatedAt'
         ])
         && request.resource.data.reportId == reportId
