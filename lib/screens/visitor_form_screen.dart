@@ -106,6 +106,7 @@ class _VisitorFormScreenState extends State<VisitorFormScreen> {
                   children: [
                     TextFormField(
                       controller: _roomController,
+                      readOnly: _savedVisitId != null,
                       textInputAction: TextInputAction.next,
                       style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                       decoration: _inputDecoration(
@@ -120,6 +121,7 @@ class _VisitorFormScreenState extends State<VisitorFormScreen> {
                     const SizedBox(height: 16),
                     TextFormField(
                       controller: _visitorCountController,
+                      readOnly: _savedVisitId != null,
                       keyboardType: TextInputType.number,
                       textInputAction: TextInputAction.next,
                       style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
@@ -223,6 +225,7 @@ class _VisitorFormScreenState extends State<VisitorFormScreen> {
               _buildCard(
                 child: TextFormField(
                   controller: _notesController,
+                  readOnly: _savedVisitId != null,
                   minLines: 3,
                   maxLines: 5,
                   textCapitalization: TextCapitalization.sentences,
