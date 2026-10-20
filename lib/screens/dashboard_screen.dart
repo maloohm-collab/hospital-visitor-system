@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'account_profile_screen.dart';
+import 'staff_management_screen.dart';
 import 'visitor_form_screen.dart';
 import 'visitor_logs_screen.dart';
 import 'visitor_search_screen.dart';
@@ -149,6 +150,8 @@ class DashboardScreen extends StatelessWidget {
                 );
               },
             ),
+            const SizedBox(height: 10),
+            _ActionTile(icon: Icons.manage_accounts_outlined, title: 'إدارة الموظفين', subtitle: 'تعليق الحسابات وحظرها وإعادة تفعيلها', color: const Color(0xFFB42318), onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const StaffManagementScreen()))),
             const SizedBox(height: 10),
             _ActionTile(icon: Icons.notifications_active_outlined, title: 'الملحوظات الإدارية', subtitle: 'إرسال ملحوظة لجميع المشرفين أو لضابط أمن محدد', color: const Color(0xFFD28A25), onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => NotificationsScreen(userRole: userRole)))),
             const SizedBox(height: 10),
