@@ -120,6 +120,7 @@ class _AdminApprovalScreenState extends State<AdminApprovalScreen> {
           'uid': uid,
           'displayName': data['displayName'] ?? '',
           'phone': data['phone'] ?? '',
+          'photoURL': '',
           'email': data['email'] ?? '',
           'role': role,
           'status': 'active',
