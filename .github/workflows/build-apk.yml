@@ -30,10 +30,30 @@ jobs:
       - name: Generate missing Android project files
         run: flutter create --platforms=android .
 
+      - name: Set Android compile SDK to 36
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          path = Path("android/app/build.gradle.kts")
+          content = path.read_text()
+          updated, count = re.subn(
+              r"(?m)^\\s*compileSdk\\s*=.*$",
+              "    compileSdk = 36",
+              content,
+              count=1,
+          )
+          if count != 1:
+              raise SystemExit("Could not find compileSdk setting in android/app/build.gradle.kts")
+          path.write_text(updated)
+          print("Configured compileSdk = 36")
+          PY
+
       - name: Configure Google Services Gradle plugin
         run: |
-          sed -i '/^plugins {/a\    id("com.google.gms.google-services") version "4.4.3" apply false' android/settings.gradle.kts
-          sed -i '/^plugins {/a\    id("com.google.gms.google-services")' android/app/build.gradle.kts
+          sed -i '/^plugins {/a\\    id("com.google.gms.google-services") version "4.4.3" apply false' android/settings.gradle.kts
+          sed -i '/^plugins {/a\\    id("com.google.gms.google-services")' android/app/build.gradle.kts
 
       - name: Resolve dependencies
         run: flutter pub get
