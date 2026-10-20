@@ -12,7 +12,8 @@ class NotificationsScreen extends StatefulWidget {
 class _NotificationsScreenState extends State<NotificationsScreen> {
   static const navy = Color(0xFF16324F), teal = Color(0xFF168C8C);
   final title = TextEditingController(), body = TextEditingController();
-  String audience = 'supervisors', priority = 'normal',?recipientUid;
+  String audience = 'supervisors', priority = 'normal';
+  String? recipientUid;
   bool sending = false;
   bool get admin => widget.userRole == 'admin';
   String get uid => FirebaseAuth.instance.currentUser?.uid ?? '';
