@@ -170,6 +170,10 @@ class VisitorReportsScreen extends StatelessWidget {
           : (user.displayName?.trim().isNotEmpty == true
               ? user.displayName!.trim()
               : 'غير مسجل');
+      final profilePhone = (profileSnapshot.data()?['phone'] as String? ?? '').trim();
+      final staffPhone = profilePhone.isNotEmpty
+          ? profilePhone
+          : (visits.isNotEmpty ? (visits.first.data()['createdByPhone'] as String? ?? 'غير مسجل') : 'غير مسجل');
       final pdf = pw.Document();
       pdf.addPage(pw.MultiPage(
         theme: pw.ThemeData.withFont(base: arabicFont, bold: boldFont),
@@ -202,6 +206,8 @@ class VisitorReportsScreen extends StatelessWidget {
               pw.Text(_shapeArabic('التاريخ: $dateLabel'), style: pw.TextStyle(font: boldFont, fontSize: 12)),
               pw.SizedBox(height: 5),
               pw.Text(_shapeArabic('اسم الموظف المسؤول: $staffName'), style: pw.TextStyle(font: arabicFont, fontSize: 12)),
+              pw.SizedBox(height: 5),
+              pw.Text(_shapeArabic('رقم هاتف الموظف: $staffPhone'), style: pw.TextStyle(font: arabicFont, fontSize: 12)),
               pw.SizedBox(height: 12),
               pw.Text(_shapeArabic('عدد سجلات الزيارات: ${visits.length}  |  إجمالي الزوار: $visitorTotal'),
                 style: pw.TextStyle(font: boldFont, fontSize: 12)),
