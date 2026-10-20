@@ -28,7 +28,8 @@ class _ReportCenterScreenState extends State<ReportCenterScreen> {
     } else if (!supervisor) {
       q = q.where('createdBy', isEqualTo: user?.uid);
     } else {
-      q = q.where('destination', isEqualTo: 'supervisor');
+      // Supervisors may review reports submitted by officers and their own internal reports.
+      return q.orderBy('createdAt', descending: true);
     }
     return q.orderBy('createdAt', descending: true);
   }
@@ -112,7 +113,7 @@ class _ReportCenterScreenState extends State<ReportCenterScreen> {
                 } else {
                   await ref.update({'title': title.text.trim(), 'body': body.text.trim(),
                     'employeeName': employee.text.trim(), 'priority': priority,
-                    'updatedAt': now, 'updatedBy': user!.uid});
+                    'updatedAt': now});
                 }
                 if (ctx.mounted) Navigator.pop(sheet);
                 _message(doc == null ? 'تم حفظ التقرير' : 'تم تحديث التقرير');
