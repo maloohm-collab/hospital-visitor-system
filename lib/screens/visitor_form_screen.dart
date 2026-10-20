@@ -84,6 +84,8 @@ class _VisitorFormScreenState extends State<VisitorFormScreen> {
             padding: const EdgeInsets.fromLTRB(18, 16, 18, 28),
             children: [
               _buildPageIntro(),
+              const SizedBox(height: 16),
+              _buildActiveVisits(),
               const SizedBox(height: 22),
               _buildSectionHeading(
                 number: '01',
@@ -217,7 +219,7 @@ class _VisitorFormScreenState extends State<VisitorFormScreen> {
               _buildCard(
                 child: TextFormField(
                   controller: _notesController,
-                  readOnly: _savedVisitId != null,
+                  readOnly: false,
                   minLines: 3,
                   maxLines: 5,
                   textCapitalization: TextCapitalization.sentences,
@@ -591,6 +593,7 @@ class _VisitorFormScreenState extends State<VisitorFormScreen> {
     try {
       await FirebaseFirestore.instance.collection('visitor_logs').doc(visitId).update({
         'exitAt': Timestamp.fromDate(exitTime),
+        'notes': _notesController.text.trim(),
         'status': 'completed',
         'updatedAt': FieldValue.serverTimestamp(),
       });
@@ -617,14 +620,178 @@ class _VisitorFormScreenState extends State<VisitorFormScreen> {
   }
 
 
+  // قائمة مباشرة بكل الزيارات التي ما زالت داخل المستشفى لهذا المستخدم.
+  // تسمح بتسجيل خروج أي زيارة مستقلة حتى مع وجود زيارات أخرى نشطة.
+  Widget _buildActiveVisits() {
+    final currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser == null) return const SizedBox.shrink();
+
+    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+      stream: FirebaseFirestore.instance
+          .collection('visitor_logs')
+          .where('createdBy', isEqualTo: currentUser.uid)
+          .where('status', isEqualTo: 'inside')
+          .snapshots(),
+      builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return _buildCard(
+            child: const Text('تعذر تحميل الزيارات النشطة. تحقق من الاتصال وقواعد Firestore.'),
+          );
+        }
+        final visits = snapshot.data?.docs ?? [];
+        if (visits.isEmpty) return const SizedBox.shrink();
+
+        return _buildCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Text(
+                'زيارات ما زالت داخل المستشفى',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: _navy),
+              ),
+              const SizedBox(height: 5),
+              const Text(
+                'يمكنك تسجيل الدخول لعدة غرف، ثم إنهاء كل زيارة من سجلها الصحيح.',
+                style: TextStyle(fontSize: 12, height: 1.5, color: _muted),
+              ),
+              const SizedBox(height: 10),
+              for (final visit in visits) ...[
+                const Divider(height: 18, color: _line),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Icon(Icons.meeting_room_outlined, color: _teal, size: 22),
+                    const SizedBox(width: 9),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'الغرفة ${visit.data()['roomNumber'] ?? '—'}',
+                            style: const TextStyle(fontWeight: FontWeight.w800, color: _navy),
+                          ),
+                          const SizedBox(height: 3),
+                          Text(
+                            '${visit.data()['floorName'] ?? ''} — ${visit.data()['department'] ?? ''}',
+                            style: const TextStyle(fontSize: 12, height: 1.4, color: _muted),
+                          ),
+                          Text(
+                            'عدد الزوار: ${visit.data()['visitorCount'] ?? 1}',
+                            style: const TextStyle(fontSize: 12, color: _muted),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    OutlinedButton(
+                      onPressed: _isSavingVisit ? null : () => _finishActiveVisit(visit),
+                      child: const Text('خروج + ملاحظات'),
+                    ),
+                  ],
+                ),
+              ],
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _finishActiveVisit(
+    QueryDocumentSnapshot<Map<String, dynamic>> visit,
+  ) async {
+    final data = visit.data();
+    final entryValue = data['entryAt'];
+    final entryTime = entryValue is Timestamp ? entryValue.toDate() : null;
+    final notes = TextEditingController(text: data['notes'] as String? ?? '');
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text('تسجيل خروج الغرفة ${data['roomNumber'] ?? ''}'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Text('أضف أو عدّل الملاحظات قبل حفظ وقت الخروج.'),
+              const SizedBox(height: 12),
+              TextField(
+                controller: notes,
+                minLines: 3,
+                maxLines: 6,
+                decoration: const InputDecoration(
+                  labelText: 'ملاحظات الخروج',
+                  hintText: 'اكتب أي ملاحظات متعلقة بالزيارة...',
+                  border: OutlineInputBorder(),
+                  alignLabelWithHint: true,
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('إلغاء'),
+          ),
+          FilledButton.icon(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            icon: const Icon(Icons.logout_rounded),
+            label: const Text('حفظ الخروج'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) {
+      notes.dispose();
+      return;
+    }
+
+    final exitTime = DateTime.now();
+    if (entryTime != null && exitTime.isBefore(entryTime)) {
+      notes.dispose();
+      _showMessage('وقت الخروج لا يمكن أن يسبق وقت الدخول.');
+      return;
+    }
+
+    setState(() => _isSavingVisit = true);
+    try {
+      await visit.reference.update({
+        'exitAt': Timestamp.fromDate(exitTime),
+        'notes': notes.text.trim(),
+        'status': 'completed',
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+      _showMessage('تم حفظ وقت الخروج والملاحظات للزيارة المحددة.');
+    } on FirebaseException catch (error) {
+      _showMessage(error.code == 'permission-denied'
+          ? 'رفضت قواعد Firestore تحديث الخروج أو الملاحظات. تأكد من نشر القواعد المحدّثة.'
+          : 'تعذر حفظ الخروج (${error.code}). حاول مجددًا.');
+    } catch (_) {
+      _showMessage('تعذر حفظ الخروج. تحقق من الاتصال ثم حاول مجددًا.');
+    } finally {
+      notes.dispose();
+      if (mounted) setState(() => _isSavingVisit = false);
+    }
+  }
+
+  void _showMessage(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(message)));
+  }
+
   Widget _buildNextVisitorButton() {
-    if (_exitTime == null) return const SizedBox.shrink();
+    // يمكن بدء سجل آخر بمجرد حفظ دخول الزائر الحالي، حتى لو بقي داخل المستشفى.
+    if (_savedVisitId == null) return const SizedBox.shrink();
     return SizedBox(
       width: double.infinity,
       child: FilledButton.icon(
         onPressed: _isSavingVisit ? null : _resetForNextVisitor,
         icon: const Icon(Icons.person_add_alt_1_rounded, size: 21),
-        label: const Text('إضافة / تسجيل زائر جديد'),
+        label: const Text('تسجيل زائر أو غرفة أخرى'),
         style: FilledButton.styleFrom(
           backgroundColor: _teal,
           foregroundColor: Colors.white,
