@@ -305,6 +305,7 @@ service cloud.firestore {
         && exists(/databases/$(database)/documents/users/$(request.resource.data.recipientUid))
         && get(/databases/$(database)/documents/users/$(request.resource.data.recipientUid)).data.status == 'active'
         && request.resource.data.recipientRole in ['supervisor', 'security_officer']
+        && get(/databases/$(database)/documents/users/$(request.resource.data.recipientUid)).data.role == request.resource.data.recipientRole
         && request.resource.data.senderUid == request.auth.uid
         && request.resource.data.title is string
         && request.resource.data.title.size() >= 3
