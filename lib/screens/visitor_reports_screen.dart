@@ -118,64 +118,6 @@ class VisitorReportsScreen extends StatelessWidget {
       ),
     );
   }
-}
-
-class _ReportBigNumber extends StatelessWidget {
-  const _ReportBigNumber({required this.label, required this.value});
-  final String label; final String value;
-  @override
-  Widget build(BuildContext context) => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-    Text(value, style: const TextStyle(color: Colors.white, fontSize: 29, fontWeight: FontWeight.w800)),
-    const SizedBox(height: 4),
-    Text(label, style: const TextStyle(color: Colors.white70, fontSize: 12)),
-  ]);
-}
-
-class _ReportMetric extends StatelessWidget {
-  const _ReportMetric({required this.title, required this.value, required this.icon, required this.color});
-  final String title; final String value; final IconData icon; final Color color;
-  @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.all(15),
-    decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(17), border: Border.all(color: const Color(0xFFE1E8EF))),
-    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Icon(icon, color: color, size: 24), const SizedBox(height: 12),
-      Text(value, style: const TextStyle(fontSize: 25, fontWeight: FontWeight.w800, color: Color(0xFF16324F))),
-      const SizedBox(height: 3), Text(title, style: const TextStyle(fontSize: 12, color: Color(0xFF637487))),
-    ]),
-  );
-}
-
-class _BreakdownTile extends StatelessWidget {
-  const _BreakdownTile({required this.title, required this.count, required this.total});
-  final String title; final int count; final int total;
-  @override
-  Widget build(BuildContext context) {
-    final ratio = total == 0 ? 0.0 : count / total;
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8), padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(14), border: Border.all(color: const Color(0xFFE1E8EF))),
-      child: Column(children: [
-        Row(children: [
-          Expanded(child: Text(title, style: const TextStyle(fontWeight: FontWeight.w700, color: Color(0xFF16324F)))),
-          Text('${count} زيارة', style: const TextStyle(fontWeight: FontWeight.w800, color: Color(0xFF168C8C))),
-        ]),
-        const SizedBox(height: 9),
-        ClipRRect(borderRadius: BorderRadius.circular(8), child: LinearProgressIndicator(value: ratio, minHeight: 6, backgroundColor: const Color(0xFFEAF0F5), color: const Color(0xFF168C8C))),
-      ]),
-    );
-  }
-}
-
-class _ReportEmpty extends StatelessWidget {
-  const _ReportEmpty({required this.message});
-  final String message;
-  @override
-  Widget build(BuildContext context) => Container(
-    width: double.infinity, padding: const EdgeInsets.all(18),
-    decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(14), border: Border.all(color: const Color(0xFFE1E8EF))),
-    child: Text(message, textAlign: TextAlign.center, style: const TextStyle(color: Color(0xFF637487))),
-  );
 
   Future<void> _createDailyPdf(
     BuildContext context,
@@ -215,45 +157,6 @@ class _ReportEmpty extends StatelessWidget {
           ? DateFormat('HH:mm', 'en').format(value.toDate()) : 'لم يسجل';
       final staffName = user.displayName?.trim().isNotEmpty == true
           ? user.displayName! : user.email ?? user.uid;
-      final reportId = 'daily_${user.uid}_$dateKey';
-      final reportRef = FirebaseFirestore.instance.collection('duty_reports').doc(reportId);
-      final summary = <String>[
-        'التقرير اليومي لحركة الزوار',
-        'التاريخ: $dateLabel',
-        'الموظف المسؤول: $staffName',
-        'عدد سجلات الزيارات: ${visits.length}',
-        'إجمالي الزوار: $visitorTotal',
-        'ما زالوا داخل المستشفى: $insideCount',
-        'سجلات مكتملة الخروج: $completedCount',
-        '',
-        for (final entry in groups)
-          '${entry.key.replaceAll('||', ' — ')}: ${entry.value.fold<int>(0, (sum, d) => sum + ((d['visitorCount'] is int) ? d['visitorCount'] as int : 0))} زائر / ${entry.value.length} سجل',
-      ].join('\n');
-      final existing = await reportRef.get();
-      if (existing.exists) {
-        await reportRef.update({
-          'title': 'التقرير اليومي لحركة الزوار — $dateLabel',
-          'body': summary,
-          'priority': 'normal',
-          'updatedAt': FieldValue.serverTimestamp(),
-        });
-      } else {
-        await reportRef.set({
-          'reportId': reportId,
-          'type': 'shift_summary',
-          'title': 'التقرير اليومي لحركة الزوار — $dateLabel',
-          'body': summary,
-          'employeeName': staffName,
-          'priority': 'normal',
-          'destination': 'supervisor',
-          'status': 'submitted',
-          'createdBy': user.uid,
-          'createdByEmail': user.email ?? '',
-          'createdByRole': 'security_officer',
-          'createdAt': FieldValue.serverTimestamp(),
-          'updatedAt': FieldValue.serverTimestamp(),
-        });
-      }
       final pdf = pw.Document();
       pdf.addPage(pw.MultiPage(
         theme: pw.ThemeData.withFont(base: arabicFont, bold: boldFont),
@@ -325,14 +228,9 @@ class _ReportEmpty extends StatelessWidget {
         subject: 'التقرير اليومي لحركة الزوار — $dateLabel');
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('حُفظ التقرير اليومي في صندوق تقارير المشرف. يمكنك مشاركة ملف PDF من نافذة المشاركة.')),
+          const SnackBar(content: Text('تم حفظ التقرير على الهاتف. يمكنك مشاركته مباشرة مع المشرف من نافذة المشاركة.')),
         );
       }
-    } on FirebaseException catch (error) {
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('تعذر حفظ التقرير للمشرف: ${error.code}')),
-      );
     } catch (error) {
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -340,5 +238,64 @@ class _ReportEmpty extends StatelessWidget {
       );
     }
   }
+
+}
+
+class _ReportBigNumber extends StatelessWidget {
+  const _ReportBigNumber({required this.label, required this.value});
+  final String label; final String value;
+  @override
+  Widget build(BuildContext context) => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+    Text(value, style: const TextStyle(color: Colors.white, fontSize: 29, fontWeight: FontWeight.w800)),
+    const SizedBox(height: 4),
+    Text(label, style: const TextStyle(color: Colors.white70, fontSize: 12)),
+  ]);
+}
+
+class _ReportMetric extends StatelessWidget {
+  const _ReportMetric({required this.title, required this.value, required this.icon, required this.color});
+  final String title; final String value; final IconData icon; final Color color;
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.all(15),
+    decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(17), border: Border.all(color: const Color(0xFFE1E8EF))),
+    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Icon(icon, color: color, size: 24), const SizedBox(height: 12),
+      Text(value, style: const TextStyle(fontSize: 25, fontWeight: FontWeight.w800, color: Color(0xFF16324F))),
+      const SizedBox(height: 3), Text(title, style: const TextStyle(fontSize: 12, color: Color(0xFF637487))),
+    ]),
+  );
+}
+
+class _BreakdownTile extends StatelessWidget {
+  const _BreakdownTile({required this.title, required this.count, required this.total});
+  final String title; final int count; final int total;
+  @override
+  Widget build(BuildContext context) {
+    final ratio = total == 0 ? 0.0 : count / total;
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8), padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(14), border: Border.all(color: const Color(0xFFE1E8EF))),
+      child: Column(children: [
+        Row(children: [
+          Expanded(child: Text(title, style: const TextStyle(fontWeight: FontWeight.w700, color: Color(0xFF16324F)))),
+          Text('${count} زيارة', style: const TextStyle(fontWeight: FontWeight.w800, color: Color(0xFF168C8C))),
+        ]),
+        const SizedBox(height: 9),
+        ClipRRect(borderRadius: BorderRadius.circular(8), child: LinearProgressIndicator(value: ratio, minHeight: 6, backgroundColor: const Color(0xFFEAF0F5), color: const Color(0xFF168C8C))),
+      ]),
+    );
+  }
+}
+
+class _ReportEmpty extends StatelessWidget {
+  const _ReportEmpty({required this.message});
+  final String message;
+  @override
+  Widget build(BuildContext context) => Container(
+    width: double.infinity, padding: const EdgeInsets.all(18),
+    decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(14), border: Border.all(color: const Color(0xFFE1E8EF))),
+    child: Text(message, textAlign: TextAlign.center, style: const TextStyle(color: Color(0xFF637487))),
+  );
 
 }
