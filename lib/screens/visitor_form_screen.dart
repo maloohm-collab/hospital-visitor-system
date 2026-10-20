@@ -585,44 +585,35 @@ class _VisitorFormScreenState extends State<VisitorFormScreen> {
 
   Future<void> _registerExit() async {
     final visitId = _savedVisitId;
-    if (visitId == null || _entryTime == null || _exitTime != null) return;
-    final exitTime = DateTime.now();
-    if (exitTime.isBefore(_entryTime!)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('وقت الخروج لا يمكن أن يسبق وقت الدخول.')),
-      );
-      return;
-    }
-    setState(() => _isSavingVisit = true);
+    if (visitId == null || _entryTime == null || _exitTime != null || _isSavingVisit) return;
+
     try {
-      await FirebaseFirestore.instance.collection('visitor_logs').doc(visitId).update({
-        'exitAt': Timestamp.fromDate(exitTime),
-        'notes': _notesController.text.trim(),
-        'status': 'completed',
-        'updatedAt': FieldValue.serverTimestamp(),
-      });
+      final visit = await FirebaseFirestore.instance
+          .collection('visitor_logs')
+          .doc(visitId)
+          .get();
+
       if (!mounted) return;
-      setState(() => _exitTime = exitTime);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('تم تسجيل الخروج وتحديث سجل الزيارة.')),
-      );
+      if (!visit.exists) {
+        _showMessage('لم يتم العثور على سجل الزيارة. حدّث الشاشة وحاول مجددًا.');
+        return;
+      }
+      if (visit.data()?['status'] != 'inside') {
+        _showMessage('تم تسجيل الخروج لهذه الزيارة مسبقًا.');
+        return;
+      }
+
+      // استخدم نفس نافذة الخروج المستخدمة في قائمة الزيارات النشطة
+      // حتى تُحفظ الملاحظات مع سجل الزيارة الصحيح.
+      await _finishActiveVisit(visit);
     } on FirebaseException catch (error) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.code == 'permission-denied'
-            ? 'لا تسمح قواعد Firestore بتحديث هذا السجل. انشر آخر نسخة من firestore.rules.'
-            : 'تعذر حفظ الخروج (' + error.code + '). حاول مجددًا.')),
-      );
+      _showMessage(error.code == 'permission-denied'
+          ? 'رفضت قواعد Firestore قراءة سجل الزيارة. تحقق من صلاحيات الحساب.'
+          : 'تعذر فتح سجل الخروج (${error.code}). حاول مجددًا.');
     } catch (_) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('تعذر تسجيل الخروج. تحقق من الاتصال.')),
-      );
-    } finally {
-      if (mounted) setState(() => _isSavingVisit = false);
+      _showMessage('تعذر فتح تسجيل الخروج. تحقق من الاتصال ثم حاول مجددًا.');
     }
   }
-
 
   // قائمة مباشرة بكل الزيارات التي ما زالت داخل المستشفى لهذا المستخدم.
   // تسمح بتسجيل خروج أي زيارة مستقلة حتى مع وجود زيارات أخرى نشطة.
@@ -768,6 +759,12 @@ class _VisitorFormScreenState extends State<VisitorFormScreen> {
         'status': 'completed',
         'updatedAt': FieldValue.serverTimestamp(),
       });
+      if (mounted && visit.id == _savedVisitId) {
+        setState(() {
+          _exitTime = exitTime;
+          _notesController.text = notes.text.trim();
+        });
+      }
       _showMessage('تم حفظ وقت الخروج والملاحظات للزيارة المحددة.');
     } on FirebaseException catch (error) {
       _showMessage(error.code == 'permission-denied'
