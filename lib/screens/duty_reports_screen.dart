@@ -1,5 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
@@ -220,9 +222,21 @@ class _DutyReportsScreenState extends State<DutyReportsScreen> {
                 try {
                   final now = DateTime.now();
                   final id = DateFormat('yyyyMMdd_HHmmss').format(now);
+                  final user = FirebaseAuth.instance.currentUser;
+                  var creatorName = user?.displayName?.trim() ?? '';
+                  var creatorPhone = '';
+                  if (user != null) {
+                    final profile = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+                    final data = profile.data() ?? <String, dynamic>{};
+                    final storedName = (data['displayName'] as String? ?? '').trim();
+                    if (storedName.isNotEmpty) creatorName = storedName;
+                    creatorPhone = (data['phone'] as String? ?? '').trim();
+                  }
+                  if (creatorName.isEmpty) creatorName = 'غير مسجل';
+                  if (creatorPhone.isEmpty) creatorPhone = 'غير مسجل';
                   final bytes = await _makePdf(title: title.text.trim(), body: body.text.trim(),
-                    employee: employee.text.trim(), type: type, priority: priority,
-                    destination: destination, createdAt: now, id: id);
+                    employee: employee.text.trim(), creatorName: creatorName, creatorPhone: creatorPhone,
+                    type: type, priority: priority, destination: destination, createdAt: now, id: id);
                   final appDir = await getApplicationDocumentsDirectory();
                   final dir = Directory('${appDir.path}/تقارير_المناوبة');
                   if (!await dir.exists()) await dir.create(recursive: true);
@@ -249,6 +263,7 @@ class _DutyReportsScreenState extends State<DutyReportsScreen> {
 
   Future<List<int>> _makePdf({
     required String title, required String body, required String employee,
+    required String creatorName, required String creatorPhone,
     required String type, required String priority, required String destination,
     required DateTime createdAt, required String id,
   }) async {
@@ -268,6 +283,8 @@ class _DutyReportsScreenState extends State<DutyReportsScreen> {
           pw.Text('نوع التقرير: ${_typeLabel(type)}'),
           pw.Text('الأهمية: ${_priorityLabel(priority)}'),
           pw.Text('التاريخ: ${DateFormat('yyyy/MM/dd HH:mm', 'en').format(createdAt)}'),
+          pw.Text('اسم معدّ التقرير: $creatorName'),
+          pw.Text('رقم هاتف معدّ التقرير: $creatorPhone'),
           if (employee.isNotEmpty) pw.Text('الموظف المعني: $employee'),
           pw.Text('الجهة: ${supervisor && destination == 'admin' ? 'الإدارة' : 'داخلي / مشرف المناوبة'}'),
           pw.SizedBox(height: 14),
