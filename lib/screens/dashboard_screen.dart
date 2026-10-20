@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'account_profile_screen.dart';
+import 'auth_screen.dart';
 import 'staff_management_screen.dart';
 import 'duty_reports_screen.dart';
 import 'visitor_form_screen.dart';
@@ -17,6 +18,41 @@ class DashboardScreen extends StatelessWidget {
   final String userRole;
   static const navy = Color(0xFF16324F);
   static const teal = Color(0xFF168C8C);
+
+  Future<void> _signOut(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('تسجيل الخروج'),
+        content: const Text('هل تريد تسجيل الخروج من حسابك والعودة إلى شاشة الدخول؟'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('إلغاء'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('تسجيل الخروج'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !context.mounted) return;
+
+    try {
+      await FirebaseAuth.instance.signOut();
+      if (!context.mounted) return;
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const AuthScreen()),
+        (_) => false,
+      );
+    } catch (_) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('تعذر تسجيل الخروج. حاول مرة أخرى.')),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -86,6 +122,11 @@ class DashboardScreen extends StatelessWidget {
                 },
               );
             },
+          ),
+          IconButton(
+            tooltip: 'تسجيل الخروج',
+            onPressed: () => _signOut(context),
+            icon: const Icon(Icons.logout_rounded),
           ),
           const SizedBox(width: 4),
         ],
