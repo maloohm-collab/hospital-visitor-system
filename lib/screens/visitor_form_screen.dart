@@ -1,5 +1,7 @@
 import 'dart:io';
 
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
@@ -27,9 +29,41 @@ class _VisitorFormScreenState extends State<VisitorFormScreen> {
   final _notesController = TextEditingController();
   final DateTime _recordDate = DateTime.now();
 
+  // المسميات المعتمدة للمستشفى. CCU مستوى مستقل وليس تابعًا لطابق مرقّم.
+  static const Map<String, Map<String, dynamic>> _hospitalLocations = {
+    'floor_5': {
+      'label': 'الطابق الخامس',
+      'departments': ['العناية الحثيثة للحروق (ICU Burns)'],
+    },
+    'floor_4': {
+      'label': 'الطابق الرابع — الجراحات التخصصية',
+      'departments': ['جراحة العظام — رجال', 'جراحة العظام — نساء', 'قسم الأطفال'],
+    },
+    'floor_3': {
+      'label': 'الطابق الثالث — الباطنية',
+      'departments': ['الباطنية — رجال', 'الباطنية — نساء'],
+    },
+    'floor_2': {
+      'label': 'الطابق الثاني — الجراحة',
+      'departments': ['الجراحة — رجال', 'الجراحة — نساء'],
+    },
+    'floor_1': {
+      'label': 'الطابق الأول — التوليد والولادة',
+      'departments': ['التوليد والولادة', 'الأطفال حديثو الولادة'],
+    },
+    'ccu': {
+      'label': 'طابق مستقل — CCU',
+      'departments': ['العناية القلبية الحثيثة (CCU)', 'خدمات القلب والقسطرة'],
+    },
+  };
+
+  String? _selectedFloor = 'floor_5';
+  String? _selectedDepartment = 'العناية الحثيثة للحروق (ICU Burns)';
   DateTime? _entryTime;
   DateTime? _exitTime;
   bool _isGenerating = false;
+  bool _isSavingVisit = false;
+  String? _savedVisitId;
 
   @override
   void dispose() {
@@ -62,8 +96,10 @@ class _VisitorFormScreenState extends State<VisitorFormScreen> {
               _buildSectionHeading(
                 number: '01',
                 title: 'بيانات الزيارة',
-                subtitle: 'أدخل المعلومات الأساسية بدقة',
+                subtitle: 'اختر الموقع ثم أدخل المعلومات الأساسية بدقة',
               ),
+              const SizedBox(height: 12),
+              _buildFloorDepartmentFields(),
               const SizedBox(height: 12),
               _buildCard(
                 child: Column(
@@ -210,7 +246,7 @@ class _VisitorFormScreenState extends State<VisitorFormScreen> {
                   SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      'بيانات الزيارة والتقرير تُعالج محليًا على الهاتف. لا تُرسل إلى قاعدة بيانات أو خادم.',
+                      'يُحفظ سجل الزيارة في قاعدة بيانات المستشفى، ويُنشأ تقرير PDF للمشاركة.',
                       style: TextStyle(fontSize: 12, height: 1.6, color: _muted),
                     ),
                   ),
@@ -219,6 +255,73 @@ class _VisitorFormScreenState extends State<VisitorFormScreen> {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildFloorDepartmentFields() {
+    final floor = _selectedFloor == null
+        ? null
+        : _hospitalLocations[_selectedFloor!];
+    final departments = floor == null
+        ? const <String>[]
+        : List<String>.from(floor['departments'] as List);
+
+    return _buildCard(
+      child: Column(
+        children: [
+          DropdownButtonFormField<String>(
+            value: _selectedFloor,
+            isExpanded: true,
+            decoration: _inputDecoration(
+              label: 'الطابق / المستوى',
+              hint: 'اختر الطابق',
+              icon: Icons.apartment_rounded,
+            ),
+            items: _hospitalLocations.entries.map((entry) {
+              return DropdownMenuItem<String>(
+                value: entry.key,
+                child: Text(entry.value['label'] as String,
+                    overflow: TextOverflow.ellipsis),
+              );
+            }).toList(),
+            onChanged: _isSavingVisit || _savedVisitId != null
+                ? null
+                : (value) {
+                    if (value == null) return;
+                    final nextDepartments = List<String>.from(
+                      _hospitalLocations[value]!['departments'] as List,
+                    );
+                    setState(() {
+                      _selectedFloor = value;
+                      _selectedDepartment = nextDepartments.first;
+                    });
+                  },
+            validator: (value) => value == null ? 'اختر الطابق أو المستوى' : null,
+          ),
+          const SizedBox(height: 16),
+          DropdownButtonFormField<String>(
+            value: departments.contains(_selectedDepartment)
+                ? _selectedDepartment
+                : null,
+            isExpanded: true,
+            decoration: _inputDecoration(
+              label: 'القسم',
+              hint: 'اختر القسم',
+              icon: Icons.local_hospital_outlined,
+            ),
+            items: departments.map((department) {
+              return DropdownMenuItem<String>(
+                value: department,
+                child: Text(department, overflow: TextOverflow.ellipsis),
+              );
+            }).toList(),
+            onChanged: _isSavingVisit || _savedVisitId != null
+                ? null
+                : (value) => setState(() => _selectedDepartment = value),
+            validator: (value) => value == null ? 'اختر القسم' : null,
+          ),
+        ],
       ),
     );
   }
@@ -433,7 +536,7 @@ class _VisitorFormScreenState extends State<VisitorFormScreen> {
               )
             : const Icon(Icons.picture_as_pdf_rounded, size: 21),
         label: Text(
-          _isGenerating ? 'جارٍ تجهيز التقرير...' : 'إنشاء التقرير وحفظه ومشاركته',
+          _isGenerating ? (_isSavingVisit ? 'جارٍ حفظ الزيارة...' : 'جارٍ تجهيز التقرير...') : 'حفظ الزيارة وإنشاء التقرير',
         ),
         style: FilledButton.styleFrom(
           backgroundColor: _teal,
@@ -462,8 +565,46 @@ class _VisitorFormScreenState extends State<VisitorFormScreen> {
       return;
     }
 
-    setState(() => _isGenerating = true);
+    if (_selectedFloor == null || _selectedDepartment == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('اختر الطابق والقسم قبل حفظ الزيارة.')),
+      );
+      return;
+    }
+
+    setState(() {
+      _isGenerating = true;
+      _isSavingVisit = true;
+    });
     try {
+      if (_savedVisitId == null) {
+        final user = FirebaseAuth.instance.currentUser;
+        if (user == null) {
+          throw StateError('يجب تسجيل الدخول قبل حفظ الزيارة.');
+        }
+        final floor = _hospitalLocations[_selectedFloor!]!;
+        final visitRef = FirebaseFirestore.instance.collection('visitor_logs').doc();
+        await visitRef.set({
+          'visitId': visitRef.id,
+          'floorId': _selectedFloor,
+          'floorName': floor['label'],
+          'department': _selectedDepartment,
+          'roomNumber': _roomController.text.trim(),
+          'visitorCount': int.parse(_visitorCountController.text.trim()),
+          'visitDate': Timestamp.fromDate(DateTime(
+            _recordDate.year, _recordDate.month, _recordDate.day,
+          )),
+          'entryAt': Timestamp.fromDate(_entryTime!),
+          'exitAt': Timestamp.fromDate(_exitTime!),
+          'notes': _notesController.text.trim(),
+          'status': 'completed',
+          'createdBy': user.uid,
+          'createdByEmail': user.email ?? '',
+          'createdAt': FieldValue.serverTimestamp(),
+        });
+        _savedVisitId = visitRef.id;
+      }
+      if (mounted) setState(() => _isSavingVisit = false);
       final arabicFont = await PdfGoogleFonts.cairoRegular();
       final boldFont = await PdfGoogleFonts.cairoBold();
       final pdf = pw.Document();
@@ -525,6 +666,8 @@ class _VisitorFormScreenState extends State<VisitorFormScreen> {
                 ),
                 pw.SizedBox(height: 24),
                 reportRow('تاريخ السجل', DateFormat('yyyy/MM/dd', 'en').format(_recordDate)),
+                reportRow('الطابق / المستوى', _hospitalLocations[_selectedFloor!]!['label'] as String),
+                reportRow('القسم', _selectedDepartment!),
                 reportRow('رقم الغرفة', _roomController.text.trim()),
                 reportRow('عدد الزوار', _visitorCountController.text.trim()),
                 reportRow('وقت الدخول', _formatDateTime(_entryTime)),
@@ -533,7 +676,7 @@ class _VisitorFormScreenState extends State<VisitorFormScreen> {
                 pw.Spacer(),
                 pw.Divider(color: const PdfColor.fromInt(0xFFD8E0E8)),
                 pw.Text(
-                  'تم إنشاء هذا التقرير محليًا على الهاتف.',
+                  'تم حفظ سجل الزيارة في قاعدة بيانات المستشفى.',
                   textAlign: pw.TextAlign.center,
                   style: pw.TextStyle(
                     font: arabicFont,
@@ -558,7 +701,7 @@ class _VisitorFormScreenState extends State<VisitorFormScreen> {
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('تم حفظ ملف PDF على الهاتف. اختر واتساب من قائمة المشاركة.')),
+        const SnackBar(content: Text('تم حفظ سجل الزيارة في قاعدة البيانات وحفظ تقرير PDF على الهاتف.')),
       );
       await Share.shareXFiles(
         [XFile(file.path, mimeType: 'application/pdf')],
@@ -571,7 +714,10 @@ class _VisitorFormScreenState extends State<VisitorFormScreen> {
         SnackBar(content: Text('تعذر إنشاء التقرير أو مشاركته: $error')),
       );
     } finally {
-      if (mounted) setState(() => _isGenerating = false);
+      if (mounted) setState(() {
+        _isGenerating = false;
+        _isSavingVisit = false;
+      });
     }
   }
 }
