@@ -29,9 +29,9 @@ class _ReportCenterScreenState extends State<ReportCenterScreen> {
       q = q.where('createdBy', isEqualTo: user?.uid);
     } else {
       // Supervisors may review reports submitted by officers and their own internal reports.
-      return q.orderBy('createdAt', descending: true);
+      return q;
     }
-    return q.orderBy('createdAt', descending: true);
+    return q;
   }
 
   void _message(String s) {
@@ -59,12 +59,14 @@ class _ReportCenterScreenState extends State<ReportCenterScreen> {
             const SizedBox(height: 14),
             DropdownButtonFormField<String>(value: type,
               decoration: const InputDecoration(labelText: 'نوع التقرير'),
-              items: const [
-                DropdownMenuItem(value: 'security_incident', child: Text('حادث أو ملاحظة أمنية')),
-                DropdownMenuItem(value: 'shift_summary', child: Text('سير المناوبة')),
-                DropdownMenuItem(value: 'technical_note', child: Text('ملاحظة فنية')),
-                DropdownMenuItem(value: 'recommendation_positive', child: Text('توصية إيجابية')),
-                DropdownMenuItem(value: 'recommendation_concern', child: Text('ملاحظة مهنية سرية')),
+              items: [
+                const DropdownMenuItem(value: 'security_incident', child: Text('حادث أو ملاحظة أمنية')),
+                const DropdownMenuItem(value: 'shift_summary', child: Text('سير المناوبة')),
+                if (supervisor) ...[
+                  const DropdownMenuItem(value: 'technical_note', child: Text('ملاحظة فنية')),
+                  const DropdownMenuItem(value: 'recommendation_positive', child: Text('توصية إيجابية')),
+                  const DropdownMenuItem(value: 'recommendation_concern', child: Text('ملاحظة مهنية سرية')),
+                ],
               ], onChanged: (v) { if (v != null) refresh(() => type = v); }),
             const SizedBox(height: 12),
             TextFormField(controller: title, decoration: const InputDecoration(labelText: 'عنوان التقرير'),
@@ -223,7 +225,11 @@ class _ReportCenterScreenState extends State<ReportCenterScreen> {
           if (snapshot.hasError) return const Center(child: Padding(padding: EdgeInsets.all(24),
             child: Text('تعذر تحميل التقارير. تحقق من قواعد Firestore والفهارس والاتصال.', textAlign: TextAlign.center)));
           if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
-          final docs = snapshot.data?.docs ?? [];
+          final docs = (snapshot.data?.docs ?? []).toList()..sort((a, b) {
+            final at = a.data()['createdAt']; final bt = b.data()['createdAt'];
+            if (at is Timestamp && bt is Timestamp) return bt.compareTo(at);
+            return 0;
+          });
           if (docs.isEmpty) return const Center(child: Text('لا توجد تقارير لعرضها حاليًا.'));
           return ListView.builder(padding: const EdgeInsets.fromLTRB(14, 8, 14, 90),
             itemCount: docs.length, itemBuilder: (context, i) {
