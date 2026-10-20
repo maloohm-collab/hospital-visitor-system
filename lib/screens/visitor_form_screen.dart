@@ -630,7 +630,6 @@ class _VisitorFormScreenState extends State<VisitorFormScreen> {
       stream: FirebaseFirestore.instance
           .collection('visitor_logs')
           .where('createdBy', isEqualTo: currentUser.uid)
-          .where('status', isEqualTo: 'inside')
           .snapshots(),
       builder: (context, snapshot) {
         if (snapshot.hasError) {
@@ -638,7 +637,9 @@ class _VisitorFormScreenState extends State<VisitorFormScreen> {
             child: const Text('تعذر تحميل الزيارات النشطة. تحقق من الاتصال وقواعد Firestore.'),
           );
         }
-        final visits = snapshot.data?.docs ?? [];
+        final visits = (snapshot.data?.docs ?? [])
+            .where((visit) => visit.data()['status'] == 'inside')
+            .toList();
         if (visits.isEmpty) return const SizedBox.shrink();
 
         return _buildCard(
