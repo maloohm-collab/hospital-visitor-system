@@ -134,10 +134,36 @@ class _AdminApprovalScreenState extends State<AdminApprovalScreen> {
       });
       await batch.commit();
 
+      // أنشئ إشعارًا داخل التطبيق بعد اعتماد الحساب، حتى يكون ملف المستخدم
+      // نشطًا بالفعل وتسمح قواعد Firestore بإرسال الإشعار إلى دوره الصحيح.
+      var notificationCreated = true;
+      if (approve) {
+        try {
+          final role = data['requestedRole'] as String;
+          final notificationRef = _firestore.collection('notifications').doc();
+          await notificationRef.set({
+            'notificationId': notificationRef.id,
+            'recipientUid': uid,
+            'recipientRole': role,
+            'senderUid': adminUid,
+            'senderEmail': FirebaseAuth.instance.currentUser?.email ?? '',
+            'title': 'تم اعتماد حسابك',
+            'body': 'وافقت الإدارة على طلب حسابك. يمكنك الآن تسجيل الدخول واستخدام النظام.',
+            'priority': 'normal',
+            'read': false,
+            'createdAt': FieldValue.serverTimestamp(),
+          });
+        } catch (_) {
+          notificationCreated = false;
+        }
+      }
+
       if (!mounted) return;
       _showMessage(approve
-          ? 'تم اعتماد الحساب بنجاح.'
-          : 'تم رفض الطلب. يمكن لصاحبه إعادة تقديمه من شاشة الدخول.');
+          ? notificationCreated
+              ? 'تم اعتماد الحساب وإرسال إشعار الموافقة داخل التطبيق.'
+              : 'تم اعتماد الحساب، لكن تعذر إنشاء إشعار الموافقة. تحقق من قواعد Firestore.'
+          : 'تم رفض الطلب. ستظهر نتيجة الطلب لصاحبه عند محاولة تسجيل الدخول.');
       await _refresh();
     } on FirebaseException catch (e) {
       _showMessage(e.code == 'permission-denied'
