@@ -83,7 +83,7 @@ class _AccountProfileScreenState extends State<AccountProfileScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(error.code == 'permission-denied'
               ? 'رفضت قواعد Firestore التعديل. انشر آخر نسخة من firestore.rules.'
-              : 'تعذر حفظ البيانات (\${error.code}).')),
+              : 'تعذر حفظ البيانات (${error.code}).')),
         );
       }
     } catch (_) {
