@@ -228,7 +228,7 @@ class _ReportEmpty extends StatelessWidget {
         '',
         for (final entry in groups)
           '${entry.key.replaceAll('||', ' — ')}: ${entry.value.fold<int>(0, (sum, d) => sum + ((d['visitorCount'] is int) ? d['visitorCount'] as int : 0))} زائر / ${entry.value.length} سجل',
-      ].join('\\n');
+      ].join('\n');
       final existing = await reportRef.get();
       if (existing.exists) {
         await reportRef.update({
