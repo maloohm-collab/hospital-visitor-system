@@ -6,6 +6,7 @@ import 'visitor_logs_screen.dart';
 import 'visitor_search_screen.dart';
 import 'visitor_reports_screen.dart';
 import 'admin_approval_screen.dart';
+import 'duty_reports_screen.dart';
 
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({super.key, this.userRole = 'security_officer'});
@@ -63,6 +64,14 @@ class DashboardScreen extends StatelessWidget {
             subtitle: userRole == 'security_officer' ? 'عرض السجلات التي قمت بتسجيلها' : 'عرض سجلات الزيارات المحفوظة في المستشفى',
             color: const Color(0xFF27865B),
             onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => VisitorLogsScreen(userRole: userRole))),
+          ),
+          const SizedBox(height: 10),
+          _ActionTile(
+            icon: userRole == 'supervisor' ? Icons.fact_check_outlined : userRole == 'admin' ? Icons.mark_email_read_outlined : Icons.post_add_rounded,
+            title: userRole == 'supervisor' ? 'إشراف المناوبة والتقارير' : userRole == 'admin' ? 'التقارير المرفوعة للإدارة' : 'تقارير موظف الأمن',
+            subtitle: userRole == 'supervisor' ? 'مراجعة تقارير الأمن ورفع المهم منها للإدارة' : userRole == 'admin' ? 'عرض التقارير التي اختار المشرف رفعها' : 'إرسال الحوادث والملاحظات إلى مشرف المناوب',
+            color: const Color(0xFF8757A5),
+            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => DutyReportsScreen(userRole: userRole))),
           ),
           const SizedBox(height: 10),
           _ActionTile(icon: Icons.bar_chart_rounded, title: 'التقارير والإحصاءات', subtitle: 'حركة اليوم وتوزيع الزيارات حسب الطابق والقسم', color: const Color(0xFFD28A25), onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => VisitorReportsScreen(userRole: userRole)))),
