@@ -7,6 +7,7 @@ import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
+import 'package:arabic_reshaper/arabic_reshaper.dart';
 import 'package:printing/printing.dart';
 import 'package:share_plus/share_plus.dart';
 
@@ -119,6 +120,8 @@ class VisitorReportsScreen extends StatelessWidget {
     );
   }
 
+  String _shapeArabic(String value) => ArabicReshaper.instance.reshape(value);
+
   Future<void> _createDailyPdf(
     BuildContext context,
     List<QueryDocumentSnapshot<Map<String, dynamic>>> visits,
@@ -168,10 +171,10 @@ class VisitorReportsScreen extends StatelessWidget {
               borderRadius: pw.BorderRadius.all(pw.Radius.circular(10)),
             ),
             child: pw.Column(children: [
-              pw.Text('منظومة زوار المستشفى', textAlign: pw.TextAlign.center,
+              pw.Text(_shapeArabic('منظومة زوار المستشفى'), textAlign: pw.TextAlign.center,
                 style: pw.TextStyle(font: boldFont, fontSize: 20, color: PdfColors.white)),
               pw.SizedBox(height: 6),
-              pw.Text('التقرير اليومي لحركة الزوار', textAlign: pw.TextAlign.center,
+              pw.Text(_shapeArabic('التقرير اليومي لحركة الزوار'), textAlign: pw.TextAlign.center,
                 style: pw.TextStyle(font: arabicFont, fontSize: 15, color: PdfColors.white)),
             ]),
           ),
@@ -179,17 +182,17 @@ class VisitorReportsScreen extends StatelessWidget {
           pw.Directionality(textDirection: pw.TextDirection.rtl, child: pw.Column(
             crossAxisAlignment: pw.CrossAxisAlignment.stretch,
             children: [
-              pw.Text('التاريخ: $dateLabel', style: pw.TextStyle(font: boldFont, fontSize: 12)),
+              pw.Text(_shapeArabic('التاريخ: $dateLabel'), style: pw.TextStyle(font: boldFont, fontSize: 12)),
               pw.SizedBox(height: 5),
-              pw.Text('اسم الموظف المسؤول: $staffName', style: pw.TextStyle(font: arabicFont, fontSize: 12)),
+              pw.Text(_shapeArabic('اسم الموظف المسؤول: $staffName'), style: pw.TextStyle(font: arabicFont, fontSize: 12)),
               pw.SizedBox(height: 12),
-              pw.Text('عدد سجلات الزيارات: ${visits.length}  |  إجمالي الزوار: $visitorTotal',
+              pw.Text(_shapeArabic('عدد سجلات الزيارات: ${visits.length}  |  إجمالي الزوار: $visitorTotal'),
                 style: pw.TextStyle(font: boldFont, fontSize: 12)),
               pw.SizedBox(height: 5),
-              pw.Text('داخل المستشفى: $insideCount  |  مكتملة الخروج: $completedCount',
+              pw.Text(_shapeArabic('داخل المستشفى: $insideCount  |  مكتملة الخروج: $completedCount'),
                 style: pw.TextStyle(font: arabicFont, fontSize: 11)),
               pw.SizedBox(height: 14),
-              pw.Text('التفاصيل حسب الطابق والقسم والغرفة', style: pw.TextStyle(font: boldFont, fontSize: 14)),
+              pw.Text(_shapeArabic('التفاصيل حسب الطابق والقسم والغرفة'), style: pw.TextStyle(font: boldFont, fontSize: 14)),
               pw.SizedBox(height: 8),
               for (final entry in groups)
                 pw.Container(
@@ -200,18 +203,18 @@ class VisitorReportsScreen extends StatelessWidget {
                     borderRadius: pw.BorderRadius.circular(6),
                   ),
                   child: pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.stretch, children: [
-                    pw.Text(entry.key.replaceAll('||', ' — '), style: pw.TextStyle(font: boldFont, fontSize: 11)),
-                    pw.Text('عدد الزوار: ${entry.value.fold<int>(0, (sum, d) => sum + ((d['visitorCount'] is int) ? d['visitorCount'] as int : 0))}  •  عدد السجلات: ${entry.value.length}',
+                    pw.Text(_shapeArabic(entry.key.replaceAll('||', ' — ')), style: pw.TextStyle(font: boldFont, fontSize: 11)),
+                    pw.Text(_shapeArabic('عدد الزوار: ${entry.value.fold<int>(0, (sum, d) => sum + ((d['visitorCount'] is int) ? d['visitorCount'] as int : 0))}  •  عدد السجلات: ${entry.value.length}'),
                       style: pw.TextStyle(font: arabicFont, fontSize: 10)),
                     for (final item in entry.value)
                       pw.Text(
-                        'دخول: ${timeOf(item['entryAt'])} | خروج: ${timeOf(item['exitAt'])} | العدد: ${item['visitorCount'] ?? 0}${(item['notes'] as String? ?? '').trim().isEmpty ? '' : ' | ملاحظة: ${item['notes']}'}',
+                        _shapeArabic('دخول: ${timeOf(item['entryAt'])} | خروج: ${timeOf(item['exitAt'])} | العدد: ${item['visitorCount'] ?? 0}${(item['notes'] as String? ?? '').trim().isEmpty ? '' : ' | ملاحظة: ${item['notes']}'}'),
                         style: pw.TextStyle(font: arabicFont, fontSize: 9)),
                   ]),
                 ),
               pw.SizedBox(height: 10),
               pw.Divider(),
-              pw.Text('تم إعداد التقرير من سجلات قاعدة بيانات المستشفى.',
+              pw.Text(_shapeArabic('تم إعداد التقرير من سجلات قاعدة بيانات المستشفى.'),
                 textAlign: pw.TextAlign.center, style: pw.TextStyle(font: arabicFont, fontSize: 9)),
             ],
           )),
