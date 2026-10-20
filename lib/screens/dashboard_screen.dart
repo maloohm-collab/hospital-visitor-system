@@ -24,7 +24,48 @@ class DashboardScreen extends StatelessWidget {
           Text('منظومة زوار المستشفى', style: TextStyle(fontSize: 11, fontWeight: FontWeight.normal)),
         ]),
         actions: [
-          IconButton(tooltip: 'الإشعارات', onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => NotificationsScreen(userRole: userRole))), icon: const Icon(Icons.notifications_none_rounded)),
+          StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+            stream: FirebaseFirestore.instance
+                .collection('notifications')
+                .where('recipientUid', isEqualTo: FirebaseAuth.instance.currentUser?.uid ?? '')
+                .snapshots(),
+            builder: (context, snapshot) {
+              final unread = (snapshot.data?.docs ?? [])
+                  .where((doc) => doc.data()['read'] != true)
+                  .length;
+              return IconButton(
+                tooltip: unread > 0 ? 'الإشعارات غير المقروءة: $unread' : 'الإشعارات',
+                onPressed: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => NotificationsScreen(userRole: userRole)),
+                ),
+                icon: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    const Icon(Icons.notifications_none_rounded),
+                    if (unread > 0)
+                      Positioned(
+                        top: -5,
+                        right: -7,
+                        child: Container(
+                          constraints: const BoxConstraints(minWidth: 17, minHeight: 17),
+                          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                          decoration: const BoxDecoration(
+                            color: Color(0xFFD92D20),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Text(
+                            unread > 9 ? '9+' : '$unread',
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              );
+            },
+          ),
           const SizedBox(width: 4),
         ],
       ),
@@ -72,7 +113,20 @@ class DashboardScreen extends StatelessWidget {
           ] else ...[
             _ActionTile(icon: Icons.mark_email_read_outlined, title: 'التقارير المرفوعة للإدارة', subtitle: 'التقارير التي اختار المشرفون رفعها فقط', color: const Color(0xFF8757A5), onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ReportCenterScreen(userRole: userRole)))),
             const SizedBox(height: 10),
-            _ActionTile(icon: Icons.admin_panel_settings_outlined, title: 'إدارة طلبات الحسابات', subtitle: 'اعتماد الحسابات وتحديد أدوارها', color: const Color(0xFF7A58B5), onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AdminApprovalScreen()))),
+            StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+              stream: FirebaseFirestore.instance.collection('account_requests')
+                  .where('status', isEqualTo: 'pending').snapshots(),
+              builder: (context, snapshot) {
+                final pending = snapshot.data?.docs.length ?? 0;
+                return _ActionTile(
+                  icon: Icons.admin_panel_settings_outlined,
+                  title: pending > 0 ? 'طلبات الحسابات الجديدة ($pending)' : 'إدارة طلبات الحسابات',
+                  subtitle: pending > 0 ? 'هناك $pending طلبًا بانتظار مراجعتك' : 'اعتماد الحسابات وتحديد أدوارها',
+                  color: pending > 0 ? const Color(0xFFD28A25) : const Color(0xFF7A58B5),
+                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AdminApprovalScreen())),
+                );
+              },
+            ),
             const SizedBox(height: 10),
             _ActionTile(icon: Icons.notifications_active_outlined, title: 'الملحوظات الإدارية', subtitle: 'إرسال ملحوظة لجميع المشرفين أو لضابط أمن محدد', color: const Color(0xFFD28A25), onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => NotificationsScreen(userRole: userRole)))),
             const SizedBox(height: 10),
