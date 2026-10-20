@@ -222,7 +222,7 @@ class WelcomeScreen extends StatelessWidget {
                       SizedBox(width: 7),
                       Flexible(
                         child: Text(
-                          'تُعالج البيانات محليًا على الهاتف دون قاعدة بيانات على الإنترنت',
+                          'تُحفظ سجلات الزيارات في قاعدة بيانات المستشفى مع صلاحيات وصول محددة',
                           textAlign: TextAlign.center,
                           style: TextStyle(fontSize: 11, height: 1.5, color: Color(0xFF6B7D8F)),
                         ),
