@@ -157,15 +157,17 @@ service cloud.firestore {
         && request.resource.data.keys().hasOnly([
           'visitId', 'floorId', 'floorName', 'department', 'roomNumber',
           'visitorCount', 'visitDate', 'entryAt', 'exitAt', 'notes',
-          'status', 'createdBy', 'createdByEmail', 'createdAt'
+          'status', 'createdBy', 'createdByEmail', 'createdByName', 'createdByPhone', 'createdAt'
         ])
         && request.resource.data.keys().hasAll([
           'visitId', 'floorId', 'floorName', 'department', 'roomNumber',
           'visitorCount', 'visitDate', 'entryAt', 'exitAt', 'notes',
-          'status', 'createdBy', 'createdAt'
+          'status', 'createdBy', 'createdByName', 'createdByPhone', 'createdAt'
         ])
         && request.resource.data.visitId == visitId
         && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.createdByName is string
+        && request.resource.data.createdByPhone is string
         && request.resource.data.floorId in [
           'floor_5', 'floor_4', 'floor_3', 'floor_2', 'floor_1', 'ccu'
         ]
