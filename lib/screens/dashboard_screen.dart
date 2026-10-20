@@ -7,6 +7,8 @@ import 'visitor_search_screen.dart';
 import 'visitor_reports_screen.dart';
 import 'admin_approval_screen.dart';
 import 'duty_reports_screen.dart';
+import 'report_center_screen.dart';
+import 'notifications_screen.dart';
 
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({super.key, this.userRole = 'security_officer'});
@@ -23,7 +25,7 @@ class DashboardScreen extends StatelessWidget {
           Text('منظومة زوار المستشفى', style: TextStyle(fontSize: 11, fontWeight: FontWeight.normal)),
         ]),
         actions: [
-          IconButton(tooltip: 'التنبيهات', onPressed: () => _notice(context, 'لا توجد تنبيهات جديدة'), icon: const Icon(Icons.notifications_none_rounded)),
+          IconButton(tooltip: 'الإشعارات', onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => NotificationsScreen(userRole: userRole))), icon: const Icon(Icons.notifications_none_rounded)),
           const SizedBox(width: 4),
         ],
       ),
@@ -54,30 +56,33 @@ class DashboardScreen extends StatelessWidget {
           const SizedBox(height: 26),
           const Text('الخدمات السريعة', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: navy)),
           const SizedBox(height: 12),
-          _ActionTile(icon: Icons.person_add_alt_1_rounded, title: 'تسجيل زائر جديد', subtitle: 'إضافة بيانات الزيارة وتسجيل الدخول والخروج', color: teal, onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const VisitorFormScreen()))),
+          if (userRole == 'security_officer') ...[
+            _ActionTile(icon: Icons.person_add_alt_1_rounded, title: 'تسجيل زائر جديد', subtitle: 'إضافة بيانات الزيارة وتوثيق الدخول والخروج', color: teal, onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const VisitorFormScreen()))),
+            const SizedBox(height: 10),
+            _ActionTile(icon: Icons.search_rounded, title: 'البحث عن زيارة', subtitle: 'البحث ضمن السجلات المسموح لك بها', color: const Color(0xFF4F67B1), onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => VisitorSearchScreen(userRole: userRole)))),
+            const SizedBox(height: 10),
+            _ActionTile(icon: Icons.assignment_outlined, title: 'سجل زياراتي', subtitle: 'عرض السجلات التي قمت بتسجيلها فقط', color: const Color(0xFF27865B), onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => VisitorLogsScreen(userRole: userRole)))),
+            const SizedBox(height: 10),
+            _ActionTile(icon: Icons.post_add_rounded, title: 'تقاريري', subtitle: 'إنشاء التقارير وتعديلها ومشاركتها', color: const Color(0xFF8757A5), onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ReportCenterScreen(userRole: userRole)))),
+          ] else if (userRole == 'supervisor') ...[
+            _ActionTile(icon: Icons.fact_check_outlined, title: 'تقارير المناوبة', subtitle: 'مراجعة تقارير ضباط الأمن ورفع المهم منها للإدارة', color: const Color(0xFF8757A5), onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ReportCenterScreen(userRole: userRole)))),
+            const SizedBox(height: 10),
+            _ActionTile(icon: Icons.search_rounded, title: 'البحث في سجل الزيارات', subtitle: 'متابعة سجلات الزيارات ضمن صلاحيات المشرف', color: const Color(0xFF4F67B1), onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => VisitorSearchScreen(userRole: userRole)))),
+            const SizedBox(height: 10),
+            _ActionTile(icon: Icons.assignment_outlined, title: 'سجل الزيارات', subtitle: 'عرض سجلات المستشفى للمراجعة والإشراف', color: const Color(0xFF27865B), onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => VisitorLogsScreen(userRole: userRole)))),
+          ] else ...[
+            _ActionTile(icon: Icons.mark_email_read_outlined, title: 'التقارير المرفوعة للإدارة', subtitle: 'التقارير التي اختار المشرفون رفعها فقط', color: const Color(0xFF8757A5), onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ReportCenterScreen(userRole: userRole)))),
+            const SizedBox(height: 10),
+            _ActionTile(icon: Icons.admin_panel_settings_outlined, title: 'إدارة طلبات الحسابات', subtitle: 'اعتماد الحسابات وتحديد أدوارها', color: const Color(0xFF7A58B5), onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AdminApprovalScreen()))),
+            const SizedBox(height: 10),
+            _ActionTile(icon: Icons.notifications_active_outlined, title: 'الملحوظات الإدارية', subtitle: 'إرسال ملحوظة لجميع المشرفين أو لضابط أمن محدد', color: const Color(0xFFD28A25), onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => NotificationsScreen(userRole: userRole)))),
+            const SizedBox(height: 10),
+            _ActionTile(icon: Icons.search_rounded, title: 'البحث في سجل الزيارات', subtitle: 'متابعة السجلات على مستوى المستشفى', color: const Color(0xFF4F67B1), onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => VisitorSearchScreen(userRole: userRole)))),
+            const SizedBox(height: 10),
+            _ActionTile(icon: Icons.assignment_outlined, title: 'سجل الزيارات', subtitle: 'عرض السجلات ضمن صلاحيات الإدارة', color: const Color(0xFF27865B), onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => VisitorLogsScreen(userRole: userRole)))),
+          ],
           const SizedBox(height: 10),
-          _ActionTile(icon: Icons.search_rounded, title: 'البحث عن زيارة', subtitle: 'البحث برقم الغرفة أو الطابق أو القسم', color: const Color(0xFF4F67B1), onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => VisitorSearchScreen(userRole: userRole)))),
-          const SizedBox(height: 10),
-          _ActionTile(
-            icon: Icons.assignment_outlined,
-            title: 'سجل الزيارات',
-            subtitle: userRole == 'security_officer' ? 'عرض السجلات التي قمت بتسجيلها' : 'عرض سجلات الزيارات المحفوظة في المستشفى',
-            color: const Color(0xFF27865B),
-            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => VisitorLogsScreen(userRole: userRole))),
-          ),
-          const SizedBox(height: 10),
-          _ActionTile(
-            icon: userRole == 'supervisor' ? Icons.fact_check_outlined : userRole == 'admin' ? Icons.mark_email_read_outlined : Icons.post_add_rounded,
-            title: userRole == 'supervisor' ? 'إشراف المناوبة والتقارير' : userRole == 'admin' ? 'التقارير المرفوعة للإدارة' : 'تقارير موظف الأمن',
-            subtitle: userRole == 'supervisor' ? 'مراجعة تقارير الأمن ورفع المهم منها للإدارة' : userRole == 'admin' ? 'عرض التقارير التي اختار المشرف رفعها' : 'إرسال الحوادث والملاحظات إلى مشرف المناوب',
-            color: const Color(0xFF8757A5),
-            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => DutyReportsScreen(userRole: userRole))),
-          ),
-          const SizedBox(height: 10),
-          _ActionTile(icon: Icons.bar_chart_rounded, title: 'التقارير والإحصاءات', subtitle: 'حركة اليوم وتوزيع الزيارات حسب الطابق والقسم', color: const Color(0xFFD28A25), onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => VisitorReportsScreen(userRole: userRole)))),
-          const SizedBox(height: 10),
-          if (userRole == 'admin')
-            _ActionTile(icon: Icons.admin_panel_settings_outlined, title: 'إدارة طلبات الحسابات', subtitle: 'مراجعة طلبات الموظفين والموافقة أو الرفض', color: const Color(0xFF7A58B5), onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AdminApprovalScreen()))),
+          _ActionTile(icon: Icons.bar_chart_rounded, title: 'التقارير والإحصاءات', subtitle: userRole == 'security_officer' ? 'إحصاءات سجلاتك' : 'مؤشرات حركة الزوار على مستوى المستشفى', color: const Color(0xFFD28A25), onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => VisitorReportsScreen(userRole: userRole)))),
           const SizedBox(height: 20),
           const Center(child: Text('تُحدّث السجلات والإحصاءات من قاعدة بيانات Firestore', textAlign: TextAlign.center, style: TextStyle(fontSize: 11, color: Colors.black45))),
         ],
