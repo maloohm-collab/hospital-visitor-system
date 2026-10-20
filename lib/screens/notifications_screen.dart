@@ -42,7 +42,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                 return DropdownButtonFormField<String>(value: docs.any((d) => d.id == recipientUid) ? recipientUid : null,
                   decoration: const InputDecoration(labelText: 'اختيار ضابط الأمن'),
                   items: docs.map((d) => DropdownMenuItem(value: d.id,
-                    child: Text(d.data()['displayName'] as String? ?? d.data()['email'] as String? ?? 'ضابط أمن', overflow: TextOverflow.ellipsis)).toList(),
+                    child: Text(d.data()['displayName'] as String? ?? d.data()['email'] as String? ?? 'ضابط أمن', overflow: TextOverflow.ellipsis))).toList(),
                   onChanged: (v) => refresh(() => recipientUid = v),
                   validator: (v) => audience == 'officers' && v == null ? 'اختر ضابط الأمن' : null);
               }),
@@ -106,11 +106,15 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     floatingActionButton: admin ? FloatingActionButton.extended(onPressed: compose, icon: const Icon(Icons.send_rounded),
       label: const Text('إرسال ملحوظة'), backgroundColor: teal, foregroundColor: Colors.white) : null,
     body: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-      stream: FirebaseFirestore.instance.collection('notifications').where('recipientUid', isEqualTo: uid).orderBy('createdAt', descending: true).snapshots(),
+      stream: FirebaseFirestore.instance.collection('notifications').where('recipientUid', isEqualTo: uid).snapshots(),
       builder: (context, snap) {
         if (snap.hasError) return const Center(child: Padding(padding: EdgeInsets.all(24), child: Text('تعذر تحميل الإشعارات. تحقق من قواعد Firestore والفهارس.', textAlign: TextAlign.center)));
         if (snap.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
-        final docs = snap.data?.docs ?? [];
+        final docs = (snap.data?.docs ?? []).toList()..sort((a, b) {
+          final at = a.data()['createdAt']; final bt = b.data()['createdAt'];
+          if (at is Timestamp && bt is Timestamp) return bt.compareTo(at);
+          return 0;
+        });
         if (docs.isEmpty) return const Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
           Icon(Icons.notifications_none_rounded, size: 56, color: Color(0xFF94A3B8)), SizedBox(height: 12),
           Text('لا توجد إشعارات جديدة', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: navy))]));
