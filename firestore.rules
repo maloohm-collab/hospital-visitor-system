@@ -118,7 +118,7 @@ service cloud.firestore {
     }
 
     match /visitor_logs/{visitId} {
-      // Only active staff may create records, and each record is tied to its creator.
+      // Save a record immediately when the visitor enters.
       allow create: if isActiveUser()
         && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role
           in ['admin', 'supervisor', 'security_officer']
@@ -144,11 +144,26 @@ service cloud.firestore {
         && request.resource.data.visitorCount >= 1
         && request.resource.data.visitDate is timestamp
         && request.resource.data.entryAt is timestamp
-        && request.resource.data.exitAt is timestamp
-        && request.resource.data.exitAt >= request.resource.data.entryAt
+        && request.resource.data.exitAt == null
         && request.resource.data.notes is string
-        && request.resource.data.status == 'completed'
+        && request.resource.data.status == 'inside'
         && request.resource.data.createdAt == request.time;
+
+      // The creator may only add the exit time once; other fields are immutable.
+      allow update: if isActiveUser()
+        && resource.data.createdBy == request.auth.uid
+        && resource.data.status == 'inside'
+        && request.resource.data.status == 'completed'
+        && request.resource.data.exitAt is timestamp
+        && request.resource.data.exitAt >= resource.data.entryAt
+        && request.resource.data.updatedAt == request.time
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['exitAt', 'status', 'updatedAt'])
+        && request.resource.data.keys().hasAll([
+          'visitId', 'floorId', 'floorName', 'department', 'roomNumber',
+          'visitorCount', 'visitDate', 'entryAt', 'exitAt', 'notes',
+          'status', 'createdBy', 'createdAt', 'updatedAt'
+        ]);
 
       // Staff can view their own records; supervisors and admins can review all records.
       allow get, list: if isActiveUser()
@@ -158,8 +173,7 @@ service cloud.firestore {
           || isActiveAdmin()
         );
 
-      // Visit records are immutable for audit integrity.
-      allow update, delete: if false;
+      allow delete: if false;
     }
 
     match /{document=**} {
