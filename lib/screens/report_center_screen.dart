@@ -121,7 +121,7 @@ class _ReportCenterScreenState extends State<ReportCenterScreen> {
                 _message(doc == null ? 'تم حفظ التقرير' : 'تم تحديث التقرير');
               } on FirebaseException catch (e) {
                 refresh(() => busy = false);
-                _message(e.code == 'permission-denied' ? 'قواعد الأمان لا تسمح بهذه العملية؛ يجب نشر قواعد Firestore الجديدة.' : 'تعذر الحفظ (\${e.code})');
+                _message(e.code == 'permission-denied' ? 'قواعد الأمان لا تسمح بهذه العملية؛ يجب نشر قواعد Firestore الجديدة.' : 'تعذر الحفظ (${e.code})');
               } catch (_) {
                 refresh(() => busy = false);
                 _message('تعذر حفظ التقرير. تحقق من الاتصال.');
@@ -149,7 +149,7 @@ class _ReportCenterScreenState extends State<ReportCenterScreen> {
     ));
     if (yes != true) return;
     try { await doc.reference.delete(); _message('تم حذف التقرير'); }
-    on FirebaseException catch (e) { _message('تعذر الحذف (\${e.code})؛ قد لا تملك الصلاحية.'); }
+    on FirebaseException catch (e) { _message('تعذر الحذف (${e.code})؛ قد لا تملك الصلاحية.'); }
   }
 
   Future<File> _pdf(Map<String, dynamic> d) async {
@@ -161,21 +161,21 @@ class _ReportCenterScreenState extends State<ReportCenterScreen> {
         crossAxisAlignment: pw.CrossAxisAlignment.stretch, children: [
           pw.Text('منظومة زوار المستشفى', style: pw.TextStyle(font: bold, fontSize: 20)),
           pw.Divider(),
-          pw.Text('عنوان التقرير: \${d['title'] ?? ''}', style: pw.TextStyle(font: bold, fontSize: 15)),
-          pw.Text('النوع: \${d['type'] ?? ''}'),
-          pw.Text('الأولوية: \${d['priority'] ?? 'normal'}'),
-          pw.Text('مقدم التقرير: \${d['createdByEmail'] ?? ''}'),
-          pw.Text('التاريخ: \${DateFormat('yyyy/MM/dd HH:mm').format(ts)}'),
-          if ((d['employeeName'] as String? ?? '').isNotEmpty) pw.Text('الموظف المعني: \${d['employeeName']}'),
+          pw.Text('عنوان التقرير: ${d['title'] ?? ''}', style: pw.TextStyle(font: bold, fontSize: 15)),
+          pw.Text('النوع: ${d['type'] ?? ''}'),
+          pw.Text('الأولوية: ${d['priority'] ?? 'normal'}'),
+          pw.Text('مقدم التقرير: ${d['createdByEmail'] ?? ''}'),
+          pw.Text('التاريخ: ${DateFormat('yyyy/MM/dd HH:mm').format(ts)}'),
+          if ((d['employeeName'] as String? ?? '').isNotEmpty) pw.Text('الموظف المعني: ${d['employeeName']}'),
           pw.SizedBox(height: 12), pw.Text('التفاصيل:', style: pw.TextStyle(font: bold)),
           pw.Text(d['body'] as String? ?? '', style: const pw.TextStyle(fontSize: 12, lineSpacing: 4)),
-          pw.SizedBox(height: 18), pw.Text('الرقم المرجعي: \${d['reportId'] ?? ''}'),
+          pw.SizedBox(height: 18), pw.Text('الرقم المرجعي: ${d['reportId'] ?? ''}'),
         ],
       ))]));
     final dir = await getApplicationDocumentsDirectory();
-    final folder = Directory('\${dir.path}/تقارير_المناوبة');
+    final folder = Directory('${dir.path}/تقارير_المناوبة');
     if (!await folder.exists()) await folder.create(recursive: true);
-    final file = File('\${folder.path}/report_\${DateFormat('yyyyMMdd_HHmmss').format(DateTime.now())}.pdf');
+    final file = File('${folder.path}/report_${DateFormat('yyyyMMdd_HHmmss').format(DateTime.now())}.pdf');
     await file.writeAsBytes(await pdf.save(), flush: true);
     return file;
   }
@@ -184,7 +184,7 @@ class _ReportCenterScreenState extends State<ReportCenterScreen> {
     try {
       final file = await _pdf(d);
       if (share) {
-        await Share.shareXFiles([XFile(file.path, mimeType: 'application/pdf')], text: 'تقرير المستشفى: \${d['title'] ?? ''}');
+        await Share.shareXFiles([XFile(file.path, mimeType: 'application/pdf')], text: 'تقرير المستشفى: ${d['title'] ?? ''}');
       } else if (mounted) {
         await Navigator.push(context, MaterialPageRoute<void>(builder: (_) => Scaffold(
           appBar: AppBar(title: const Text('معاينة وتنزيل PDF')),
@@ -203,7 +203,7 @@ class _ReportCenterScreenState extends State<ReportCenterScreen> {
         'updatedAt': FieldValue.serverTimestamp(),
       });
       _message(forward ? 'تم رفع التقرير للإدارة' : 'تم إبقاء التقرير ضمن التقارير الداخلية');
-    } on FirebaseException catch (e) { _message('تعذر تحديث التقرير (\${e.code}).'); }
+    } on FirebaseException catch (e) { _message('تعذر تحديث التقرير (${e.code}).'); }
   }
 
   @override
