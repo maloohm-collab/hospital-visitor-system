@@ -174,12 +174,13 @@ class _DutyReportsScreenState extends State<DutyReportsScreen> {
                 const DropdownMenuItem(value: 'security_incident', child: Text('حادث أو ملاحظة أمنية')),
                 const DropdownMenuItem(value: 'shift_summary', child: Text('تقرير سير المناوبة')),
                 const SizedBox(height: 22),
-        if (!admin)
-          OutlinedButton.icon(
-            onPressed: _importReceivedPdf,
-            icon: const Icon(Icons.file_open_rounded),
-            label: const Text('استيراد PDF وارد من ضابط الأمن أو واتساب'),
-          ),
+        OutlinedButton.icon(
+          onPressed: _importReceivedPdf,
+          icon: const Icon(Icons.file_open_rounded),
+          label: Text(admin
+            ? 'حفظ تقرير وارد في الأرشيف المحلي'
+            : 'استيراد PDF وارد من ضابط الأمن أو واتساب'),
+        ),
         const SizedBox(height: 18),
         _buildLocalArchive(),
         if (supervisor) ...[
