@@ -217,7 +217,7 @@ service cloud.firestore {
       allow create: if isActiveUser()
         && request.resource.data.keys().hasOnly([
           'reportId', 'type', 'title', 'body', 'employeeName', 'priority',
-          'destination', 'status', 'createdBy', 'createdByEmail',
+          'destination', 'status', 'createdBy', 'createdByEmail', 'createdByName', 'createdByPhone',
           'createdByRole', 'createdAt', 'updatedAt'
         ])
         && request.resource.data.keys().hasAll([
@@ -234,6 +234,8 @@ service cloud.firestore {
         && request.resource.data.body is string
         && request.resource.data.body.size() >= 10
         && request.resource.data.employeeName is string
+        && request.resource.data.createdByName is string
+        && request.resource.data.createdByPhone is string
         && request.resource.data.priority in ['normal', 'important', 'urgent']
         && (
           (
