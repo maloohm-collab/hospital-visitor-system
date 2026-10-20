@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'account_profile_screen.dart';
 import 'staff_management_screen.dart';
+import 'duty_reports_screen.dart';
 import 'visitor_form_screen.dart';
 import 'visitor_logs_screen.dart';
 import 'visitor_search_screen.dart';
@@ -126,15 +127,21 @@ class DashboardScreen extends StatelessWidget {
             const SizedBox(height: 10),
             _ActionTile(icon: Icons.assignment_outlined, title: 'سجل زياراتي', subtitle: 'عرض السجلات التي قمت بتسجيلها فقط', color: const Color(0xFF27865B), onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => VisitorLogsScreen(userRole: userRole)))),
             const SizedBox(height: 10),
-            _ActionTile(icon: Icons.post_add_rounded, title: 'تقاريري', subtitle: 'إنشاء التقارير وتعديلها ومشاركتها', color: const Color(0xFF8757A5), onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ReportCenterScreen(userRole: userRole)))),
+            _ActionTile(icon: Icons.post_add_rounded, title: 'تقاريري', subtitle: 'إنشاء التقارير ومراجعتها وإدارتها', color: const Color(0xFF8757A5), onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ReportCenterScreen(userRole: userRole)))),
+            const SizedBox(height: 10),
+            _ActionTile(icon: Icons.picture_as_pdf_rounded, title: 'تقارير المناوبة PDF', subtitle: 'إنشاء وحفظ ومشاركة تقرير PDF على الهاتف', color: const Color(0xFF27865B), onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => DutyReportsScreen(userRole: userRole)))),
           ] else if (userRole == 'supervisor') ...[
-            _ActionTile(icon: Icons.fact_check_outlined, title: 'تقارير المناوبة', subtitle: 'مراجعة تقارير ضباط الأمن ورفع المهم منها للإدارة', color: const Color(0xFF8757A5), onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ReportCenterScreen(userRole: userRole)))),
+            _ActionTile(icon: Icons.fact_check_outlined, title: 'تقارير ضباط الأمن', subtitle: 'مراجعة التقارير المسجلة في النظام ورفع المهم منها للإدارة', color: const Color(0xFF8757A5), onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ReportCenterScreen(userRole: userRole)))),
+            const SizedBox(height: 10),
+            _ActionTile(icon: Icons.picture_as_pdf_rounded, title: 'تقارير المناوبة PDF', subtitle: 'إنشاء وحفظ تقرير PDF محلي ومشاركته يدويًا', color: const Color(0xFF27865B), onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => DutyReportsScreen(userRole: userRole)))),
             const SizedBox(height: 10),
             _ActionTile(icon: Icons.search_rounded, title: 'البحث في سجل الزيارات', subtitle: 'متابعة سجلات الزيارات ضمن صلاحيات المشرف', color: const Color(0xFF4F67B1), onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => VisitorSearchScreen(userRole: userRole)))),
             const SizedBox(height: 10),
             _ActionTile(icon: Icons.assignment_outlined, title: 'سجل الزيارات', subtitle: 'عرض سجلات المستشفى للمراجعة والإشراف', color: const Color(0xFF27865B), onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => VisitorLogsScreen(userRole: userRole)))),
           ] else ...[
             _ActionTile(icon: Icons.mark_email_read_outlined, title: 'التقارير المرفوعة للإدارة', subtitle: 'التقارير التي اختار المشرفون رفعها فقط', color: const Color(0xFF8757A5), onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ReportCenterScreen(userRole: userRole)))),
+            const SizedBox(height: 10),
+            _ActionTile(icon: Icons.picture_as_pdf_rounded, title: 'أرشيف تقارير PDF', subtitle: 'استيراد ومعاينة ومشاركة ملفات التقارير على هذا الهاتف', color: const Color(0xFF27865B), onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => DutyReportsScreen(userRole: userRole)))),
             const SizedBox(height: 10),
             StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
               stream: FirebaseFirestore.instance.collection('account_requests')
