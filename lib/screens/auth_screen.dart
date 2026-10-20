@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -173,6 +174,8 @@ class _AuthScreenState extends State<AuthScreen> {
           child: Form(key: _formKey, child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              const _LiveDateTimeCard(),
+              const SizedBox(height: 18),
               const Icon(Icons.verified_user_rounded, size: 60, color: _teal),
               const SizedBox(height: 18),
               Text(_register ? 'طلب الانضمام للنظام' : 'مرحبًا بك',
@@ -237,4 +240,71 @@ class _AuthScreenState extends State<AuthScreen> {
       ))),
     );
   }
+}
+
+
+class _LiveDateTimeCard extends StatefulWidget {
+  const _LiveDateTimeCard();
+
+  @override
+  State<_LiveDateTimeCard> createState() => _LiveDateTimeCardState();
+}
+
+class _LiveDateTimeCardState extends State<_LiveDateTimeCard> {
+  late DateTime _now;
+  Timer? _timer;
+  static const _navy = Color(0xFF16324F);
+  static const _teal = Color(0xFF168C8C);
+
+  @override
+  void initState() {
+    super.initState();
+    _now = DateTime.now();
+    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) setState(() => _now = DateTime.now());
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  String _weekday(int day) => const [
+    'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت', 'الأحد'
+  ][day - 1];
+
+  String _month(int month) => const [
+    'يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو',
+    'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'
+  ][month - 1];
+
+  String _two(int value) => value.toString().padLeft(2, '0');
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(18),
+      border: Border.all(color: const Color(0xFFDCE7ED)),
+      boxShadow: const [BoxShadow(color: Color(0x0D16324F), blurRadius: 12, offset: Offset(0, 4))],
+    ),
+    child: Row(children: [
+      Container(width: 46, height: 46,
+        decoration: BoxDecoration(color: _teal.withOpacity(.10), borderRadius: BorderRadius.circular(14)),
+        child: const Icon(Icons.calendar_month_rounded, color: _teal, size: 25)),
+      const SizedBox(width: 12),
+      Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text('${_weekday(_now.weekday)}، ${_now.day} ${_month(_now.month)} ${_now.year}',
+          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: _navy)),
+        const SizedBox(height: 4),
+        Text('الوقت المحلي على الجهاز',
+          style: TextStyle(fontSize: 11, color: Colors.blueGrey.shade600)),
+      ])),
+      Text('${_two(_now.hour)}:${_two(_now.minute)}:${_two(_now.second)}',
+        style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w900, color: _teal, fontFeatures: [FontFeature.tabularFigures()])),
+    ]),
+  );
 }
