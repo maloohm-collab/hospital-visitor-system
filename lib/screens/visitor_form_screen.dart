@@ -168,11 +168,9 @@ class _VisitorFormScreenState extends State<VisitorFormScreen> {
                     SizedBox(
                       width: double.infinity,
                       child: FilledButton.icon(
-                        onPressed: _entryTime == null
-                            ? () => setState(() => _entryTime = DateTime.now())
-                            : null,
+                        onPressed: _entryTime == null && !_isSavingVisit ? _registerEntry : null,
                         icon: const Icon(Icons.login_rounded, size: 19),
-                        label: Text(_entryTime == null ? 'تسجيل وقت الدخول' : 'تم تسجيل الدخول'),
+                        label: Text(_isSavingVisit && _entryTime == null ? 'جارٍ حفظ الدخول...' : _entryTime == null ? 'تسجيل وقت الدخول' : 'تم تسجيل الدخول'),
                         style: FilledButton.styleFrom(
                           backgroundColor: _navy,
                           disabledBackgroundColor: const Color(0xFFE8EDF2),
@@ -197,11 +195,11 @@ class _VisitorFormScreenState extends State<VisitorFormScreen> {
                     SizedBox(
                       width: double.infinity,
                       child: OutlinedButton.icon(
-                        onPressed: _entryTime != null && _exitTime == null
-                            ? () => setState(() => _exitTime = DateTime.now())
+                        onPressed: _entryTime != null && _exitTime == null && _savedVisitId != null && !_isSavingVisit
+                            ? _registerExit
                             : null,
                         icon: const Icon(Icons.logout_rounded, size: 19),
-                        label: Text(_exitTime == null ? 'تسجيل وقت الخروج' : 'تم تسجيل الخروج'),
+                        label: Text(_isSavingVisit && _entryTime != null && _exitTime == null ? 'جارٍ حفظ الخروج...' : _exitTime == null ? 'تسجيل وقت الخروج' : 'تم تسجيل الخروج'),
                         style: OutlinedButton.styleFrom(
                           foregroundColor: _teal,
                           disabledForegroundColor: _muted,
@@ -523,6 +521,106 @@ class _VisitorFormScreenState extends State<VisitorFormScreen> {
     );
   }
 
+  Future<void> _registerEntry() async {
+    if (!_formKey.currentState!.validate()) return;
+    if (_selectedFloor == null || _selectedDepartment == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('اختر الطابق والقسم أولًا.')),
+      );
+      return;
+    }
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('يجب تسجيل الدخول قبل تسجيل الزيارة.')),
+      );
+      return;
+    }
+    final entryTime = DateTime.now();
+    setState(() => _isSavingVisit = true);
+    try {
+      final floor = _hospitalLocations[_selectedFloor!]!;
+      final visitRef = FirebaseFirestore.instance.collection('visitor_logs').doc();
+      await visitRef.set({
+        'visitId': visitRef.id,
+        'floorId': _selectedFloor,
+        'floorName': floor['label'],
+        'department': _selectedDepartment,
+        'roomNumber': _roomController.text.trim(),
+        'visitorCount': int.parse(_visitorCountController.text.trim()),
+        'visitDate': Timestamp.fromDate(DateTime(entryTime.year, entryTime.month, entryTime.day)),
+        'entryAt': Timestamp.fromDate(entryTime),
+        'exitAt': null,
+        'notes': _notesController.text.trim(),
+        'status': 'inside',
+        'createdBy': user.uid,
+        'createdByEmail': user.email ?? '',
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+      if (!mounted) return;
+      setState(() {
+        _entryTime = entryTime;
+        _savedVisitId = visitRef.id;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('تم تسجيل الدخول وحفظ الزيارة مباشرة في قاعدة البيانات.')),
+      );
+    } on FirebaseException catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.code == 'permission-denied'
+            ? 'رفضت قواعد Firestore الحفظ. تأكد من نشر آخر نسخة من firestore.rules.'
+            : 'تعذر حفظ الدخول (' + error.code + '). حاول مجددًا.')),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('تعذر تسجيل الدخول. تحقق من البيانات والاتصال.')),
+      );
+    } finally {
+      if (mounted) setState(() => _isSavingVisit = false);
+    }
+  }
+
+  Future<void> _registerExit() async {
+    final visitId = _savedVisitId;
+    if (visitId == null || _entryTime == null || _exitTime != null) return;
+    final exitTime = DateTime.now();
+    if (exitTime.isBefore(_entryTime!)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('وقت الخروج لا يمكن أن يسبق وقت الدخول.')),
+      );
+      return;
+    }
+    setState(() => _isSavingVisit = true);
+    try {
+      await FirebaseFirestore.instance.collection('visitor_logs').doc(visitId).update({
+        'exitAt': Timestamp.fromDate(exitTime),
+        'status': 'completed',
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+      if (!mounted) return;
+      setState(() => _exitTime = exitTime);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('تم تسجيل الخروج وتحديث سجل الزيارة.')),
+      );
+    } on FirebaseException catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.code == 'permission-denied'
+            ? 'لا تسمح قواعد Firestore بتحديث هذا السجل. انشر آخر نسخة من firestore.rules.'
+            : 'تعذر حفظ الخروج (' + error.code + '). حاول مجددًا.')),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('تعذر تسجيل الخروج. تحقق من الاتصال.')),
+      );
+    } finally {
+      if (mounted) setState(() => _isSavingVisit = false);
+    }
+  }
+
   Widget _buildReportButton() {
     return SizedBox(
       width: double.infinity,
@@ -565,46 +663,14 @@ class _VisitorFormScreenState extends State<VisitorFormScreen> {
       return;
     }
 
-    if (_selectedFloor == null || _selectedDepartment == null) {
+    if (_savedVisitId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('اختر الطابق والقسم قبل حفظ الزيارة.')),
+        const SnackBar(content: Text('سجّل وقت الدخول أولًا لحفظ الزيارة في النظام.')),
       );
       return;
     }
-
-    setState(() {
-      _isGenerating = true;
-      _isSavingVisit = true;
-    });
+    setState(() => _isGenerating = true);
     try {
-      if (_savedVisitId == null) {
-        final user = FirebaseAuth.instance.currentUser;
-        if (user == null) {
-          throw StateError('يجب تسجيل الدخول قبل حفظ الزيارة.');
-        }
-        final floor = _hospitalLocations[_selectedFloor!]!;
-        final visitRef = FirebaseFirestore.instance.collection('visitor_logs').doc();
-        await visitRef.set({
-          'visitId': visitRef.id,
-          'floorId': _selectedFloor,
-          'floorName': floor['label'],
-          'department': _selectedDepartment,
-          'roomNumber': _roomController.text.trim(),
-          'visitorCount': int.parse(_visitorCountController.text.trim()),
-          'visitDate': Timestamp.fromDate(DateTime(
-            _recordDate.year, _recordDate.month, _recordDate.day,
-          )),
-          'entryAt': Timestamp.fromDate(_entryTime!),
-          'exitAt': Timestamp.fromDate(_exitTime!),
-          'notes': _notesController.text.trim(),
-          'status': 'completed',
-          'createdBy': user.uid,
-          'createdByEmail': user.email ?? '',
-          'createdAt': FieldValue.serverTimestamp(),
-        });
-        _savedVisitId = visitRef.id;
-      }
-      if (mounted) setState(() => _isSavingVisit = false);
       final arabicFont = await PdfGoogleFonts.cairoRegular();
       final boldFont = await PdfGoogleFonts.cairoBold();
       final pdf = pw.Document();
