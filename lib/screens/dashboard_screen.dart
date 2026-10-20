@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'account_profile_screen.dart';
 import 'visitor_form_screen.dart';
 import 'visitor_logs_screen.dart';
 import 'visitor_search_screen.dart';
@@ -69,6 +70,27 @@ class DashboardScreen extends StatelessWidget {
           const SizedBox(width: 4),
         ],
       ),
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: 0,
+        backgroundColor: Colors.white,
+        indicatorColor: const Color(0xFFE5F3F3),
+        onDestinationSelected: (index) {
+          if (index == 1) {
+            Navigator.push(context, MaterialPageRoute(
+              builder: (_) => VisitorLogsScreen(userRole: userRole),
+            ));
+          } else if (index == 2) {
+            Navigator.push(context, MaterialPageRoute(
+              builder: (_) => const AccountProfileScreen(),
+            ));
+          }
+        },
+        destinations: const [
+          NavigationDestination(icon: Icon(Icons.home_rounded), label: 'الرئيسية'),
+          NavigationDestination(icon: Icon(Icons.meeting_room_outlined), label: 'الزيارات'),
+          NavigationDestination(icon: Icon(Icons.account_circle_outlined), label: 'حسابي'),
+        ],
+      ),
       body: SafeArea(child: ListView(
         padding: const EdgeInsets.fromLTRB(18, 18, 18, 28),
         children: [
@@ -134,6 +156,8 @@ class DashboardScreen extends StatelessWidget {
             const SizedBox(height: 10),
             _ActionTile(icon: Icons.assignment_outlined, title: 'سجل الزيارات', subtitle: 'عرض السجلات ضمن صلاحيات الإدارة', color: const Color(0xFF27865B), onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => VisitorLogsScreen(userRole: userRole)))),
           ],
+          const SizedBox(height: 10),
+          _ActionTile(icon: Icons.account_circle_outlined, title: 'حسابي', subtitle: 'تعديل الاسم ورقم الهاتف والصورة الشخصية', color: const Color(0xFF168C8C), onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AccountProfileScreen()))),
           const SizedBox(height: 10),
           _ActionTile(icon: Icons.bar_chart_rounded, title: 'التقارير والإحصاءات', subtitle: userRole == 'security_officer' ? 'إحصاءات سجلاتك' : 'مؤشرات حركة الزوار على مستوى المستشفى', color: const Color(0xFFD28A25), onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => VisitorReportsScreen(userRole: userRole)))),
           const SizedBox(height: 20),
