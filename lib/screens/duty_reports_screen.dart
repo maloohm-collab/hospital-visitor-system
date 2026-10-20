@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:pdf/pdf.dart';
@@ -36,6 +37,114 @@ class _DutyReportsScreenState extends State<DutyReportsScreen> {
     'urgent' => 'عاجل', 'important' => 'مهم', _ => 'عادي',
   };
 
+  Future<Directory> _localReportDirectory() async {
+    final appDir = await getApplicationDocumentsDirectory();
+    final dir = Directory('${appDir.path}/تقارير_المناوبة');
+    if (!await dir.exists()) await dir.create(recursive: true);
+    return dir;
+  }
+
+  Future<void> _importReceivedPdf() async {
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['pdf'],
+        withData: false,
+      );
+      if (result == null || result.files.isEmpty) return;
+      final sourcePath = result.files.single.path;
+      if (sourcePath == null) {
+        _message('تعذر الوصول إلى الملف المحدد. اختر الملف من التنزيلات.');
+        return;
+      }
+      final source = File(sourcePath);
+      if (!await source.exists()) {
+        _message('الملف المحدد غير موجود.');
+        return;
+      }
+      final dir = await _localReportDirectory();
+      final stamp = DateFormat('yyyyMMdd_HHmmss').format(DateTime.now());
+      final safeName = result.files.single.name.replaceAll(RegExp(r'[^a-zA-Z0-9._-]'), '_');
+      final destination = File('${dir.path}/وارد_${stamp}_$safeName');
+      await source.copy(destination.path);
+      if (!mounted) return;
+      setState(() {});
+      _message('تم حفظ نسخة محلية من التقرير الوارد. لم يُرفع الملف إلى أي خدمة سحابية.');
+    } catch (_) {
+      _message('تعذر استيراد الملف. تأكد أنه PDF ويمكن الوصول إليه من الهاتف.');
+    }
+  }
+
+  Widget _buildLocalArchive() {
+    return FutureBuilder<List<File>>(
+      future: _readLocalReports(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Padding(padding: EdgeInsets.all(18),
+            child: Center(child: CircularProgressIndicator()));
+        }
+        final files = snapshot.data ?? const <File>[];
+        return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          Row(children: [
+            const Expanded(child: Text('أرشيف التقارير على هذا الهاتف',
+              style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: navy))),
+            IconButton(tooltip: 'تحديث الأرشيف', onPressed: () => setState(() {}),
+              icon: const Icon(Icons.refresh_rounded)),
+          ]),
+          if (files.isEmpty)
+            _info(Icons.folder_open_rounded, 'لا توجد ملفات محفوظة بعد',
+              'بعد إنشاء تقرير أو استيراد PDF وارد سيظهر الملف هنا. الأرشيف خاص بهذا الهاتف فقط.')
+          else
+            ...files.map((file) => Container(
+              margin: const EdgeInsets.only(bottom: 9),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(color: Colors.white,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: const Color(0xFFE1E8EF))),
+              child: Row(children: [
+                const Icon(Icons.picture_as_pdf_rounded, color: teal, size: 30),
+                const SizedBox(width: 10),
+                Expanded(child: Text(file.uri.pathSegments.isEmpty ? file.path : file.uri.pathSegments.last,
+                  maxLines: 2, overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600))),
+                IconButton(tooltip: 'عرض PDF', onPressed: () => _previewPdf(file),
+                  icon: const Icon(Icons.visibility_outlined)),
+                IconButton(tooltip: 'مشاركة الملف',
+                  onPressed: () => Share.shareXFiles([XFile(file.path, mimeType: 'application/pdf')],
+                    text: 'تقرير منظومة زوار المستشفى'),
+                  icon: const Icon(Icons.share_outlined)),
+              ]),
+            )),
+        ]);
+      },
+    );
+  }
+
+  Future<List<File>> _readLocalReports() async {
+    final dir = await _localReportDirectory();
+    final entities = await dir.list().toList();
+    final files = entities.whereType<File>()
+      .where((file) => file.path.toLowerCase().endsWith('.pdf')).toList();
+    files.sort((a, b) => b.lastModifiedSync().compareTo(a.lastModifiedSync()));
+    return files;
+  }
+
+  Future<void> _previewPdf(File file) async {
+    if (!mounted) return;
+    await Navigator.of(context).push(MaterialPageRoute<void>(
+      builder: (_) => Scaffold(
+        appBar: AppBar(title: const Text('معاينة التقرير')),
+        body: PdfPreview(
+          canChangeOrientation: false,
+          canChangePageFormat: false,
+          allowPrinting: true,
+          allowSharing: true,
+          build: (_) => file.readAsBytes(),
+        ),
+      ),
+    ));
+  }
+
   Future<void> _createReport() async {
     final formKey = GlobalKey<FormState>();
     final title = TextEditingController();
@@ -64,7 +173,16 @@ class _DutyReportsScreenState extends State<DutyReportsScreen> {
               items: [
                 const DropdownMenuItem(value: 'security_incident', child: Text('حادث أو ملاحظة أمنية')),
                 const DropdownMenuItem(value: 'shift_summary', child: Text('تقرير سير المناوبة')),
-                if (supervisor) ...[
+                const SizedBox(height: 22),
+        if (!admin)
+          OutlinedButton.icon(
+            onPressed: _importReceivedPdf,
+            icon: const Icon(Icons.file_open_rounded),
+            label: const Text('استيراد PDF وارد من ضابط الأمن أو واتساب'),
+          ),
+        const SizedBox(height: 18),
+        _buildLocalArchive(),
+        if (supervisor) ...[
                   const DropdownMenuItem(value: 'technical_note', child: Text('ملاحظة فنية على موظف')),
                   const DropdownMenuItem(value: 'recommendation_positive', child: Text('توصية إيجابية / أداء متميز')),
                   const DropdownMenuItem(value: 'recommendation_concern', child: Text('ملاحظة مهنية سرية')),
