@@ -694,9 +694,9 @@ class _VisitorFormScreenState extends State<VisitorFormScreen> {
   }
 
   Future<void> _finishActiveVisit(
-    QueryDocumentSnapshot<Map<String, dynamic>> visit,
+    DocumentSnapshot<Map<String, dynamic>> visit,
   ) async {
-    final data = visit.data();
+    final data = visit.data() ?? <String, dynamic>{};
     final entryValue = data['entryAt'];
     final entryTime = entryValue is Timestamp ? entryValue.toDate() : null;
     final notes = TextEditingController(text: data['notes'] as String? ?? '');
