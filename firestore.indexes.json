@@ -1,0 +1,13 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "duty_reports",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "destination", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}
