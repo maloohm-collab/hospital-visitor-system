@@ -158,8 +158,18 @@ class VisitorReportsScreen extends StatelessWidget {
       final groups = grouped.entries.toList()..sort((a, b) => a.key.compareTo(b.key));
       String timeOf(dynamic value) => value is Timestamp
           ? DateFormat('HH:mm', 'en').format(value.toDate()) : 'لم يسجل';
-      final staffName = user.displayName?.trim().isNotEmpty == true
-          ? user.displayName! : user.email ?? user.uid;
+      // الاسم المعتمد من ملف المستخدم في Firestore، وليس البريد الإلكتروني.
+      final profileSnapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .get();
+      final profileName =
+          (profileSnapshot.data()?['displayName'] as String?)?.trim();
+      final staffName = profileName != null && profileName.isNotEmpty
+          ? profileName
+          : (user.displayName?.trim().isNotEmpty == true
+              ? user.displayName!.trim()
+              : 'غير مسجل');
       final pdf = pw.Document();
       pdf.addPage(pw.MultiPage(
         theme: pw.ThemeData.withFont(base: arabicFont, bold: boldFont),
@@ -170,13 +180,20 @@ class VisitorReportsScreen extends StatelessWidget {
               color: PdfColor.fromInt(0xFF16324F),
               borderRadius: pw.BorderRadius.all(pw.Radius.circular(10)),
             ),
-            child: pw.Column(children: [
-              pw.Text(_shapeArabic('منظومة زوار المستشفى'), textAlign: pw.TextAlign.center,
-                style: pw.TextStyle(font: boldFont, fontSize: 20, color: PdfColors.white)),
-              pw.SizedBox(height: 6),
-              pw.Text(_shapeArabic('التقرير اليومي لحركة الزوار'), textAlign: pw.TextAlign.center,
-                style: pw.TextStyle(font: arabicFont, fontSize: 15, color: PdfColors.white)),
-            ]),
+            child: pw.Directionality(
+              textDirection: pw.TextDirection.rtl,
+              child: pw.Column(children: [
+                pw.Text(_shapeArabic('منظومة زوار المستشفى'),
+                  textAlign: pw.TextAlign.center,
+                  textDirection: pw.TextDirection.rtl,
+                  style: pw.TextStyle(font: boldFont, fontSize: 20, color: PdfColors.white)),
+                pw.SizedBox(height: 6),
+                pw.Text(_shapeArabic('التقرير اليومي لحركة الزوار'),
+                  textAlign: pw.TextAlign.center,
+                  textDirection: pw.TextDirection.rtl,
+                  style: pw.TextStyle(font: arabicFont, fontSize: 15, color: PdfColors.white)),
+              ]),
+            ),
           ),
           pw.SizedBox(height: 18),
           pw.Directionality(textDirection: pw.TextDirection.rtl, child: pw.Column(
