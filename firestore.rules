@@ -5,11 +5,20 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    function isActiveAdmin() {
+    function isActiveUser() {
       return signedIn()
         && exists(/databases/$(database)/documents/users/$(request.auth.uid))
-        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
         && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.status == 'active';
+    }
+
+    function isActiveAdmin() {
+      return isActiveUser()
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    function isActiveSupervisor() {
+      return isActiveUser()
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'supervisor';
     }
 
     match /account_requests/{uid} {
@@ -106,6 +115,51 @@ service cloud.firestore {
         && getAfter(/databases/$(database)/documents/account_requests/$(uid)).data.reviewedBy == request.auth.uid;
 
       allow list, update, delete: if false;
+    }
+
+    match /visitor_logs/{visitId} {
+      // Only active staff may create records, and each record is tied to its creator.
+      allow create: if isActiveUser()
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role
+          in ['admin', 'supervisor', 'security_officer']
+        && request.resource.data.keys().hasOnly([
+          'visitId', 'floorId', 'floorName', 'department', 'roomNumber',
+          'visitorCount', 'visitDate', 'entryAt', 'exitAt', 'notes',
+          'status', 'createdBy', 'createdByEmail', 'createdAt'
+        ])
+        && request.resource.data.keys().hasAll([
+          'visitId', 'floorId', 'floorName', 'department', 'roomNumber',
+          'visitorCount', 'visitDate', 'entryAt', 'exitAt', 'notes',
+          'status', 'createdBy', 'createdAt'
+        ])
+        && request.resource.data.visitId == visitId
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.floorId in [
+          'floor_5', 'floor_4', 'floor_3', 'floor_2', 'floor_1', 'ccu'
+        ]
+        && request.resource.data.floorName is string
+        && request.resource.data.department is string
+        && request.resource.data.roomNumber is string
+        && request.resource.data.visitorCount is int
+        && request.resource.data.visitorCount >= 1
+        && request.resource.data.visitDate is timestamp
+        && request.resource.data.entryAt is timestamp
+        && request.resource.data.exitAt is timestamp
+        && request.resource.data.exitAt >= request.resource.data.entryAt
+        && request.resource.data.notes is string
+        && request.resource.data.status == 'completed'
+        && request.resource.data.createdAt == request.time;
+
+      // Staff can view their own records; supervisors and admins can review all records.
+      allow get, list: if isActiveUser()
+        && (
+          resource.data.createdBy == request.auth.uid
+          || isActiveSupervisor()
+          || isActiveAdmin()
+        );
+
+      // Visit records are immutable for audit integrity.
+      allow update, delete: if false;
     }
 
     match /{document=**} {
