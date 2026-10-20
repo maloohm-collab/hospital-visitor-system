@@ -637,7 +637,7 @@ class _VisitorFormScreenState extends State<VisitorFormScreen> {
               )
             : const Icon(Icons.picture_as_pdf_rounded, size: 21),
         label: Text(
-          _isGenerating ? (_isSavingVisit ? 'جارٍ حفظ الزيارة...' : 'جارٍ تجهيز التقرير...') : 'حفظ الزيارة وإنشاء التقرير',
+          _isGenerating ? (_isSavingVisit ? 'جارٍ حفظ الزيارة...' : 'جارٍ تجهيز التقرير...') : 'إنشاء تقرير الزيارة (PDF)',
         ),
         style: FilledButton.styleFrom(
           backgroundColor: _teal,
