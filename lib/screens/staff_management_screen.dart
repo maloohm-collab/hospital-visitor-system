@@ -13,7 +13,7 @@ class StaffManagementScreen extends StatelessWidget {
   Future<void> _setStatus(BuildContext context, String uid, String name, String status) async {
     final yes = await showDialog<bool>(context: context, builder: (d) => AlertDialog(
       title: const Text('تأكيد تغيير الحالة'),
-      content: Text('تغيير حالة $name إلى «\${_status(status)}»؟'),
+      content: Text('تغيير حالة $name إلى «${_status(status)}»؟'),
       actions: [
         TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('إلغاء')),
         FilledButton(onPressed: () => Navigator.pop(d, true), child: const Text('تأكيد')),
@@ -26,7 +26,7 @@ class StaffManagementScreen extends StatelessWidget {
     } on FirebaseException catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.code == 'permission-denied'
           ? 'رفضت قواعد Firestore التعديل. انشر القواعد المحدّثة.'
-          : 'تعذر تغيير الحالة (\${e.code}).')));
+          : 'تعذر تغيير الحالة (${e.code}).')));
     }
   }
 
@@ -48,7 +48,7 @@ class StaffManagementScreen extends StatelessWidget {
     } on FirebaseException catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.code == 'permission-denied'
           ? 'رفضت قواعد Firestore الحذف. انشر القواعد المحدّثة.'
-          : 'تعذر حذف الملف (\${e.code}).')));
+          : 'تعذر حذف الملف (${e.code}).')));
     }
   }
 
