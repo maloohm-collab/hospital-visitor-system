@@ -26,16 +26,18 @@ service cloud.firestore {
       allow create: if signedIn()
         && request.auth.uid == uid
         && request.resource.data.keys().hasOnly([
-          'uid', 'displayName', 'email', 'requestedRole', 'status', 'createdAt'
+          'uid', 'displayName', 'phone', 'email', 'requestedRole', 'status', 'createdAt'
         ])
         && request.resource.data.keys().hasAll([
-          'uid', 'displayName', 'email', 'requestedRole', 'status', 'createdAt'
+          'uid', 'displayName', 'phone', 'email', 'requestedRole', 'status', 'createdAt'
         ])
         && request.resource.data.uid == request.auth.uid
         && request.resource.data.status == 'pending'
         && request.resource.data.requestedRole in ['security_officer', 'supervisor']
         && request.resource.data.displayName is string
         && request.resource.data.displayName.size() >= 3
+        && request.resource.data.phone is string
+        && request.resource.data.phone.size() >= 9
         && request.resource.data.email is string
         && request.resource.data.createdAt == request.time;
 
@@ -49,11 +51,12 @@ service cloud.firestore {
           isActiveAdmin()
           && resource.data.status == 'pending'
           && request.resource.data.keys().hasOnly([
-            'uid', 'displayName', 'email', 'requestedRole', 'status',
+            'uid', 'displayName', 'phone', 'email', 'requestedRole', 'status',
             'createdAt', 'reviewedAt', 'reviewedBy'
           ])
           && request.resource.data.uid == resource.data.uid
           && request.resource.data.displayName == resource.data.displayName
+          && request.resource.data.phone == resource.data.phone
           && request.resource.data.email == resource.data.email
           && request.resource.data.requestedRole == resource.data.requestedRole
           && request.resource.data.createdAt == resource.data.createdAt
@@ -80,6 +83,7 @@ service cloud.firestore {
           && request.resource.data.uid == resource.data.uid
           && request.resource.data.email == resource.data.email
           && request.resource.data.displayName == resource.data.displayName
+          && request.resource.data.phone == resource.data.phone
           && request.resource.data.requestedRole == resource.data.requestedRole
           && request.resource.data.createdAt == request.time
           && !request.resource.data.keys().hasAny(['reviewedAt', 'reviewedBy'])
@@ -97,11 +101,11 @@ service cloud.firestore {
       allow create: if isActiveAdmin()
         && uid != request.auth.uid
         && request.resource.data.keys().hasOnly([
-          'uid', 'displayName', 'email', 'role', 'status',
+          'uid', 'displayName', 'phone', 'photoURL', 'email', 'role', 'status',
           'createdAt', 'approvedAt', 'approvedBy'
         ])
         && request.resource.data.keys().hasAll([
-          'uid', 'displayName', 'email', 'role', 'status',
+          'uid', 'displayName', 'phone', 'photoURL', 'email', 'role', 'status',
           'createdAt', 'approvedAt', 'approvedBy'
         ])
         && request.resource.data.uid == uid
@@ -115,7 +119,34 @@ service cloud.firestore {
         && getAfter(/databases/$(database)/documents/account_requests/$(uid)).data.reviewedBy == request.auth.uid;
 
       allow list: if isActiveAdmin();
-      allow update, delete: if false;
+
+      // الموظف يعدّل بياناته الشخصية فقط، ولا يستطيع تغيير دوره أو حالته.
+      // الإدارة تستطيع تعليق الحساب أو حظره أو إعادة تفعيله دون تغيير الدور.
+      allow update: if isActiveUser() && (
+        (
+          request.auth.uid == uid
+          && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['displayName', 'phone', 'photoURL'])
+          && request.resource.data.displayName is string
+          && request.resource.data.displayName.size() >= 3
+          && request.resource.data.phone is string
+          && request.resource.data.phone.size() >= 9
+          && request.resource.data.photoURL is string
+          && request.resource.data.role == resource.data.role
+          && request.resource.data.status == resource.data.status
+          && request.resource.data.email == resource.data.email
+          && request.resource.data.uid == resource.data.uid
+        )
+        || (
+          isActiveAdmin()
+          && uid != request.auth.uid
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status'])
+          && request.resource.data.status in ['active', 'suspended', 'blocked']
+          && request.resource.data.role == resource.data.role
+        )
+      );
+
+      allow delete: if isActiveAdmin() && uid != request.auth.uid;
     }
 
     match /visitor_logs/{visitId} {
