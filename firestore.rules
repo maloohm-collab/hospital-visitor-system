@@ -157,7 +157,7 @@ service cloud.firestore {
         && request.resource.data.status == 'completed'
         && request.resource.data.exitAt is timestamp
         && request.resource.data.exitAt >= resource.data.entryAt
-        && request.resource.data.updatedAt == request.time
+        && request.resource.data.updatedAt is timestamp
         && request.resource.data.notes is string
         && request.resource.data.diff(resource.data).affectedKeys()
           .hasOnly(['exitAt', 'status', 'updatedAt', 'notes'])
