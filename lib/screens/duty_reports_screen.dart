@@ -207,9 +207,6 @@ class _DutyReportsScreenState extends State<DutyReportsScreen> {
           children: [
             Text(supervisor ? 'إنشاء تقرير مشرف المناوبة' : 'إعداد تقرير ضابط الأمن',
               style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: navy)),
-            const SizedBox(height: 8),
-            const Text('ينشأ ملف PDF على هذا الهاتف فقط؛ لا تُحفظ بيانات التقرير في قاعدة بيانات سحابية.',
-              style: TextStyle(fontSize: 12, color: Colors.black54)),
             const SizedBox(height: 14),
             DropdownButtonFormField<String>(
               value: type, decoration: const InputDecoration(labelText: 'نوع التقرير'),
@@ -252,8 +249,6 @@ class _DutyReportsScreenState extends State<DutyReportsScreen> {
                   DropdownMenuItem(value: 'admin', child: Text('اختيار التقرير لرفعه إلى الإدارة')),
                 ], onChanged: (v) { if (v != null) refresh(() => destination = v); }),
               const SizedBox(height: 6),
-              const Text('لن يُرسل التقرير للإدارة إلا باختيارك. تعامل مع الملاحظات الفنية والتوصيات بسرية.',
-                style: TextStyle(fontSize: 12, color: Colors.black54)),
             ],
             const SizedBox(height: 16),
             FilledButton.icon(
