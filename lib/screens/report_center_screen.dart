@@ -349,12 +349,50 @@ class _ReportCenterScreenState extends State<ReportCenterScreen> {
       onPressed: () => _compose(), icon: const Icon(Icons.note_add_rounded),
       label: const Text('تقرير جديد'), backgroundColor: teal, foregroundColor: Colors.white),
     body: Column(children: [
-      Container(margin: const EdgeInsets.fromLTRB(16, 14, 16, 8), padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(gradient: const LinearGradient(colors: [navy, Color(0xFF285673)]), borderRadius: BorderRadius.circular(18)),
-        child: Text(admin ? 'تظهر هنا التقارير التي رفعها المشرفون للإدارة فقط.'
-          : supervisor ? 'راجع تقارير ضباط الأمن، واحتفظ بما يلزم داخليًا أو ارفع المهم للإدارة.'
-          : 'تظهر تقاريرك أنت فقط. أنشئ التقرير وعدّله أو شاركه كملف PDF.',
-          style: const TextStyle(color: Colors.white, fontSize: 14, height: 1.6, fontWeight: FontWeight.w600))),
+      Container(
+        margin: const EdgeInsets.fromLTRB(16, 14, 16, 8),
+        padding: const EdgeInsets.fromLTRB(18, 16, 18, 17),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF3F7FA),
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: const Color(0xFFDDE7EF)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              admin
+                  ? 'التقارير المرفوعة للإدارة'
+                  : supervisor
+                      ? 'مراجعة تقارير المناوبة'
+                      : 'إدارة تقاريري',
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: Color(0xFF101820),
+                fontSize: 18,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Container(height: 1.2, color: const Color(0xFF101820)),
+            const SizedBox(height: 10),
+            Text(
+              admin
+                  ? 'تظهر هنا التقارير التي رفعها المشرفون للإدارة فقط.'
+                  : supervisor
+                      ? 'راجع تقارير ضباط الأمن، واحتفظ بما يلزم داخليًا أو ارفع المهم للإدارة.'
+                      : 'تظهر تقاريرك أنت فقط. أنشئ التقرير وعدّله أو شاركه كملف PDF.',
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: Color(0xFF263238),
+                fontSize: 13,
+                height: 1.6,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      ),
       Expanded(child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
         stream: _query().snapshots(),
         builder: (context, snapshot) {
