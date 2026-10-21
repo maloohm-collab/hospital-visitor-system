@@ -323,49 +323,51 @@ class _VisitorFormScreenState extends State<VisitorFormScreen> {
 
   Widget _buildPageIntro() {
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.fromLTRB(18, 18, 18, 20),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          begin: Alignment.topRight,
-          end: Alignment.bottomLeft,
-          colors: [_navy, Color(0xFF244D6D)],
-        ),
-        borderRadius: BorderRadius.circular(22),
-        boxShadow: [
-          BoxShadow(
-            color: _navy.withValues(alpha: 0.13),
-            blurRadius: 18,
-            offset: const Offset(0, 8),
-          ),
-        ],
+        color: const Color(0xFFF3F7FA),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFDDE7EF)),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Container(
-            width: 56,
-            height: 56,
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.13),
-              borderRadius: BorderRadius.circular(17),
-              border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+          Center(
+            child: Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                color: const Color(0xFFE5F3F3),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: const Icon(
+                Icons.fact_check_outlined,
+                color: _teal,
+                size: 26,
+              ),
             ),
-            child: const Icon(Icons.fact_check_outlined, color: Colors.white, size: 29),
           ),
-          const SizedBox(width: 15),
-          const Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'سجل حركة الزوار',
-                  style: TextStyle(color: Colors.white, fontSize: 19, fontWeight: FontWeight.w800),
-                ),
-                SizedBox(height: 6),
-                Text(
-                  'سجّل البيانات والأوقات، ثم أنشئ تقريرًا جاهزًا للحفظ والمشاركة.',
-                  style: TextStyle(color: Color(0xFFE4EDF5), fontSize: 13, height: 1.6),
-                ),
-              ],
+          const SizedBox(height: 10),
+          const Text(
+            'سجل حركة الزوار',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: Color(0xFF101820),
+              fontSize: 19,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Container(height: 1.2, color: const Color(0xFF101820)),
+          const SizedBox(height: 10),
+          const Text(
+            'سجّل البيانات والأوقات، ثم أنشئ تقريرًا جاهزًا للحفظ والمشاركة.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: Color(0xFF263238),
+              fontSize: 13,
+              height: 1.6,
+              fontWeight: FontWeight.w600,
             ),
           ),
         ],
