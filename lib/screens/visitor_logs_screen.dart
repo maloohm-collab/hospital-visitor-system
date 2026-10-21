@@ -453,6 +453,16 @@ class _VisitorLogsScreenState extends State<VisitorLogsScreen> {
           ),
           const SizedBox(height: 12),
         ],
+        OutlinedButton.icon(
+          onPressed: _deleteVisitsByDateRange,
+          icon: const Icon(Icons.delete_sweep_outlined, color: Colors.red),
+          label: const Text('حذف السجلات المكتملة حسب اليوم أو الفترة'),
+          style: OutlinedButton.styleFrom(
+            foregroundColor: _navy,
+            minimumSize: const Size.fromHeight(48),
+          ),
+        ),
+        const SizedBox(height: 12),
         Container(
           padding: const EdgeInsets.fromLTRB(18, 18, 18, 20),
           decoration: BoxDecoration(
