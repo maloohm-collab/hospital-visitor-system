@@ -266,7 +266,7 @@ service cloud.firestore {
         || (
           isActiveAdmin()
           && resource.data.destination == 'admin'
-          && resource.data.status == 'forwarded'
+          && resource.data.status in ['forwarded', 'acknowledged']
         )
       );
 
@@ -316,6 +316,18 @@ service cloud.firestore {
         && request.resource.data.title.size() >= 4
         && request.resource.data.body is string
         && request.resource.data.body.size() >= 10
+        && request.resource.data.updatedAt == request.time;
+
+      // Administration can confirm receipt of a report forwarded by a supervisor.
+      allow update: if isActiveAdmin()
+        && resource.data.destination == 'admin'
+        && resource.data.status == 'forwarded'
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'status', 'adminConfirmedBy', 'adminConfirmedAt', 'updatedAt'
+        ])
+        && request.resource.data.status == 'acknowledged'
+        && request.resource.data.adminConfirmedBy == request.auth.uid
+        && request.resource.data.adminConfirmedAt == request.time
         && request.resource.data.updatedAt == request.time;
 
       // Each recipient may hide a report from their own list without deleting the shared record.
