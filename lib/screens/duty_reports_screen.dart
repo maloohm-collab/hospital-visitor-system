@@ -397,7 +397,7 @@ class _DutyReportsScreenState extends State<DutyReportsScreen> {
         onPressed: _createReport, backgroundColor: teal, foregroundColor: Colors.white,
         icon: const Icon(Icons.note_add_outlined),
         label: Text(supervisor ? 'إنشاء تقرير مشرف' : 'إعداد تقرير المناوبة')),
-      body: ListView(padding: const EdgeInsets.all(18), children: [
+      body: ListView(padding: const EdgeInsets.fromLTRB(18, 18, 18, 110), children: [
         const OfficialHospitalHeader(),
         Container(
           padding: const EdgeInsets.fromLTRB(18, 18, 18, 20),
