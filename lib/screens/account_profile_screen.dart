@@ -58,7 +58,12 @@ class _AccountProfileScreenState extends State<AccountProfileScreen> {
       final data = snapshot.data() ?? <String, dynamic>{};
       _name.text = (data['displayName'] as String? ?? user.displayName ?? '').trim();
       _phone.text = (data['phone'] as String? ?? '').trim();
-      _photoUrl.text = (data['photoURL'] as String? ?? '').trim();
+      final localPhoto = await _secureStorage.read(
+        key: 'hospital_visitor_photo_path_' + user.uid,
+      );
+      _photoUrl.text = localPhoto != null && await File(localPhoto).exists()
+          ? localPhoto
+          : (data['photoURL'] as String? ?? '').trim();
       _email = (data['email'] as String? ?? user.email ?? '').trim();
       _role = data['role'] as String? ?? '';
     } catch (_) {
@@ -109,11 +114,23 @@ class _AccountProfileScreenState extends State<AccountProfileScreen> {
     if (user == null) return;
     setState(() => _saving = true);
     try {
-      await FirebaseFirestore.instance.collection('users').doc(user.uid).update({
+      final photo = _photoUrl.text.trim();
+      final updates = <String, dynamic>{
         'displayName': _name.text.trim(),
         'phone': _phone.text.trim(),
-        'photoURL': _photoUrl.text.trim(),
-      });
+      };
+      if (photo.startsWith('/') && await File(photo).exists()) {
+        await _secureStorage.write(
+          key: 'hospital_visitor_photo_path_' + user.uid,
+          value: photo,
+        );
+      } else {
+        await _secureStorage.delete(
+          key: 'hospital_visitor_photo_path_' + user.uid,
+        );
+        updates['photoURL'] = photo;
+      }
+      await FirebaseFirestore.instance.collection('users').doc(user.uid).update(updates);
       await user.updateDisplayName(_name.text.trim());
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
