@@ -155,21 +155,73 @@ class DashboardScreen extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(18, 18, 18, 28),
         children: [
           Container(
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.fromLTRB(18, 18, 18, 20),
             decoration: BoxDecoration(
-              gradient: const LinearGradient(begin: Alignment.topRight, end: Alignment.bottomLeft, colors: [Color(0xFF16324F), Color(0xFF245878)]),
+              color: const Color(0xFFF3F7FA),
               borderRadius: BorderRadius.circular(22),
+              border: Border.all(color: const Color(0xFFDDE7EF)),
             ),
-            child: Row(children: [
-              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                const Text('أهلاً بك 👋', style: TextStyle(color: Colors.white70, fontSize: 14)),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Center(
+                  child: Container(
+                    width: 54,
+                    height: 54,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE5F3F3),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: const Icon(
+                      Icons.local_hospital_rounded,
+                      color: teal,
+                      size: 30,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                const Text(
+                  'أهلاً بك',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Color(0xFF263238),
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 5),
+                const Text(
+                  'إدارة الزيارات بسهولة وأمان',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Color(0xFF101820),
+                    fontSize: 21,
+                    height: 1.35,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
                 const SizedBox(height: 8),
-                const Text('إدارة الزيارات\nبسهولة وأمان', style: TextStyle(color: Colors.white, fontSize: 23, height: 1.35, fontWeight: FontWeight.bold)),
-                const SizedBox(height: 14),
-                Container(padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7), decoration: BoxDecoration(color: Colors.white.withOpacity(0.13), borderRadius: BorderRadius.circular(30)), child: Text(_roleLabel(userRole), style: const TextStyle(color: Colors.white, fontSize: 12))),
-              ])),
-              Container(width: 76, height: 76, decoration: BoxDecoration(color: Colors.white.withValues(alpha: .12), borderRadius: BorderRadius.circular(24)), child: const Icon(Icons.local_hospital_rounded, color: Colors.white, size: 42)),
-            ]),
+                Container(height: 1.2, color: const Color(0xFF101820)),
+                const SizedBox(height: 10),
+                Center(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 7),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE5F3F3),
+                      borderRadius: BorderRadius.circular(30),
+                    ),
+                    child: Text(
+                      _roleLabel(userRole),
+                      style: const TextStyle(
+                        color: Color(0xFF16324F),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
           const SizedBox(height: 26),
           const Text('الخدمات السريعة', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: navy)),
