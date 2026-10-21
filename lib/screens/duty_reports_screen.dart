@@ -111,15 +111,56 @@ class _DutyReportsScreenState extends State<DutyReportsScreen> {
                   style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600))),
                 IconButton(tooltip: 'عرض PDF', onPressed: () => _previewPdf(file),
                   icon: const Icon(Icons.visibility_outlined)),
-                IconButton(tooltip: 'مشاركة الملف',
-                  onPressed: () => Share.shareXFiles([XFile(file.path, mimeType: 'application/pdf')],
-                    text: 'تقرير منظومة زوار المستشفى'),
-                  icon: const Icon(Icons.share_outlined)),
+                IconButton(
+                  tooltip: 'مشاركة الملف',
+                  onPressed: () => Share.shareXFiles(
+                    [XFile(file.path, mimeType: 'application/pdf')],
+                    text: 'تقرير منظومة زوار المستشفى',
+                  ),
+                  icon: const Icon(Icons.share_outlined),
+                ),
+                IconButton(
+                  tooltip: 'حذف النسخة من هذا الهاتف',
+                  onPressed: () => _deleteLocalReport(file),
+                  icon: const Icon(Icons.delete_outline_rounded, color: Colors.red),
+                ),
               ]),
             )),
         ]);
       },
     );
+  }
+
+  Future<void> _deleteLocalReport(File file) async {
+    final yes = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('حذف نسخة التقرير؟'),
+        content: const Text(
+          'سيُحذف ملف PDF من هذا الهاتف فقط. إذا كانت هناك نسخة أُرسلت إلى المشرف أو الإدارة فلن تتأثر.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('إلغاء'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('حذف النسخة'),
+          ),
+        ],
+      ),
+    );
+    if (yes != true) return;
+    try {
+      if (await file.exists()) await file.delete();
+      if (!mounted) return;
+      setState(() {});
+      _message('تم حذف نسخة التقرير من هذا الهاتف فقط.');
+    } catch (_) {
+      _message('تعذر حذف الملف. تحقق من صلاحيات الوصول إلى مساحة التطبيق.');
+    }
   }
 
   Future<List<File>> _readLocalReports() async {
