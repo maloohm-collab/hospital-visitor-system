@@ -145,7 +145,47 @@ class _ReportCenterScreenState extends State<ReportCenterScreen> {
   }
 
   bool _canEdit(Map<String, dynamic> d) =>
-      d['createdBy'] == user?.uid && !(d['destination'] == 'admin' && d['status'] == 'forwarded');
+      d['createdBy'] == user?.uid &&
+      !(d['destination'] == 'admin' && d['status'] == 'forwarded');
+
+  bool _isHiddenForCurrentUser(Map<String, dynamic> d) =>
+      (d['hiddenFor'] as List<dynamic>? ?? const []).contains(user?.uid);
+
+  Future<void> _hideFromMyList(
+      DocumentSnapshot<Map<String, dynamic>> doc) async {
+    final yes = await showDialog<bool>(
+      context: context,
+      builder: (c) => AlertDialog(
+        title: const Text('إزالة التقرير من قائمتك؟'),
+        content: const Text(
+          'سيختفي التقرير من قائمتك فقط، ولن يُحذف من قوائم المشرف أو الإدارة أو من قاعدة البيانات.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(c, false),
+            child: const Text('إلغاء'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(c, true),
+            child: const Text('إزالة من قائمتي'),
+          ),
+        ],
+      ),
+    );
+    if (yes != true || user == null) return;
+    try {
+      await doc.reference.update({
+        'hiddenFor': FieldValue.arrayUnion([user!.uid]),
+      });
+      _message('تمت إزالة التقرير من قائمتك فقط.');
+    } on FirebaseException catch (e) {
+      _message(
+        e.code == 'permission-denied'
+            ? 'قواعد Firestore الحالية لا تسمح بإخفاء التقرير بعد. انشر تحديث القواعد ثم أعد المحاولة.'
+            : 'تعذر إزالة التقرير (' + e.code + ').',
+      );
+    }
+  }
 
   Future<void> _delete(DocumentSnapshot<Map<String, dynamic>> doc) async {
     final yes = await showDialog<bool>(context: context, builder: (c) => AlertDialog(
@@ -321,11 +361,15 @@ class _ReportCenterScreenState extends State<ReportCenterScreen> {
           if (snapshot.hasError) return const Center(child: Padding(padding: EdgeInsets.all(24),
             child: Text('تعذر تحميل التقارير. تحقق من قواعد Firestore والفهارس والاتصال.', textAlign: TextAlign.center)));
           if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
-          final docs = (snapshot.data?.docs ?? []).toList()..sort((a, b) {
-            final at = a.data()['createdAt']; final bt = b.data()['createdAt'];
-            if (at is Timestamp && bt is Timestamp) return bt.compareTo(at);
-            return 0;
-          });
+          final docs = (snapshot.data?.docs ?? [])
+              .where((doc) => !_isHiddenForCurrentUser(doc.data()))
+              .toList()
+            ..sort((a, b) {
+              final at = a.data()['createdAt'];
+              final bt = b.data()['createdAt'];
+              if (at is Timestamp && bt is Timestamp) return bt.compareTo(at);
+              return 0;
+            });
           if (docs.isEmpty) return const Center(child: Text('لا توجد تقارير لعرضها حاليًا.'));
           return ListView.builder(padding: const EdgeInsets.fromLTRB(14, 8, 14, 90),
             itemCount: docs.length, itemBuilder: (context, i) {
@@ -352,16 +396,66 @@ class _ReportCenterScreenState extends State<ReportCenterScreen> {
                     style: const TextStyle(fontSize: 14, height: 1.6, color: Color(0xFF33485C))),
                   const SizedBox(height: 8),
                   Text('الحالة: $status', style: const TextStyle(fontWeight: FontWeight.w700, color: navy)),
-                  Wrap(spacing: 4, runSpacing: 4, children: [
-                    TextButton.icon(onPressed: () => _pdfAction(d, false), icon: const Icon(Icons.download_outlined), label: const Text('عرض / تنزيل PDF')),
-                    TextButton.icon(onPressed: () => _pdfAction(d, true), icon: const Icon(Icons.share_outlined), label: const Text('مشاركة')),
-                    if (_canEdit(d)) IconButton(tooltip: 'تعديل', onPressed: () => _compose(doc: doc), icon: const Icon(Icons.edit_outlined, color: teal)),
-                    if (_canEdit(d)) IconButton(tooltip: 'حذف', onPressed: () => _delete(doc), icon: const Icon(Icons.delete_outline, color: Colors.red)),
-                    if (supervisor && d['createdByRole'] == 'security_officer' && d['status'] == 'submitted')
-                      TextButton.icon(onPressed: () => _review(doc, false), icon: const Icon(Icons.archive_outlined), label: const Text('داخلي')),
-                    if (supervisor && d['createdByRole'] == 'security_officer' && d['status'] == 'submitted')
-                      FilledButton.tonalIcon(onPressed: () => _review(doc, true), icon: const Icon(Icons.forward_to_inbox), label: const Text('رفع للإدارة')),
-                  ]),
+                  const Divider(height: 20),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    alignment: WrapAlignment.start,
+                    children: [
+                      OutlinedButton.icon(
+                        onPressed: () => _pdfAction(d, false),
+                        icon: const Icon(Icons.visibility_outlined),
+                        label: const Text('عرض التقرير'),
+                      ),
+                      OutlinedButton.icon(
+                        onPressed: () => _pdfAction(d, true),
+                        icon: const Icon(Icons.share_outlined),
+                        label: const Text('مشاركة'),
+                      ),
+                      if (_canEdit(d))
+                        OutlinedButton.icon(
+                          onPressed: () => _compose(doc: doc),
+                          icon: const Icon(Icons.edit_outlined),
+                          label: const Text('تعديل'),
+                        ),
+                      if (_canEdit(d))
+                        OutlinedButton.icon(
+                          onPressed: () => _delete(doc),
+                          icon: const Icon(Icons.delete_outline, color: Colors.red),
+                          label: const Text('حذف المسودة'),
+                        ),
+                      if (!_isHiddenForCurrentUser(d))
+                        OutlinedButton.icon(
+                          onPressed: () => _hideFromMyList(doc),
+                          icon: const Icon(Icons.remove_circle_outline),
+                          label: const Text('إزالة من قائمتي'),
+                        ),
+                    ],
+                  ),
+                  if (supervisor &&
+                      d['createdByRole'] == 'security_officer' &&
+                      d['status'] == 'submitted') ...[
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: () => _review(doc, false),
+                            icon: const Icon(Icons.archive_outlined),
+                            label: const Text('إبقاء داخليًا'),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: FilledButton.icon(
+                            onPressed: () => _review(doc, true),
+                            icon: const Icon(Icons.forward_to_inbox),
+                            label: const Text('رفع للإدارة'),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ])));
             });
         },
