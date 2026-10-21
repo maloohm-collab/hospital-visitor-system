@@ -23,6 +23,7 @@ class _AuthScreenState extends State<AuthScreen> {
   String _role = 'security_officer';
   static const _navy = Color(0xFF16324F);
   static const _teal = Color(0xFF168C8C);
+  static const _secureStorage = FlutterSecureStorage();
 
   @override
   void dispose() {
@@ -370,7 +371,7 @@ class _LiveDateTimeCardState extends State<_LiveDateTimeCard> {
     }
     setState(() => _loading = true);
     try {
-      final savedPin = await const FlutterSecureStorage().read(
+      final savedPin = await _secureStorage.read(
         key: 'hospital_visitor_pin_' + user.uid,
       );
       if (savedPin == null) {
