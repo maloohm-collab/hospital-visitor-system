@@ -363,10 +363,12 @@ service cloud.firestore {
         && !resource.data.get('hiddenFor', []).hasAny([request.auth.uid])
         && request.resource.data.hiddenFor.hasAny([request.auth.uid]);
 
-      // Owners may permanently delete only their own report before it is forwarded to administration.
+      // Permanent deletion is limited to the author's own internal saved draft.
+      // Submitted or forwarded reports remain in the shared audit trail.
       allow delete: if isActiveUser()
         && resource.data.createdBy == request.auth.uid
-        && !(resource.data.destination == 'admin' && resource.data.status in ['forwarded', 'acknowledged']);
+        && resource.data.destination == 'internal'
+        && resource.data.status == 'saved';
 
     }
 
