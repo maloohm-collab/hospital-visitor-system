@@ -318,7 +318,26 @@ service cloud.firestore {
         && request.resource.data.body.size() >= 10
         && request.resource.data.updatedAt == request.time;
 
-      // Owners may remove only their own report before it is forwarded to administration.
+      // Each recipient may hide a report from their own list without deleting the shared record.
+      // The only allowed change is adding the current user's UID to hiddenFor.
+      allow update: if isActiveUser()
+        && (
+          isActiveSupervisor()
+          || (
+            isActiveAdmin()
+            && resource.data.destination == 'admin'
+            && resource.data.status == 'forwarded'
+          )
+          || resource.data.createdBy == request.auth.uid
+        )
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['hiddenFor'])
+        && request.resource.data.hiddenFor is list
+        && request.resource.data.hiddenFor.hasAll(resource.data.get('hiddenFor', []))
+        && request.resource.data.hiddenFor.size()
+          == resource.data.get('hiddenFor', []).size() + 1
+        && request.resource.data.hiddenFor.hasAny([request.auth.uid]);
+
+      // Owners may permanently delete only their own report before it is forwarded to administration.
       allow delete: if isActiveUser()
         && resource.data.createdBy == request.auth.uid
         && !(resource.data.destination == 'admin' && resource.data.status == 'forwarded');
