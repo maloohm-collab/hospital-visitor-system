@@ -224,6 +224,7 @@ class _VisitorFormScreenState extends State<VisitorFormScreen> {
                   children: [
                     TextFormField(
                       controller: _notesController,
+                      onChanged: (_) => setState(() {}),
                       readOnly: false,
                       minLines: 3,
                       maxLines: 5,
@@ -845,11 +846,7 @@ class _VisitorFormScreenState extends State<VisitorFormScreen> {
         _showMessage('لا يمكنك تعديل ملاحظات زيارة ليست مسجلة باسمك.');
         return;
       }
-      await ref.update({
-        'notes': note,
-        'notesUpdatedAt': FieldValue.serverTimestamp(),
-        'notesUpdatedBy': user.uid,
-      });
+      await ref.update({'notes': note});
       _showMessage(note.isEmpty ? 'تم مسح الملاحظة.' : 'تم حفظ الملاحظة بنجاح.');
     } on FirebaseException catch (error) {
       _showMessage(error.code == 'permission-denied'
