@@ -19,6 +19,7 @@ class AccountProfileScreen extends StatefulWidget {
 class _AccountProfileScreenState extends State<AccountProfileScreen> {
   static const _navy = Color(0xFF16324F);
   static const _teal = Color(0xFF168C8C);
+  static const _secureStorage = FlutterSecureStorage();
   final _formKey = GlobalKey<FormState>();
   final _name = TextEditingController();
   final _phone = TextEditingController();
@@ -156,7 +157,7 @@ class _AccountProfileScreenState extends State<AccountProfileScreen> {
     if (user == null) return;
     setState(() => _saving = true);
     try {
-      await const FlutterSecureStorage().write(
+      await _secureStorage.write(
         key: 'hospital_visitor_pin_' + user.uid,
         value: pin,
       );
@@ -182,7 +183,7 @@ class _AccountProfileScreenState extends State<AccountProfileScreen> {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
     try {
-      await const FlutterSecureStorage().delete(
+      await _secureStorage.delete(
         key: 'hospital_visitor_pin_' + user.uid,
       );
       _pin.clear();
