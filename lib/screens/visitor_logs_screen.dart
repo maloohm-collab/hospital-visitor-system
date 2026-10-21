@@ -73,6 +73,86 @@ class _VisitorLogsScreenState extends State<VisitorLogsScreen> {
     });
   }
 
+  Future<void> _hidePreviousDayAfterSendingReport() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('إخفاء سجلات اليوم السابق؟'),
+        content: const Text(
+          'استخدم هذا الخيار فقط بعد أن تكون قد أرسلت تقرير اليوم السابق إلى المشرف. ستختفي السجلات من قائمتك الشخصية فقط، وستبقى محفوظة وقابلة للبحث لدى المشرف والإدارة.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('رجوع'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('تم الإرسال، إخفاء السجلات'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+
+    try {
+      final now = DateTime.now();
+      final todayStart = DateTime(now.year, now.month, now.day);
+      final yesterdayStart = todayStart.subtract(const Duration(days: 1));
+      final previousDay = await FirebaseFirestore.instance
+          .collection('visitor_logs')
+          .where('createdBy', isEqualTo: user.uid)
+          .get();
+
+      final eligible = previousDay.docs.where((doc) {
+        final data = doc.data();
+        final visitDate = data['visitDate'];
+        final hiddenFor = data['hiddenFor'] as List<dynamic>? ?? const [];
+        if (visitDate is! Timestamp ||
+            data['status'] != 'completed' ||
+            hiddenFor.contains(user.uid)) {
+          return false;
+        }
+        final date = visitDate.toDate();
+        return !date.isBefore(yesterdayStart) && date.isBefore(todayStart);
+      }).toList();
+
+      if (eligible.isEmpty) {
+        _message('لا توجد سجلات مكتملة لليوم السابق تحتاج إلى إخفائها.');
+        return;
+      }
+
+      for (var offset = 0; offset < eligible.length; offset += 400) {
+        final batch = FirebaseFirestore.instance.batch();
+        final end = (offset + 400 < eligible.length)
+            ? offset + 400
+            : eligible.length;
+        for (final doc in eligible.sublist(offset, end)) {
+          batch.update(doc.reference, {
+            'hiddenFor': FieldValue.arrayUnion([user.uid]),
+          });
+        }
+        await batch.commit();
+      }
+
+      _message(
+        'تم إخفاء ${eligible.length} سجلًا من قائمتك فقط. ما زالت محفوظة لدى المشرف والإدارة.',
+      );
+      if (mounted) setState(() {});
+    } on FirebaseException catch (e) {
+      _message(
+        e.code == 'permission-denied'
+            ? 'يلزم نشر تحديث قواعد Firestore قبل إخفاء السجلات.'
+            : 'تعذر إخفاء السجلات (' + e.code + ').',
+      );
+    } catch (_) {
+      _message('تعذر إخفاء سجلات اليوم السابق. حاول مجددًا.');
+    }
+  }
+
   Query<Map<String, dynamic>> _buildQuery(String uid) {
     Query<Map<String, dynamic>> query =
         FirebaseFirestore.instance.collection('visitor_logs');
@@ -158,6 +238,9 @@ class _VisitorLogsScreenState extends State<VisitorLogsScreen> {
 
                         final docs = (snapshot.data?.docs ?? []).where((doc) {
                           final data = doc.data();
+                          final hiddenFor =
+                              data['hiddenFor'] as List<dynamic>? ?? const [];
+                          if (hiddenFor.contains(user.uid)) return false;
                           if (data['floorId'] != _selectedFloorId) {
                             return false;
                           }
@@ -223,6 +306,20 @@ class _VisitorLogsScreenState extends State<VisitorLogsScreen> {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
+        if (_isOfficer) ...[
+          OutlinedButton.icon(
+            onPressed: _hidePreviousDayAfterSendingReport,
+            icon: const Icon(Icons.archive_outlined),
+            label: const Text('إخفاء سجلات اليوم السابق بعد إرسال التقرير'),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: _navy,
+              minimumSize: const Size.fromHeight(48),
+              side: const BorderSide(color: Color(0xFFDDE7EF)),
+              textStyle: const TextStyle(fontWeight: FontWeight.w800),
+            ),
+          ),
+          const SizedBox(height: 12),
+        ],
         Container(
           padding: const EdgeInsets.fromLTRB(18, 18, 18, 20),
           decoration: BoxDecoration(
