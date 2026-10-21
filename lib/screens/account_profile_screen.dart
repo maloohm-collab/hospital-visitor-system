@@ -204,7 +204,7 @@ class _AccountProfileScreenState extends State<AccountProfileScreen> {
 
   String _roleLabel(String role) {
     switch (role) {
-      case 'admin': return 'مسؤول النظام';
+      case 'admin': return 'الإدارة';
       case 'supervisor': return 'مشرف';
       case 'security_officer': return 'ضابط أمن';
       default: return 'غير محدد';
