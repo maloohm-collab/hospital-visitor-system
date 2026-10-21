@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -152,31 +153,7 @@ class _DirectContactScreenState extends State<DirectContactScreen> {
             return ListView(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
               children: [
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFEAF5F5),
-                    borderRadius: BorderRadius.circular(18),
-                    border: Border.all(color: const Color(0xFFD2E9E8)),
-                  ),
-                  child: const Row(
-                    children: [
-                      Icon(Icons.contact_phone_rounded, color: _teal, size: 30),
-                      SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          'اختر الموظف للتواصل هاتفيًا أو عبر واتساب. تظهر هنا حسابات الموظفين النشطة فقط.',
-                          style: TextStyle(
-                            color: _navy,
-                            height: 1.45,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 14),
+                const SizedBox(height: 2),
                 TextField(
                   controller: _searchController,
                   focusNode: _searchFocusNode,
@@ -246,22 +223,31 @@ class _DirectContactScreenState extends State<DirectContactScreen> {
                         children: [
                           Row(
                             children: [
-                              Container(
-                                width: 46,
-                                height: 46,
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFEAF5F5),
-                                  borderRadius: BorderRadius.circular(14),
-                                ),
-                                child: Icon(
-                                  role == 'admin'
-                                      ? Icons.admin_panel_settings_rounded
-                                      : role == 'supervisor'
-                                          ? Icons.supervisor_account_rounded
-                                          : Icons.security_rounded,
-                                  color: _teal,
-                                ),
-                              ),
+                              Builder(builder: (context) {
+                                final photo = (data['photoURL'] ?? '').toString().trim();
+                                final ImageProvider<Object>? photoProvider =
+                                    photo.startsWith('http')
+                                        ? NetworkImage(photo)
+                                        : photo.startsWith('/') && File(photo).existsSync()
+                                            ? FileImage(File(photo))
+                                            : null;
+                                return CircleAvatar(
+                                  radius: 25,
+                                  backgroundColor: const Color(0xFFEAF5F5),
+                                  backgroundImage: photoProvider,
+                                  child: photoProvider == null
+                                      ? Icon(
+                                          role == 'admin'
+                                              ? Icons.admin_panel_settings_rounded
+                                              : role == 'supervisor'
+                                                  ? Icons.supervisor_account_rounded
+                                                  : Icons.security_rounded,
+                                          color: _teal,
+                                          size: 25,
+                                        )
+                                      : null,
+                                );
+                              }),
                               const SizedBox(width: 12),
                               Expanded(
                                 child: Column(
