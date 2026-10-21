@@ -81,6 +81,116 @@ class _VisitorLogsScreenState extends State<VisitorLogsScreen> {
     });
   }
 
+  Future<void> _deleteVisit(DocumentSnapshot<Map<String, dynamic>> doc) async {
+    final data = doc.data();
+    if (data == null || data['status'] != 'completed') {
+      _message('لا يمكن حذف زيارة ما زالت مفتوحة.');
+      return;
+    }
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('حذف سجل الزيارة؟'),
+        content: const Text('سيُحذف هذا السجل نهائيًا من قاعدة البيانات.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('إلغاء'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('حذف نهائي'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    try {
+      await doc.reference.delete();
+      _message('تم حذف سجل الزيارة.');
+    } on FirebaseException catch (e) {
+      _message(e.code == 'permission-denied'
+          ? 'لا تملك صلاحية حذف هذا السجل أو لم تُنشر قواعد Firestore المحدثة.'
+          : 'تعذر حذف السجل (${e.code}).');
+    }
+  }
+
+  Future<void> _deleteVisitsByDateRange() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+    final now = DateTime.now();
+    final range = await showDateRangePicker(
+      context: context,
+      firstDate: DateTime(2020),
+      lastDate: DateTime(now.year + 1, 12, 31),
+      initialDateRange: DateTimeRange(
+        start: DateTime(now.year, now.month, now.day).subtract(const Duration(days: 7)),
+        end: DateTime(now.year, now.month, now.day),
+      ),
+      helpText: 'حدد فترة السجلات المكتملة المراد حذفها',
+      confirmText: 'متابعة',
+      saveText: 'متابعة',
+    );
+    if (range == null) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('تأكيد الحذف الجماعي'),
+        content: Text(
+          'سيتم حذف سجلات الزيارات المكتملة من ${DateFormat('yyyy/MM/dd').format(range.start)} إلى ${DateFormat('yyyy/MM/dd').format(range.end)} نهائيًا. الزيارات المفتوحة لن تُحذف.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('رجوع'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('حذف السجلات'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    try {
+      Query<Map<String, dynamic>> query =
+          FirebaseFirestore.instance.collection('visitor_logs');
+      if (_isOfficer) query = query.where('createdBy', isEqualTo: user.uid);
+      final snapshot = await query.get();
+      final start = DateTime(range.start.year, range.start.month, range.start.day);
+      final endExclusive = DateTime(range.end.year, range.end.month, range.end.day)
+          .add(const Duration(days: 1));
+      final eligible = snapshot.docs.where((doc) {
+        final data = doc.data();
+        final stamp = data['visitDate'];
+        if (data['status'] != 'completed' || stamp is! Timestamp) return false;
+        final date = stamp.toDate();
+        return !date.isBefore(start) && date.isBefore(endExclusive);
+      }).toList();
+      if (eligible.isEmpty) {
+        _message('لا توجد سجلات مكتملة ضمن الفترة المحددة.');
+        return;
+      }
+      for (var offset = 0; offset < eligible.length; offset += 400) {
+        final batch = FirebaseFirestore.instance.batch();
+        final end = (offset + 400 < eligible.length) ? offset + 400 : eligible.length;
+        for (final doc in eligible.sublist(offset, end)) {
+          batch.delete(doc.reference);
+        }
+        await batch.commit();
+      }
+      _message('تم حذف ${eligible.length} سجل زيارة.');
+    } on FirebaseException catch (e) {
+      _message(e.code == 'permission-denied'
+          ? 'رفضت قواعد Firestore حذف بعض السجلات. تحقق من نشر القواعد الجديدة.'
+          : 'تعذر تنفيذ الحذف الجماعي (${e.code}).');
+    } catch (_) {
+      _message('تعذر تنفيذ الحذف الجماعي. حاول مجددًا.');
+    }
+  }
+
   Future<void> _hidePreviousDayAfterSendingReport() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
@@ -298,9 +408,19 @@ class _VisitorLogsScreenState extends State<VisitorLogsScreen> {
                           padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
                           children: [
                             _buildStats(docs),
+                            const SizedBox(height: 12),
+                            OutlinedButton.icon(
+                              onPressed: _deleteVisitsByDateRange,
+                              icon: const Icon(Icons.delete_sweep_outlined, color: Colors.red),
+                              label: const Text('حذف السجلات المكتملة حسب الفترة'),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: _navy,
+                                minimumSize: const Size.fromHeight(46),
+                              ),
+                            ),
                             const SizedBox(height: 14),
                             for (final doc in docs) ...[
-                              _buildVisitCard(doc.data()),
+                              _buildVisitCard(doc),
                               const SizedBox(height: 10),
                             ],
                           ],
@@ -533,7 +653,8 @@ class _VisitorLogsScreenState extends State<VisitorLogsScreen> {
     );
   }
 
-  Widget _buildVisitCard(Map<String, dynamic> data) {
+  Widget _buildVisitCard(DocumentSnapshot<Map<String, dynamic>> doc) {
+    final data = doc.data() ?? <String, dynamic>{};
     final createdAt = data['createdAt'];
     final entryAt = data['entryAt'];
     final exitAt = data['exitAt'];
@@ -623,6 +744,18 @@ class _VisitorLogsScreenState extends State<VisitorLogsScreen> {
             const SizedBox(height: 7),
             Text('ملاحظات: ${data['notes']}',
                 style: const TextStyle(color: Color(0xFF263C50), height: 1.5)),
+          ],
+          if (data['status'] == 'completed') ...[
+            const SizedBox(height: 12),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: OutlinedButton.icon(
+                onPressed: () => _deleteVisit(doc),
+                icon: const Icon(Icons.delete_outline_rounded, color: Colors.red),
+                label: const Text('حذف السجل'),
+                style: OutlinedButton.styleFrom(foregroundColor: Colors.red),
+              ),
+            ),
           ],
           if (!_isOfficer) ...[
             const SizedBox(height: 8),
