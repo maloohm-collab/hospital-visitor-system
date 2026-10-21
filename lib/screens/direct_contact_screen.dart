@@ -13,10 +13,22 @@ class DirectContactScreen extends StatefulWidget {
 
 class _DirectContactScreenState extends State<DirectContactScreen> {
   final TextEditingController _searchController = TextEditingController();
+  final FocusNode _searchFocusNode = FocusNode();
+  late final Stream<QuerySnapshot<Map<String, dynamic>>> _staffStream;
+
+  @override
+  void initState() {
+    super.initState();
+    _staffStream = FirebaseFirestore.instance
+        .collection('users')
+        .where('status', isEqualTo: 'active')
+        .snapshots();
+  }
 
   @override
   void dispose() {
     _searchController.dispose();
+    _searchFocusNode.dispose();
     super.dispose();
   }
 
@@ -105,10 +117,7 @@ class _DirectContactScreenState extends State<DirectContactScreen> {
       ),
       body: SafeArea(
         child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-          stream: FirebaseFirestore.instance
-              .collection('users')
-              .where('status', isEqualTo: 'active')
-              .snapshots(),
+          stream: _staffStream,
           builder: (context, snapshot) {
             if (snapshot.hasError) {
               return const Center(
@@ -170,6 +179,7 @@ class _DirectContactScreenState extends State<DirectContactScreen> {
                 const SizedBox(height: 14),
                 TextField(
                   controller: _searchController,
+                  focusNode: _searchFocusNode,
                   textInputAction: TextInputAction.search,
                   onChanged: (_) => setState(() {}),
                   decoration: InputDecoration(
