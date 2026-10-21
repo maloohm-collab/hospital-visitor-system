@@ -152,7 +152,49 @@ class _AuthScreenState extends State<AuthScreen> {
 
   Future<void> _submitPinLogin() async {
     final pin = _pin.text.trim();
-    if (!RegExp(r'^[0-9]{4}
+    if (!RegExp(r'^[0-9]{4}$').hasMatch(pin)) {
+      _message('أدخل رمزًا مكونًا من 4 أرقام.');
+      return;
+    }
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      _message('سجّل الدخول بالبريد وكلمة المرور أولًا على هذا الجهاز، ثم استخدم الرمز السريع لاحقًا.');
+      return;
+    }
+    setState(() => _loading = true);
+    try {
+      final savedPin = await _secureStorage.read(key: 'hospital_visitor_pin_' + user.uid);
+      if (savedPin == null) {
+        _message('لم تعيّن رمزًا سريعًا لهذا الحساب على هذا الجهاز. سجّل بالبريد ثم عيّن الرمز من حسابي.');
+        return;
+      }
+      if (savedPin != pin) {
+        _message('رمز الدخول غير صحيح.');
+        return;
+      }
+      final profile = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+      final data = profile.data();
+      final role = data?['role'] as String?;
+      final status = data?['status'] as String?;
+      const roles = {'security_officer', 'supervisor', 'admin'};
+      if (!profile.exists || status != 'active' || role == null || !roles.contains(role)) {
+        await FirebaseAuth.instance.signOut();
+        _message('الحساب غير مفعّل. راجع مسؤول النظام.');
+        return;
+      }
+      if (!mounted) return;
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => DashboardScreen(userRole: role)),
+        (_) => false,
+      );
+    } catch (_) {
+      _message('تعذر فتح الجلسة بالرمز. جرّب تسجيل الدخول بالبريد وكلمة المرور.');
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  String _authError(String code) {
     switch (code) {
       case 'invalid-email': return 'صيغة البريد الإلكتروني غير صحيحة.';
       case 'user-not-found':
