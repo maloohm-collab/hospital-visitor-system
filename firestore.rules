@@ -216,6 +216,16 @@ service cloud.firestore {
         && !resource.data.get('hiddenFor', []).hasAny([request.auth.uid])
         && request.resource.data.hiddenFor.hasAny([request.auth.uid]);
 
+      // The visit creator may add, edit, or clear only the notes field on their own visit,
+      // whether the visit is still inside or already completed. Other visit data stays immutable.
+      allow update: if isActiveUser()
+        && resource.data.createdBy == request.auth.uid
+        && resource.data.status in ['inside', 'completed']
+        && request.resource.data.status == resource.data.status
+        && request.resource.data.exitAt == resource.data.exitAt
+        && request.resource.data.notes is string
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['notes']);
+
       // Staff can view their own records; supervisors and admins can review all records.
       allow get, list: if isActiveUser()
         && (
