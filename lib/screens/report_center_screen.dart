@@ -305,6 +305,30 @@ class _ReportCenterScreenState extends State<ReportCenterScreen> {
     return file;
   }
 
+  Future<void> _previewReport(Map<String, dynamic> d) async {
+    try {
+      final file = await _pdf(d);
+      if (!mounted) return;
+      await Navigator.push(
+        context,
+        MaterialPageRoute<void>(
+          builder: (_) => Scaffold(
+            appBar: AppBar(title: const Text('معاينة التقرير')),
+            body: PdfPreview(
+              canChangeOrientation: false,
+              canChangePageFormat: false,
+              allowPrinting: true,
+              allowSharing: true,
+              build: (_) => file.readAsBytes(),
+            ),
+          ),
+        ),
+      );
+    } catch (_) {
+      _message('تعذر فتح التقرير. حاول مجددًا.');
+    }
+  }
+
   Future<void> _pdfAction(Map<String, dynamic> d, bool share) async {
     try {
       final file = await _pdf(d);
@@ -441,7 +465,7 @@ class _ReportCenterScreenState extends State<ReportCenterScreen> {
                     alignment: WrapAlignment.start,
                     children: [
                       OutlinedButton.icon(
-                        onPressed: () => _pdfAction(d, false),
+                        onPressed: () => _previewReport(d),
                         icon: const Icon(Icons.visibility_outlined),
                         label: const Text('عرض التقرير'),
                       ),
