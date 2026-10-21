@@ -44,6 +44,10 @@ class _ReportCenterScreenState extends State<ReportCenterScreen> {
   }
 
   Future<void> _compose({DocumentSnapshot<Map<String, dynamic>>? doc}) async {
+    if (admin) {
+      _message('إنشاء التقارير متاح لضباط الأمن والمشرفين؛ تستقبل الإدارة التقارير المرفوعة وتؤكد استلامها.');
+      return;
+    }
     final old = doc?.data() ?? {};
     final key = GlobalKey<FormState>();
     final title = TextEditingController(text: old['title'] as String? ?? '');
@@ -116,8 +120,8 @@ class _ReportCenterScreenState extends State<ReportCenterScreen> {
                   await ref.set({
                     'reportId': ref.id, 'type': type, 'title': title.text.trim(),
                     'body': body.text.trim(), 'employeeName': employee.text.trim(),
-                    'priority': priority, 'destination': widget.userRole == 'security_officer' ? 'supervisor' : supervisor ? destination : 'admin',
-                    'status': widget.userRole == 'security_officer' ? 'submitted' : supervisor ? (destination == 'admin' ? 'forwarded' : 'saved') : 'forwarded',
+                    'priority': priority, 'destination': widget.userRole == 'security_officer' ? 'supervisor' : destination,
+                    'status': widget.userRole == 'security_officer' ? 'submitted' : (destination == 'admin' ? 'forwarded' : 'saved'),
                     'createdBy': user!.uid, 'createdByEmail': user!.email ?? '',
                     'createdByName': profileName.isEmpty ? 'غير مسجل' : profileName,
                     'createdByPhone': profilePhone,
