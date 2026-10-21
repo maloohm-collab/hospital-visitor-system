@@ -225,50 +225,6 @@ class DashboardScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildTodaySummary() {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return const _SummaryState(message: 'يرجى تسجيل الدخول لعرض الإحصاءات.');
-    Query<Map<String, dynamic>> query = FirebaseFirestore.instance.collection('visitor_logs');
-    if (userRole == 'security_officer') query = query.where('createdBy', isEqualTo: user.uid);
-    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-      stream: query.snapshots(),
-      builder: (context, snapshot) {
-        if (snapshot.hasError) return const _SummaryState(message: 'تعذر تحميل الإحصاءات. تحقق من اتصال Firestore وصلاحيات الحساب.');
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Padding(padding: EdgeInsets.symmetric(vertical: 24), child: Center(child: CircularProgressIndicator()));
-        }
-        final now = DateTime.now();
-        final start = DateTime(now.year, now.month, now.day);
-        final end = start.add(const Duration(days: 1));
-        final today = (snapshot.data?.docs ?? []).where((doc) {
-          final value = doc.data()['visitDate'];
-          if (value is! Timestamp) return false;
-          final date = value.toDate();
-          return !date.isBefore(start) && date.isBefore(end);
-        }).toList();
-        final inside = today.where((doc) => doc.data()['status'] == 'inside').length;
-        final completed = today.where((doc) => doc.data()['status'] == 'completed').length;
-        final visitorCount = today.fold<int>(0, (sum, doc) {
-          final count = doc.data()['visitorCount'];
-          return sum + (count is int ? count : 0);
-        });
-        return Column(children: [
-          Row(children: [
-            Expanded(child: _StatCard(title: 'زيارات اليوم', value: today.length.toString(), icon: Icons.groups_2_outlined, tint: teal)),
-            const SizedBox(width: 10),
-            Expanded(child: _StatCard(title: 'داخل المستشفى', value: inside.toString(), icon: Icons.meeting_room_outlined, tint: const Color(0xFF4F67B1))),
-          ]),
-          const SizedBox(height: 10),
-          Row(children: [
-            Expanded(child: _StatCard(title: 'زيارات مكتملة', value: completed.toString(), icon: Icons.check_circle_outline, tint: const Color(0xFF27865B))),
-            const SizedBox(width: 10),
-            Expanded(child: _StatCard(title: 'عدد الزوار اليوم', value: visitorCount.toString(), icon: Icons.people_alt_outlined, tint: const Color(0xFFD28A25))),
-          ]),
-        ]);
-      },
-    );
-  }
-
   String _roleLabel(String role) {
     switch (role) {
       case 'admin': return 'مسؤول النظام';
@@ -276,36 +232,6 @@ class DashboardScreen extends StatelessWidget {
       default: return 'ضابط أمن';
     }
   }
-}
-
-class _SummaryState extends StatelessWidget {
-  const _SummaryState({required this.message});
-  final String message;
-  @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.all(16),
-    decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: const Color(0xFFE4EAF0))),
-    child: Text(message, textAlign: TextAlign.center, style: const TextStyle(color: Color(0xFF64748B))),
-  );
-}
-
-class _StatCard extends StatelessWidget {
-  const _StatCard({required this.title, required this.value, required this.icon, required this.tint});
-  final String title, value;
-  final IconData icon;
-  final Color tint;
-  @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.all(14),
-    decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(18), border: Border.all(color: const Color(0xFFE4EAF0))),
-    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Container(width: 38, height: 38, decoration: BoxDecoration(color: tint.withOpacity(0.11), borderRadius: BorderRadius.circular(12)), child: Icon(icon, color: tint, size: 21)),
-      const SizedBox(height: 14),
-      Text(value, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: DashboardScreen.navy)),
-      const SizedBox(height: 4),
-      Text(title, style: const TextStyle(fontSize: 12, color: Color(0xFF64748B))),
-    ]),
-  );
 }
 
 class _ActionTile extends StatelessWidget {
