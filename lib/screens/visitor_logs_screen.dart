@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import '../widgets/official_hospital_header.dart';
 
 /// سجل الزيارات مصنف حسب الطابق والقسم لتسهيل المراجعة مع كثرة السجلات.
 class VisitorLogsScreen extends StatefulWidget {
@@ -224,6 +225,10 @@ class _VisitorLogsScreenState extends State<VisitorLogsScreen> {
             : Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  const Padding(
+                    padding: EdgeInsets.fromLTRB(16, 12, 16, 0),
+                    child: OfficialHospitalHeader(),
+                  ),
                   _buildFilterHeader(selectedFloor),
                   Expanded(
                     child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
@@ -313,6 +318,7 @@ class _VisitorLogsScreenState extends State<VisitorLogsScreen> {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
+        const OfficialHospitalHeader(),
         if (_isOfficer) ...[
           OutlinedButton.icon(
             onPressed: _hidePreviousDayAfterSendingReport,
