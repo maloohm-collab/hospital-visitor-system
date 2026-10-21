@@ -3,14 +3,88 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
-/// ضابط الأمن يرى سجلاته فقط، بينما يستطيع المشرف والمسؤول مراجعة سجلات المستشفى.
-class VisitorLogsScreen extends StatelessWidget {
+/// سجل الزيارات مصنف حسب الطابق والقسم لتسهيل المراجعة مع كثرة السجلات.
+class VisitorLogsScreen extends StatefulWidget {
   const VisitorLogsScreen({super.key, required this.userRole});
 
   final String userRole;
 
+  @override
+  State<VisitorLogsScreen> createState() => _VisitorLogsScreenState();
+}
+
+class _VisitorLogsScreenState extends State<VisitorLogsScreen> {
   static const _navy = Color(0xFF16324F);
   static const _teal = Color(0xFF168C8C);
+  static const _muted = Color(0xFF637487);
+
+  static const Map<String, Map<String, dynamic>> _floors = {
+    'floor_5': {
+      'label': 'الطابق الخامس',
+      'subtitle': 'العناية الحثيثة والحروق',
+      'departments': ['العناية الحثيثة للحروق (ICU Burns)'],
+    },
+    'floor_4': {
+      'label': 'الطابق الرابع',
+      'subtitle': 'الجراحات التخصصية',
+      'departments': ['جراحة العظام — رجال', 'جراحة العظام — نساء', 'قسم الأطفال'],
+    },
+    'floor_3': {
+      'label': 'الطابق الثالث',
+      'subtitle': 'الباطنية',
+      'departments': ['الباطنية — رجال', 'الباطنية — نساء'],
+    },
+    'floor_2': {
+      'label': 'الطابق الثاني',
+      'subtitle': 'الجراحة',
+      'departments': ['الجراحة — رجال', 'الجراحة — نساء'],
+    },
+    'floor_1': {
+      'label': 'الطابق الأول',
+      'subtitle': 'التوليد وحديثو الولادة',
+      'departments': ['التوليد والولادة', 'الأطفال حديثو الولادة'],
+    },
+    'ccu': {
+      'label': 'وحدة CCU',
+      'subtitle': 'القلب والقسطرة',
+      'departments': ['العناية القلبية الحثيثة (CCU)', 'خدمات القلب والقسطرة'],
+    },
+  };
+
+  String? _selectedFloorId;
+  String? _selectedDepartment;
+  String _searchTerm = '';
+  final TextEditingController _searchController = TextEditingController();
+
+  bool get _isOfficer => widget.userRole == 'security_officer';
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _selectFloor(String floorId) {
+    setState(() {
+      _selectedFloorId = floorId;
+      _selectedDepartment = null;
+      _searchTerm = '';
+      _searchController.clear();
+    });
+  }
+
+  Query<Map<String, dynamic>> _buildQuery(String uid) {
+    Query<Map<String, dynamic>> query =
+        FirebaseFirestore.instance.collection('visitor_logs');
+    if (_isOfficer) {
+      // يظل ضابط الأمن مقيدًا بسجلاته فقط وفق صلاحيات Firestore الحالية.
+      query = query.where('createdBy', isEqualTo: uid);
+    } else if (_selectedFloorId != null) {
+      // تحميل سجلات الطابق المطلوب فقط بدل جلب سجل المستشفى كاملًا.
+      query = query.where('floorId', isEqualTo: _selectedFloorId);
+    }
+    return query;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -21,155 +95,420 @@ class VisitorLogsScreen extends StatelessWidget {
       );
     }
 
-    Query<Map<String, dynamic>> query =
-        FirebaseFirestore.instance.collection('visitor_logs');
-    if (userRole == 'security_officer') {
-      query = query.where('createdBy', isEqualTo: user.uid);
-    }
+    final selectedFloor = _selectedFloorId == null
+        ? null
+        : _floors[_selectedFloorId!];
 
     return Scaffold(
-      appBar: AppBar(title: const Text('سجل الزيارات')),
-      body: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-        stream: query.snapshots(),
-        builder: (context, snapshot) {
-          if (snapshot.hasError) {
-            return const _LogsMessage(
-              icon: Icons.lock_outline_rounded,
-              title: 'تعذر تحميل سجل الزيارات',
-              message: 'تحقق من نشر قواعد Firestore ومن صلاحية حسابك، ثم حاول مجددًا.',
-            );
-          }
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
+      appBar: AppBar(
+        title: const Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('سجل الزيارات',
+                style: TextStyle(fontWeight: FontWeight.w800)),
+            Text('التصنيف حسب الطابق والقسم',
+                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500)),
+          ],
+        ),
+        actions: [
+          if (_selectedFloorId != null)
+            IconButton(
+              tooltip: 'العودة لاختيار الطابق',
+              onPressed: () => setState(() {
+                _selectedFloorId = null;
+                _selectedDepartment = null;
+                _searchTerm = '';
+                _searchController.clear();
+              }),
+              icon: const Icon(Icons.grid_view_rounded),
+            ),
+        ],
+      ),
+      body: SafeArea(
+        child: _selectedFloorId == null
+            ? _buildFloorPicker()
+            : Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _buildFilterHeader(selectedFloor),
+                  Expanded(
+                    child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+                      stream: _buildQuery(user.uid).snapshots(),
+                      builder: (context, snapshot) {
+                        if (snapshot.hasError) {
+                          return const _LogsMessage(
+                            icon: Icons.lock_outline_rounded,
+                            title: 'تعذر تحميل سجل الزيارات',
+                            message:
+                                'تحقق من الاتصال وصلاحيات حسابك، ثم حاول مجددًا.',
+                          );
+                        }
+                        if (snapshot.connectionState ==
+                            ConnectionState.waiting) {
+                          return const Center(
+                              child: CircularProgressIndicator());
+                        }
 
-          final docs = snapshot.data?.docs.toList() ?? [];
-          docs.sort((a, b) {
-            final aTime = a.data()['createdAt'];
-            final bTime = b.data()['createdAt'];
-            if (aTime is Timestamp && bTime is Timestamp) {
-              return bTime.compareTo(aTime);
-            }
-            return 0;
-          });
+                        final docs = (snapshot.data?.docs ?? []).where((doc) {
+                          final data = doc.data();
+                          if (!_isOfficer &&
+                              data['floorId'] != _selectedFloorId) {
+                            return false;
+                          }
+                          if (_selectedDepartment != null &&
+                              data['department'] != _selectedDepartment) {
+                            return false;
+                          }
+                          if (_searchTerm.isNotEmpty) {
+                            final searchable = [
+                              doc.id,
+                              data['floorName'],
+                              data['department'],
+                              data['roomNumber'],
+                              data['createdByName'],
+                              data['createdByPhone'],
+                              data['visitorCount'],
+                              data['notes'],
+                            ].join(' ').toLowerCase();
+                            if (!searchable.contains(_searchTerm)) return false;
+                          }
+                          return true;
+                        }).toList()
+                          ..sort((a, b) {
+                            final aTime = a.data()['entryAt'];
+                            final bTime = b.data()['entryAt'];
+                            if (aTime is Timestamp && bTime is Timestamp) {
+                              return bTime.compareTo(aTime);
+                            }
+                            return 0;
+                          });
 
-          if (docs.isEmpty) {
-            return const _LogsMessage(
-              icon: Icons.inbox_outlined,
-              title: 'لا توجد سجلات حتى الآن',
-              message: 'ستظهر هنا الزيارات المحفوظة بعد تسجيل الدخول والخروج وحفظ الزيارة.',
-            );
-          }
+                        if (docs.isEmpty) {
+                          return _LogsMessage(
+                            icon: Icons.inbox_outlined,
+                            title: 'لا توجد زيارات مطابقة',
+                            message: _selectedDepartment == null
+                                ? 'لا توجد سجلات في هذا الطابق حسب البحث الحالي.'
+                                : 'لا توجد سجلات في القسم المحدد. جرّب قسمًا آخر أو امسح البحث.',
+                          );
+                        }
 
-          return ListView.separated(
-            padding: const EdgeInsets.all(16),
-            itemCount: docs.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 10),
-            itemBuilder: (context, index) {
-              final data = docs[index].data();
-              final createdAt = data['createdAt'];
-              final entryAt = data['entryAt'];
-              final exitAt = data['exitAt'];
-              final isInside = data['status'] == 'inside';
-              final statusColor = isInside ? const Color(0xFFB54708) : const Color(0xFF27865B);
-              final statusLabel = isInside ? 'داخل المستشفى' : 'مكتملة';
-              String formatTimestamp(dynamic value) {
-                if (value is Timestamp) {
-                  return DateFormat('yyyy/MM/dd  HH:mm', 'en').format(value.toDate());
-                }
-                return '—';
-              }
+                        return ListView.separated(
+                          padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+                          itemCount: docs.length,
+                          separatorBuilder: (_, __) =>
+                              const SizedBox(height: 10),
+                          itemBuilder: (context, index) =>
+                              _buildVisitCard(docs[index].data()),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+      ),
+    );
+  }
 
-              return Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: isInside ? const Color(0xFFFFFAF0) : Colors.white,
-                  borderRadius: BorderRadius.circular(18),
-                  border: Border.all(color: isInside ? const Color(0xFFF5C56B) : const Color(0xFFB7E4CD)),
+  Widget _buildFloorPicker() {
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        Container(
+          padding: const EdgeInsets.fromLTRB(18, 18, 18, 20),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF3F7FA),
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: const Color(0xFFDDE7EF)),
+          ),
+          child: const Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('اختر الطابق أو الوحدة',
+                  style: TextStyle(
+                      color: _navy, fontSize: 20, fontWeight: FontWeight.w800)),
+              SizedBox(height: 6),
+              Text(
+                'بعد اختيار الطابق، يمكنك تحديد القسم والبحث داخل سجلاته فقط.',
+                style: TextStyle(color: _muted, height: 1.5),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 14),
+        for (final entry in _floors.entries) ...[
+          _FloorChoice(
+            title: entry.value['label'] as String,
+            subtitle: entry.value['subtitle'] as String,
+            onTap: () => _selectFloor(entry.key),
+          ),
+          const SizedBox(height: 10),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildFilterHeader(Map<String, dynamic>? floor) {
+    final departments =
+        List<String>.from(floor?['departments'] as List? ?? const []);
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        border: Border(bottom: BorderSide(color: Color(0xFFE1E8EF))),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.apartment_rounded, color: _teal, size: 21),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  floor?['label'] as String? ?? 'الطابق المحدد',
+                  style: const TextStyle(
+                      color: _navy, fontSize: 17, fontWeight: FontWeight.w800),
                 ),
+              ),
+              TextButton.icon(
+                onPressed: () => setState(() {
+                  _selectedFloorId = null;
+                  _selectedDepartment = null;
+                  _searchTerm = '';
+                  _searchController.clear();
+                }),
+                icon: const Icon(Icons.swap_horiz_rounded, size: 18),
+                label: const Text('تغيير'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          DropdownButtonFormField<String>(
+            value: _selectedDepartment,
+            isExpanded: true,
+            decoration: InputDecoration(
+              labelText: 'تصفية حسب القسم',
+              prefixIcon: const Icon(Icons.local_hospital_outlined),
+              filled: true,
+              fillColor: const Color(0xFFF7F9FB),
+              border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(13),
+                  borderSide: const BorderSide(color: Color(0xFFE1E8EF))),
+              enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(13),
+                  borderSide: const BorderSide(color: Color(0xFFE1E8EF))),
+            ),
+            items: [
+              const DropdownMenuItem<String>(
+                  value: null, child: Text('جميع أقسام الطابق')),
+              ...departments.map((department) => DropdownMenuItem<String>(
+                  value: department,
+                  child: Text(department, overflow: TextOverflow.ellipsis))),
+            ],
+            onChanged: (value) =>
+                setState(() => _selectedDepartment = value),
+          ),
+          const SizedBox(height: 10),
+          TextField(
+            controller: _searchController,
+            onChanged: (value) =>
+                setState(() => _searchTerm = value.trim().toLowerCase()),
+            decoration: InputDecoration(
+              hintText: 'بحث داخل السجل الحالي: الغرفة أو الموظف أو الملاحظات',
+              prefixIcon: const Icon(Icons.search_rounded, color: _teal),
+              suffixIcon: _searchTerm.isEmpty
+                  ? null
+                  : IconButton(
+                      tooltip: 'مسح البحث',
+                      onPressed: () {
+                        _searchController.clear();
+                        setState(() => _searchTerm = '');
+                      },
+                      icon: const Icon(Icons.close_rounded),
+                    ),
+              filled: true,
+              fillColor: const Color(0xFFF7F9FB),
+              border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(13),
+                  borderSide: const BorderSide(color: Color(0xFFE1E8EF))),
+              enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(13),
+                  borderSide: const BorderSide(color: Color(0xFFE1E8EF))),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildVisitCard(Map<String, dynamic> data) {
+    final createdAt = data['createdAt'];
+    final entryAt = data['entryAt'];
+    final exitAt = data['exitAt'];
+    final isInside = data['status'] == 'inside';
+    final statusColor =
+        isInside ? const Color(0xFFB54708) : const Color(0xFF27865B);
+    final statusLabel = isInside ? 'داخل المستشفى' : 'مكتملة';
+
+    String formatTimestamp(dynamic value) {
+      if (value is Timestamp) {
+        return DateFormat('yyyy/MM/dd  HH:mm', 'en').format(value.toDate());
+      }
+      return '—';
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: isInside ? const Color(0xFFFFFAF0) : Colors.white,
+        borderRadius: BorderRadius.circular(17),
+        border: Border.all(
+            color: isInside
+                ? const Color(0xFFF5C56B)
+                : const Color(0xFFE1E8EF)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                    color: const Color(0xFFE5F3F3),
+                    borderRadius: BorderRadius.circular(12)),
+                child: const Icon(Icons.fact_check_rounded, color: _teal),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      children: [
-                        Container(
-                          width: 44,
-                          height: 44,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFE5F3F3),
-                            borderRadius: BorderRadius.circular(13),
-                          ),
-                          child: const Icon(Icons.fact_check_rounded, color: _teal),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                data['floorName'] as String? ?? 'الطابق غير محدد',
-                                style: const TextStyle(
-                                  color: _navy,
-                                  fontWeight: FontWeight.w800,
-                                  fontSize: 15,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                data['department'] as String? ?? 'القسم غير محدد',
-                                style: const TextStyle(color: Color(0xFF637487)),
-                              ),
-                            ],
-                          ),
-                        ),
-                        Text(
-                          (data['visitorCount'] ?? 0).toString() + ' زائر',
-                          style: const TextStyle(color: _teal, fontWeight: FontWeight.w800),
-                        ),
-                      ],
+                    Text(
+                      data['department'] as String? ?? 'القسم غير محدد',
+                      style: const TextStyle(
+                          color: _navy,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 14),
                     ),
-                    const SizedBox(height: 10),
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: statusColor.withOpacity(0.10),
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: statusColor.withOpacity(0.35)),
-                        ),
-                        child: Row(mainAxisSize: MainAxisSize.min, children: [
-                          Icon(isInside ? Icons.schedule_rounded : Icons.check_circle_rounded, size: 16, color: statusColor),
-                          const SizedBox(width: 6),
-                          Text(statusLabel, style: TextStyle(color: statusColor, fontWeight: FontWeight.w800, fontSize: 12)),
-                        ]),
-                      ),
-                    ),
-                    const Divider(height: 24),
-                    _LogDetail(label: 'رقم الغرفة', value: data['roomNumber'] as String? ?? '—'),
-                    _LogDetail(label: 'وقت الدخول', value: formatTimestamp(entryAt)),
-                    _LogDetail(label: 'وقت الخروج', value: formatTimestamp(exitAt)),
-                    _LogDetail(label: 'تاريخ الحفظ', value: formatTimestamp(createdAt)),
-                    if ((data['notes'] as String? ?? '').trim().isNotEmpty) ...[
-                      const SizedBox(height: 8),
-                      Text(
-                        'ملاحظات: ' + (data['notes'] as String),
-                        style: const TextStyle(color: Color(0xFF526579), height: 1.5),
-                      ),
-                    ],
-                    if (userRole != 'security_officer') ...[
-                      const SizedBox(height: 8),
-                      if ((data['createdByName'] as String? ?? '').trim().isNotEmpty)
-                        Text('سُجّل بواسطة: ${data['createdByName']}', style: const TextStyle(fontSize: 12, color: Color(0xFF637487))),
-                      if ((data['createdByPhone'] as String? ?? '').trim().isNotEmpty)
-                        Text('هاتف الموظف: ${data['createdByPhone']}', style: const TextStyle(fontSize: 12, color: Color(0xFF637487))),
-                    ],
+                    const SizedBox(height: 3),
+                    Text('الغرفة: ${data['roomNumber'] ?? '—'}',
+                        style: const TextStyle(
+                            color: _muted, fontWeight: FontWeight.w600)),
                   ],
                 ),
-              );
-            },
-          );
-        },
+              ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text('${data['visitorCount'] ?? 0} زائر',
+                      style: const TextStyle(
+                          color: _teal, fontWeight: FontWeight.w800)),
+                  const SizedBox(height: 5),
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: statusColor.withOpacity(0.10),
+                      borderRadius: BorderRadius.circular(18),
+                    ),
+                    child: Text(statusLabel,
+                        style: TextStyle(
+                            color: statusColor,
+                            fontWeight: FontWeight.w800,
+                            fontSize: 11)),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          const Divider(height: 24),
+          _LogDetail(label: 'وقت الدخول', value: formatTimestamp(entryAt)),
+          _LogDetail(label: 'وقت الخروج', value: formatTimestamp(exitAt)),
+          _LogDetail(label: 'تاريخ الحفظ', value: formatTimestamp(createdAt)),
+          if ((data['notes'] as String? ?? '').trim().isNotEmpty) ...[
+            const SizedBox(height: 7),
+            Text('ملاحظات: ${data['notes']}',
+                style: const TextStyle(color: Color(0xFF263C50), height: 1.5)),
+          ],
+          if (!_isOfficer) ...[
+            const SizedBox(height: 8),
+            if ((data['createdByName'] as String? ?? '').trim().isNotEmpty)
+              Text('سُجّل بواسطة: ${data['createdByName']}',
+                  style: const TextStyle(
+                      fontSize: 12,
+                      color: _muted,
+                      fontWeight: FontWeight.w600)),
+            if ((data['createdByPhone'] as String? ?? '').trim().isNotEmpty)
+              Text('هاتف الموظف: ${data['createdByPhone']}',
+                  style: const TextStyle(fontSize: 12, color: _muted)),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _FloorChoice extends StatelessWidget {
+  const _FloorChoice({
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+  });
+
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          padding: const EdgeInsets.all(15),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: const Color(0xFFE1E8EF)),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 45,
+                height: 45,
+                decoration: BoxDecoration(
+                    color: const Color(0xFFE5F3F3),
+                    borderRadius: BorderRadius.circular(13)),
+                child: const Icon(Icons.apartment_rounded,
+                    color: Color(0xFF168C8C)),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title,
+                        style: const TextStyle(
+                            color: Color(0xFF16324F),
+                            fontWeight: FontWeight.w800,
+                            fontSize: 15)),
+                    const SizedBox(height: 4),
+                    Text(subtitle,
+                        style: const TextStyle(
+                            color: Color(0xFF637487), fontSize: 12)),
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_left_rounded,
+                  color: Color(0xFF637487)),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -188,12 +527,14 @@ class _LogDetail extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(width: 95, child: Text(label, style: const TextStyle(color: Color(0xFF637487)))),
+          SizedBox(
+              width: 95,
+              child: Text(label,
+                  style: const TextStyle(color: Color(0xFF637487)))),
           Expanded(
-            child: Text(
-              value,
-              style: const TextStyle(color: Color(0xFF263C50), fontWeight: FontWeight.w600),
-            ),
+            child: Text(value,
+                style: const TextStyle(
+                    color: Color(0xFF263C50), fontWeight: FontWeight.w600)),
           ),
         ],
       ),
@@ -202,7 +543,8 @@ class _LogDetail extends StatelessWidget {
 }
 
 class _LogsMessage extends StatelessWidget {
-  const _LogsMessage({required this.icon, required this.title, required this.message});
+  const _LogsMessage(
+      {required this.icon, required this.title, required this.message});
 
   final IconData icon;
   final String title;
@@ -218,14 +560,17 @@ class _LogsMessage extends StatelessWidget {
           children: [
             Icon(icon, size: 48, color: const Color(0xFF168C8C)),
             const SizedBox(height: 14),
-            Text(
-              title,
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Color(0xFF16324F)),
-            ),
+            Text(title,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                    color: Color(0xFF16324F))),
             const SizedBox(height: 8),
-            Text(message, textAlign: TextAlign.center,
-                style: const TextStyle(color: Color(0xFF637487), height: 1.6)),
+            Text(message,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                    color: Color(0xFF637487), height: 1.6)),
           ],
         ),
       ),
