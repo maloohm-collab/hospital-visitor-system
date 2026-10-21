@@ -345,7 +345,7 @@ class _DutyReportsScreenState extends State<DutyReportsScreen> {
     if (!mounted) return;
     await showDialog<void>(context: context, builder: (dialogContext) => AlertDialog(
       title: const Text('تم حفظ التقرير على الهاتف'),
-      content: Text('تم إنشاء PDF محليًا.\nالعنوان: $title\nالأهمية: ${_priorityLabel(priority)}\n\nاختر المشاركة يدويًا؛ لن يُرسل التقرير تلقائيًا.'),
+      content: const Text('تم حفظ التقرير بنجاح.'),
       actions: [
         TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('لاحقًا')),
         if (supervisor && destination == 'admin')
