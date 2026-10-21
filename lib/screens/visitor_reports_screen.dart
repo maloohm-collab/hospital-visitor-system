@@ -298,7 +298,7 @@ class VisitorReportsScreen extends StatelessWidget {
         subject: 'التقرير اليومي لحركة الزوار — $dateLabel');
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('تم حفظ التقرير على الهاتف. يمكنك مشاركته مباشرة مع المشرف من نافذة المشاركة.')),
+          const SnackBar(content: Text('تم إنشاء التقرير بنجاح.')),
         );
       }
     } catch (error) {
