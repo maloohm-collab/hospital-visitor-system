@@ -338,7 +338,7 @@ service cloud.firestore {
           || (
             isActiveAdmin()
             && resource.data.destination == 'admin'
-            && resource.data.status == 'forwarded'
+            && resource.data.status in ['forwarded', 'acknowledged']
           )
           || resource.data.createdBy == request.auth.uid
         )
@@ -347,6 +347,7 @@ service cloud.firestore {
         && request.resource.data.hiddenFor.hasAll(resource.data.get('hiddenFor', []))
         && request.resource.data.hiddenFor.size()
           == resource.data.get('hiddenFor', []).size() + 1
+        && !resource.data.get('hiddenFor', []).hasAny([request.auth.uid])
         && request.resource.data.hiddenFor.hasAny([request.auth.uid]);
 
       // Owners may permanently delete only their own report before it is forwarded to administration.
