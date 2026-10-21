@@ -10,7 +10,6 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import 'package:share_plus/share_plus.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 /// تقارير المناوبة محلية فقط؛ لا تحفظ التقارير في Firestore ولا ترفع ملفات PDF.
 class DutyReportsScreen extends StatefulWidget {
@@ -23,8 +22,6 @@ class DutyReportsScreen extends StatefulWidget {
 class _DutyReportsScreenState extends State<DutyReportsScreen> {
   static const navy = Color(0xFF16324F);
   static const teal = Color(0xFF168C8C);
-  // رقم اختبار مؤقت؛ يستبدل برقم الإدارة المعتمد قبل الاستخدام الفعلي.
-  static const String _temporaryAdminWhatsApp = '962790000000';
   bool get supervisor => widget.userRole == 'supervisor';
   bool get admin => widget.userRole == 'admin';
 
@@ -348,13 +345,6 @@ class _DutyReportsScreenState extends State<DutyReportsScreen> {
       content: const Text('تم حفظ التقرير بنجاح.'),
       actions: [
         TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('لاحقًا')),
-        if (supervisor && destination == 'admin')
-          TextButton.icon(
-            onPressed: () async {
-              Navigator.pop(dialogContext);
-              await _openAdminWhatsApp(title: title, type: type, priority: priority, id: id);
-            },
-            icon: const Icon(Icons.chat_rounded), label: const Text('فتح واتساب الإدارة')),
         FilledButton.icon(
           onPressed: () async {
             Navigator.pop(dialogContext);
@@ -364,21 +354,6 @@ class _DutyReportsScreenState extends State<DutyReportsScreen> {
           icon: const Icon(Icons.share_rounded), label: const Text('مشاركة ملف PDF')),
       ],
     ));
-  }
-
-  Future<void> _openAdminWhatsApp({
-    required String title, required String type, required String priority, required String id,
-  }) async {
-    final message = 'تنبيه من مشرف المناوبة\nنوع التقرير: ${_typeLabel(type)}\n'
-      'العنوان: $title\nالأهمية: ${_priorityLabel(priority)}\n'
-      'المرجع المحلي: $id\nيرجى مراجعة ملف PDF المرفق يدويًا.';
-    final uri = Uri.parse('https://wa.me/$_temporaryAdminWhatsApp?text=${Uri.encodeComponent(message)}');
-    try {
-      final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
-      if (!opened && mounted) _message('تعذر فتح واتساب. استخدم مشاركة PDF واختر جهة الاتصال.');
-    } catch (_) {
-      if (mounted) _message('تعذر فتح واتساب. يمكنك مشاركة PDF من زر المشاركة.');
-    }
   }
 
   void _message(String text) {
@@ -428,8 +403,8 @@ class _DutyReportsScreenState extends State<DutyReportsScreen> {
                 textAlign: TextAlign.center,
                 style: const TextStyle(
                   color: Color(0xFF101820),
-                  fontSize: 22,
-                  height: 1.25,
+                  fontSize: 21,
+                  height: 1.3,
                   fontWeight: FontWeight.w900,
                 ),
               ),
@@ -446,7 +421,7 @@ class _DutyReportsScreenState extends State<DutyReportsScreen> {
                 style: const TextStyle(
                   color: Color(0xFF263238),
                   height: 1.6,
-                  fontSize: 14,
+                  fontSize: 13,
                   fontWeight: FontWeight.w500,
                 ),
               ),
