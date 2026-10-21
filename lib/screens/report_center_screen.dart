@@ -26,7 +26,8 @@ class _ReportCenterScreenState extends State<ReportCenterScreen> {
   Query<Map<String, dynamic>> _query() {
     Query<Map<String, dynamic>> q = FirebaseFirestore.instance.collection('duty_reports');
     if (admin) {
-      q = q.where('destination', isEqualTo: 'admin').where('status', isEqualTo: 'forwarded');
+      q = q.where('destination', isEqualTo: 'admin')
+          .where('status', whereIn: ['forwarded', 'acknowledged']);
     } else if (!supervisor) {
       q = q.where('createdBy', isEqualTo: user?.uid);
     } else {
@@ -354,6 +355,46 @@ class _ReportCenterScreenState extends State<ReportCenterScreen> {
     } catch (_) { _message('تعذر إنشاء PDF. تحقق من الاتصال لتحميل خط PDF ثم حاول مجددًا.'); }
   }
 
+  Future<void> _confirmReceivedReport(
+      DocumentSnapshot<Map<String, dynamic>> doc) async {
+    final yes = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('تأكيد استلام التقرير؟'),
+        content: const Text(
+          'سيتم تسجيل أن الإدارة راجعت التقرير وأكدت استلامه. سيبقى التقرير محفوظًا ويمكن الرجوع إليه.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('رجوع'),
+          ),
+          FilledButton.icon(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            icon: const Icon(Icons.check_circle_outline),
+            label: const Text('تأكيد الاستلام'),
+          ),
+        ],
+      ),
+    );
+    if (yes != true || user == null) return;
+    try {
+      await doc.reference.update({
+        'status': 'acknowledged',
+        'adminConfirmedBy': user!.uid,
+        'adminConfirmedAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+      _message('تم تأكيد استلام التقرير.');
+    } on FirebaseException catch (e) {
+      _message(
+        e.code == 'permission-denied'
+            ? 'قواعد Firestore الحالية لا تسمح بتأكيد الاستلام بعد. انشر تحديث القواعد ثم أعد المحاولة.'
+            : 'تعذر تأكيد التقرير (' + e.code + ').',
+      );
+    }
+  }
+
   Future<void> _review(DocumentSnapshot<Map<String, dynamic>> doc, bool forward) async {
     try {
       await doc.reference.update({
@@ -438,7 +479,13 @@ class _ReportCenterScreenState extends State<ReportCenterScreen> {
               final doc = docs[i], d = doc.data();
               final urgent = d['priority'] == 'urgent';
               final created = d['createdAt'] is Timestamp ? (d['createdAt'] as Timestamp).toDate() : null;
-              final status = d['status'] == 'forwarded' ? 'مرفوع للإدارة' : d['status'] == 'saved' ? 'داخلي' : 'بانتظار المراجعة';
+              final status = d['status'] == 'acknowledged'
+                  ? 'تم تأكيد الاستلام'
+                  : d['status'] == 'forwarded'
+                      ? 'مرفوع للإدارة'
+                      : d['status'] == 'saved'
+                          ? 'داخلي'
+                          : 'بانتظار المراجعة';
               return Card(elevation: 0, margin: const EdgeInsets.only(bottom: 12),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18),
                   side: BorderSide(color: urgent ? const Color(0xFFE7B2AE) : const Color(0xFFE1E8EF))),
@@ -457,7 +504,41 @@ class _ReportCenterScreenState extends State<ReportCenterScreen> {
                   Text(d['body'] as String? ?? '', maxLines: 4, overflow: TextOverflow.ellipsis,
                     style: const TextStyle(fontSize: 14, height: 1.6, color: Color(0xFF33485C))),
                   const SizedBox(height: 8),
-                  Text('الحالة: $status', style: const TextStyle(fontWeight: FontWeight.w700, color: navy)),
+                  Text(
+                    'الحالة: $status',
+                    style: const TextStyle(fontWeight: FontWeight.w800, color: navy),
+                  ),
+                  if (admin && d['status'] == 'forwarded') ...[
+                    const SizedBox(height: 10),
+                    SizedBox(
+                      width: double.infinity,
+                      child: FilledButton.icon(
+                        onPressed: () => _confirmReceivedReport(doc),
+                        icon: const Icon(Icons.check_circle_outline),
+                        label: const Text('تأكيد الاستلام والاستكمال'),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: const Color(0xFF27865B),
+                          foregroundColor: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ],
+                  if (admin && d['status'] == 'acknowledged') ...[
+                    const SizedBox(height: 8),
+                    const Row(
+                      children: [
+                        Icon(Icons.verified_rounded, color: Color(0xFF27865B), size: 18),
+                        SizedBox(width: 7),
+                        Text(
+                          'تم تأكيد الاستلام',
+                          style: TextStyle(
+                            color: Color(0xFF27865B),
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                   const Divider(height: 20),
                   Wrap(
                     spacing: 8,
