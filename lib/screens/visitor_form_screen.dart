@@ -219,18 +219,64 @@ class _VisitorFormScreenState extends State<VisitorFormScreen> {
               ),
               const SizedBox(height: 12),
               _buildCard(
-                child: TextFormField(
-                  controller: _notesController,
-                  readOnly: false,
-                  minLines: 3,
-                  maxLines: 5,
-                  textCapitalization: TextCapitalization.sentences,
-                  style: const TextStyle(fontSize: 15, height: 1.5),
-                  decoration: _inputDecoration(
-                    label: 'الملاحظات',
-                    hint: 'اكتب الملاحظات هنا إن وجدت...',
-                    icon: Icons.notes_rounded,
-                  ).copyWith(alignLabelWithHint: true),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    TextFormField(
+                      controller: _notesController,
+                      readOnly: false,
+                      minLines: 3,
+                      maxLines: 5,
+                      textCapitalization: TextCapitalization.sentences,
+                      style: const TextStyle(fontSize: 15, height: 1.5),
+                      decoration: _inputDecoration(
+                        label: 'الملاحظات',
+                        hint: 'اكتب الملاحظات هنا إن وجدت...',
+                        icon: Icons.notes_rounded,
+                      ).copyWith(alignLabelWithHint: true),
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: FilledButton.icon(
+                            onPressed: _savedVisitId == null || _isSavingVisit
+                                ? null
+                                : _saveVisitNote,
+                            icon: Icon(_notesController.text.trim().isEmpty
+                                ? Icons.add_comment_outlined
+                                : Icons.save_outlined),
+                            label: Text(_notesController.text.trim().isEmpty
+                                ? 'إضافة الملاحظة'
+                                : 'حفظ تعديل الملاحظة'),
+                            style: FilledButton.styleFrom(
+                              backgroundColor: _teal,
+                              foregroundColor: Colors.white,
+                              minimumSize: const Size.fromHeight(46),
+                            ),
+                          ),
+                        ),
+                        if (_notesController.text.trim().isNotEmpty) ...[
+                          const SizedBox(width: 8),
+                          IconButton.filledTonal(
+                            tooltip: 'حذف الملاحظة',
+                            onPressed: _savedVisitId == null || _isSavingVisit
+                                ? null
+                                : _deleteVisitNote,
+                            icon: const Icon(Icons.delete_outline_rounded),
+                          ),
+                        ],
+                      ],
+                    ),
+                    if (_savedVisitId == null)
+                      const Padding(
+                        padding: EdgeInsets.only(top: 7),
+                        child: Text(
+                          'احفظ دخول الزيارة أولًا، ثم يمكنك إضافة الملاحظة أو تعديلها أو حذفها.',
+                          style: TextStyle(fontSize: 12, color: _muted, height: 1.5),
+                        ),
+                      ),
+                  ],
                 ),
               ),
               const SizedBox(height: 24),
@@ -780,6 +826,65 @@ class _VisitorFormScreenState extends State<VisitorFormScreen> {
       notes.dispose();
       if (mounted) setState(() => _isSavingVisit = false);
     }
+  }
+
+  Future<void> _saveVisitNote() async {
+    final visitId = _savedVisitId;
+    if (visitId == null || _isSavingVisit) return;
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      _showMessage('انتهت جلسة الدخول. سجّل الدخول مجددًا.');
+      return;
+    }
+    final note = _notesController.text.trim();
+    setState(() => _isSavingVisit = true);
+    try {
+      final ref = FirebaseFirestore.instance.collection('visitor_logs').doc(visitId);
+      final snapshot = await ref.get();
+      if (!snapshot.exists || snapshot.data()?['createdBy'] != user.uid) {
+        _showMessage('لا يمكنك تعديل ملاحظات زيارة ليست مسجلة باسمك.');
+        return;
+      }
+      await ref.update({
+        'notes': note,
+        'notesUpdatedAt': FieldValue.serverTimestamp(),
+        'notesUpdatedBy': user.uid,
+      });
+      _showMessage(note.isEmpty ? 'تم مسح الملاحظة.' : 'تم حفظ الملاحظة بنجاح.');
+    } on FirebaseException catch (error) {
+      _showMessage(error.code == 'permission-denied'
+          ? 'رفضت قواعد Firestore حفظ الملاحظة. لم تتغير القواعد تلقائيًا.'
+          : 'تعذر حفظ الملاحظة (${error.code}). حاول مجددًا.');
+    } catch (_) {
+      _showMessage('تعذر حفظ الملاحظة. تحقق من الاتصال ثم حاول مجددًا.');
+    } finally {
+      if (mounted) setState(() => _isSavingVisit = false);
+    }
+  }
+
+  Future<void> _deleteVisitNote() async {
+    if (_savedVisitId == null || _isSavingVisit) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('حذف الملاحظة؟'),
+        content: const Text('سيتم حذف ملاحظة هذه الزيارة من سجلها.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('إلغاء'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('حذف'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    _notesController.clear();
+    await _saveVisitNote();
   }
 
   void _showMessage(String message) {
