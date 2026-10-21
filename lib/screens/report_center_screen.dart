@@ -10,6 +10,7 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:arabic_reshaper/arabic_reshaper.dart';
 import 'package:printing/printing.dart';
 import 'package:share_plus/share_plus.dart';
+import '../widgets/official_hospital_header.dart';
 
 class ReportCenterScreen extends StatefulWidget {
   const ReportCenterScreen({super.key, required this.userRole});
@@ -423,6 +424,10 @@ class _ReportCenterScreenState extends State<ReportCenterScreen> {
       onPressed: () => _compose(), icon: const Icon(Icons.note_add_rounded),
       label: const Text('تقرير جديد'), backgroundColor: teal, foregroundColor: Colors.white),
     body: Column(children: [
+      const Padding(
+        padding: EdgeInsets.fromLTRB(16, 12, 16, 0),
+        child: OfficialHospitalHeader(),
+      ),
       Container(
         margin: const EdgeInsets.fromLTRB(16, 14, 16, 8),
         padding: const EdgeInsets.fromLTRB(18, 16, 18, 17),
