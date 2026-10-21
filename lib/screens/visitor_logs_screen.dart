@@ -101,13 +101,20 @@ class _VisitorLogsScreenState extends State<VisitorLogsScreen> {
 
     return Scaffold(
       appBar: AppBar(
+        centerTitle: true,
         title: const Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            Text('سجل الزيارات',
-                style: TextStyle(fontWeight: FontWeight.w800)),
-            Text('التصنيف حسب الطابق والقسم',
-                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500)),
+            Text(
+              'سجل الزيارات',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontWeight: FontWeight.w900),
+            ),
+            Text(
+              'التصنيف حسب الطابق والقسم',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+            ),
           ],
         ),
         actions: [
