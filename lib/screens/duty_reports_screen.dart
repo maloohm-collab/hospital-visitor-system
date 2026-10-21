@@ -428,7 +428,8 @@ class _DutyReportsScreenState extends State<DutyReportsScreen> {
                 textAlign: TextAlign.center,
                 style: const TextStyle(
                   color: Color(0xFF101820),
-                  fontSize: 18,
+                  fontSize: 22,
+                  height: 1.25,
                   fontWeight: FontWeight.w900,
                 ),
               ),
@@ -445,29 +446,13 @@ class _DutyReportsScreenState extends State<DutyReportsScreen> {
                 style: const TextStyle(
                   color: Color(0xFF263238),
                   height: 1.6,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
                 ),
               ),
             ],
           ),
         ),
-        const SizedBox(height: 14),
-        _info(Icons.phone_android_rounded, 'حفظ محلي فقط',
-          'تُحفظ ملفات PDF في مجلد تقارير_المناوبة داخل مساحة التطبيق على هذا الهاتف. لا تُرفع ملفات التقارير إلى Firebase أو أي مخزن سحابي.'),
-        const SizedBox(height: 10),
-        _info(Icons.share_rounded, 'المشاركة يدوية',
-          officer ? 'بعد إنشاء التقرير اختر واتساب أو أي تطبيق مشاركة وأرسله إلى مشرف المناوبة.'
-            : supervisor ? 'يمكنك مشاركة PDF داخليًا، أو فتح محادثة واتساب إدارية عند اختيار الرفع. أرفق PDF يدويًا داخل واتساب.'
-            : 'لا توجد تنبيهات تلقائية أو صندوق وارد داخل التطبيق دون خدمة توصيل. راجع واتساب والملفات التي وصلتك.'),
-        if (supervisor) ...[
-          const SizedBox(height: 10),
-          _info(Icons.privacy_tip_outlined, 'السرية والانتقاء',
-            'الملاحظات الفنية والتوصيات والإشادات منفصلة، ولا تُرسل للإدارة إلا بعد اختيارك ذلك صراحةً.'),
-          const SizedBox(height: 10),
-          _info(Icons.warning_amber_rounded, 'رقم واتساب اختباري مؤقت',
-            'الرقم الحالي: +962 79 000 0000. يجب استبداله برقم الإدارة الرسمي قبل الاستخدام الفعلي.'),
-        ],
         const SizedBox(height: 18),
         OutlinedButton.icon(
           onPressed: _importReceivedPdf,
