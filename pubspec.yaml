@@ -21,6 +21,7 @@ dependencies:
   share_plus: ^10.1.4
   url_launcher: ^6.3.2
   file_picker: ^10.3.6
+  flutter_secure_storage: ^9.2.4
 
 dev_dependencies:
   flutter_test:
