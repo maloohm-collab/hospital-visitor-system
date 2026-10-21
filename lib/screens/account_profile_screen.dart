@@ -112,6 +112,13 @@ class _AccountProfileScreenState extends State<AccountProfileScreen> {
     }
   }
 
+  void _removePhoto() {
+    setState(() => _photoUrl.clear());
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('تم تحديد حذف الصورة. اضغط «حفظ بيانات الحساب» لتثبيت التغيير.')),
+    );
+  }
+
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
     final user = FirebaseAuth.instance.currentUser;
@@ -261,12 +268,12 @@ class _AccountProfileScreenState extends State<AccountProfileScreen> {
                         CircleAvatar(
                           radius: 42,
                           backgroundColor: Colors.white,
-                          backgroundImage: photo.startsWith('https://')
+                          backgroundImage: photo.startsWith('http')
                               ? NetworkImage(photo)
                               : photo.startsWith('/')
                                   ? FileImage(File(photo))
                                   : null,
-                          child: (photo.startsWith('https://') || photo.startsWith('/'))
+                          child: (photo.startsWith('http') || photo.startsWith('/'))
                               ? null
                               : const Icon(Icons.person_rounded, size: 46, color: _teal),
                         ),
@@ -324,9 +331,25 @@ class _AccountProfileScreenState extends State<AccountProfileScreen> {
                         OutlinedButton.icon(
                           onPressed: _saving ? null : _pickPhoto,
                           icon: const Icon(Icons.add_a_photo_outlined),
-                          label: const Text('اختيار صورة من الهاتف'),
+                          label: const Text('اختيار أو تغيير الصورة'),
                         ),
+                        if (_photoUrl.text.trim().isNotEmpty) ...[
+                          const SizedBox(height: 8),
+                          OutlinedButton.icon(
+                            onPressed: _saving ? null : _removePhoto,
+                            icon: const Icon(Icons.delete_outline_rounded),
+                            label: const Text('حذف الصورة الحالية'),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: const Color(0xFFB42318),
+                            ),
+                          ),
+                        ],
                         const SizedBox(height: 8),
+                        const Text(
+                          'يمكنك تعديل الاسم ورقم الهاتف مباشرة، ثم حفظ جميع التغييرات من زر «حفظ بيانات الحساب».',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(fontSize: 12, height: 1.5, color: Color(0xFF637487)),
+                        ),
                       ],
                     ),
                   ),
