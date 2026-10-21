@@ -151,8 +151,7 @@ class _VisitorLogsScreenState extends State<VisitorLogsScreen> {
 
                         final docs = (snapshot.data?.docs ?? []).where((doc) {
                           final data = doc.data();
-                          if (!_isOfficer &&
-                              data['floorId'] != _selectedFloorId) {
+                          if (data['floorId'] != _selectedFloorId) {
                             return false;
                           }
                           if (_selectedDepartment != null &&
