@@ -43,7 +43,10 @@ service cloud.firestore {
 
       // Applicants can inspect their own request; active admins can review the queue.
       allow get: if signedIn() && (request.auth.uid == uid || isActiveAdmin());
-      allow list: if isActiveAdmin();
+      // Active staff may list only active profiles for the direct-contact directory.
+      // Admins retain the full list permission needed by staff management.
+      allow list: if isActiveAdmin()
+        || (isActiveUser() && resource.data.status == 'active');
 
       // Admin decisions are constrained and committed atomically with profile creation.
       allow update: if signedIn() && (
