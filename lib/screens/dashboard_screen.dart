@@ -57,10 +57,22 @@ class DashboardScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text('إدارة الزوار', style: TextStyle(fontWeight: FontWeight.bold)),
-          Text('منظومة زوار المستشفى', style: TextStyle(fontSize: 11, fontWeight: FontWeight.normal)),
-        ]),
+        centerTitle: true,
+        title: const Column(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Text(
+              'إدارة الزوار',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontWeight: FontWeight.w900),
+            ),
+            Text(
+              'منظومة زوار المستشفى',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+            ),
+          ],
+        ),
         actions: [
           StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
             stream: FirebaseFirestore.instance
