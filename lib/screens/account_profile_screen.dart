@@ -140,198 +140,7 @@ class _AccountProfileScreenState extends State<AccountProfileScreen> {
 
   Future<void> _savePin() async {
     final pin = _pin.text.trim();
-    if (!RegExp(r'^\\d{4}
-    switch (role) {
-      case 'admin': return 'مسؤول النظام';
-      case 'supervisor': return 'مشرف';
-      case 'security_officer': return 'ضابط أمن';
-      default: return 'غير محدد';
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final photo = _photoUrl.text.trim();
-    return Scaffold(
-      appBar: AppBar(title: const Text('حسابي')),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator())
-          : SafeArea(
-              child: ListView(
-                padding: const EdgeInsets.all(20),
-                children: [
-                  const OfficialHospitalHeader(),
-                  Container(
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        begin: Alignment.topRight,
-                        end: Alignment.bottomLeft,
-                        colors: [_navy, Color(0xFF245878)],
-                      ),
-                      borderRadius: BorderRadius.circular(22),
-                    ),
-                    child: Column(
-                      children: [
-                        CircleAvatar(
-                          radius: 42,
-                          backgroundColor: Colors.white,
-                          backgroundImage: photo.startsWith('https://')
-                              ? NetworkImage(photo)
-                              : photo.startsWith('/')
-                                  ? FileImage(File(photo))
-                                  : null,
-                          child: (photo.startsWith('https://') || photo.startsWith('/'))
-                              ? null
-                              : const Icon(Icons.person_rounded, size: 46, color: _teal),
-                        ),
-                        const SizedBox(height: 12),
-                        Text(
-                          _name.text.trim().isEmpty ? 'ملف الموظف' : _name.text.trim(),
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: Colors.white),
-                        ),
-                        const SizedBox(height: 5),
-                        Text(_roleLabel(_role), style: const TextStyle(color: Colors.white70)),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 22),
-                  Form(
-                    key: _formKey,
-                    child: Column(
-                      children: [
-                        TextFormField(
-                          controller: _name,
-                          textInputAction: TextInputAction.next,
-                          decoration: const InputDecoration(
-                            labelText: 'الاسم الكامل',
-                            prefixIcon: Icon(Icons.person_outline),
-                          ),
-                          validator: (value) => value == null || value.trim().length < 3
-                              ? 'أدخل الاسم الكامل'
-                              : null,
-                        ),
-                        const SizedBox(height: 14),
-                        TextFormField(
-                          controller: _phone,
-                          keyboardType: TextInputType.phone,
-                          textInputAction: TextInputAction.next,
-                          decoration: const InputDecoration(
-                            labelText: 'رقم الهاتف',
-                            hintText: '07XXXXXXXX',
-                            prefixIcon: Icon(Icons.phone_outlined),
-                          ),
-                          validator: (value) => (value ?? '').replaceAll(RegExp(r'[^0-9+]'), '').length < 9
-                              ? 'أدخل رقم هاتف صحيحًا'
-                              : null,
-                        ),
-                        const SizedBox(height: 14),
-                        TextFormField(
-                          initialValue: _email,
-                          readOnly: true,
-                          decoration: const InputDecoration(
-                            labelText: 'البريد الإلكتروني (غير قابل للتعديل)',
-                            prefixIcon: Icon(Icons.email_outlined),
-                          ),
-                        ),
-                        const SizedBox(height: 14),
-                        OutlinedButton.icon(
-                          onPressed: _saving ? null : _pickPhoto,
-                          icon: const Icon(Icons.add_a_photo_outlined),
-                          label: const Text('اختيار صورة من الهاتف'),
-                        ),
-                        const SizedBox(height: 8),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 22),
-                  FilledButton.icon(
-                    onPressed: _saving ? null : _save,
-                    icon: _saving
-                        ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                        : const Icon(Icons.save_rounded),
-                    label: Text(_saving ? 'جارٍ الحفظ...' : 'حفظ بيانات الحساب'),
-                    style: FilledButton.styleFrom(backgroundColor: _teal),
-                  ),
-                  const SizedBox(height: 22),
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: const Color(0xFFDDE7EF)),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        const Text(
-                          'رمز الدخول السريع',
-                          style: TextStyle(
-                            color: _navy,
-                            fontSize: 17,
-                            fontWeight: FontWeight.w900,
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        const Text(
-                          'رمز محلي لفتح الجلسة الحالية على هذا الجهاز، وليس بديلًا عن تسجيل الدخول الأول بالبريد وكلمة المرور.',
-                          style: TextStyle(color: Color(0xFF637487), height: 1.5, fontSize: 12),
-                        ),
-                        const SizedBox(height: 12),
-                        TextField(
-                          controller: _pin,
-                          obscureText: true,
-                          keyboardType: TextInputType.number,
-                          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                          maxLength: 4,
-                          decoration: const InputDecoration(
-                            labelText: 'رمز جديد من 4 أرقام',
-                            prefixIcon: Icon(Icons.pin_outlined),
-                            counterText: '',
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-                        TextField(
-                          controller: _pinConfirm,
-                          obscureText: true,
-                          keyboardType: TextInputType.number,
-                          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                          maxLength: 4,
-                          decoration: const InputDecoration(
-                            labelText: 'إعادة كتابة الرمز للتأكيد',
-                            prefixIcon: Icon(Icons.lock_reset_rounded),
-                            counterText: '',
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-                        FilledButton.icon(
-                          onPressed: _saving ? null : _savePin,
-                          icon: const Icon(Icons.save_rounded),
-                          label: const Text('حفظ أو تعديل الرمز'),
-                          style: FilledButton.styleFrom(backgroundColor: _teal),
-                        ),
-                        TextButton.icon(
-                          onPressed: _saving ? null : _removePin,
-                          icon: const Icon(Icons.delete_outline_rounded),
-                          label: const Text('إلغاء رمز الدخول السريع'),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  const Text(
-                    'لا يمكن تعديل الدور أو حالة الحساب من هذه الشاشة؛ هذه الصلاحيات للإدارة فقط.',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 12, height: 1.6, color: Color(0xFF637487)),
-                  ),
-                ],
-              ),
-            ),
-    );
-  }
-}
-).hasMatch(pin)) {
+    if (!RegExp(r'^[0-9]{4}$').hasMatch(pin)) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('أدخل رمزًا مكونًا من 4 أرقام بالضبط.')),
       );
@@ -348,7 +157,7 @@ class _AccountProfileScreenState extends State<AccountProfileScreen> {
     setState(() => _saving = true);
     try {
       await const FlutterSecureStorage().write(
-        key: 'hospital_visitor_pin_${user.uid}',
+        key: 'hospital_visitor_pin_' + user.uid,
         value: pin,
       );
       _pin.clear();
@@ -374,7 +183,7 @@ class _AccountProfileScreenState extends State<AccountProfileScreen> {
     if (user == null) return;
     try {
       await const FlutterSecureStorage().delete(
-        key: 'hospital_visitor_pin_${user.uid}',
+        key: 'hospital_visitor_pin_' + user.uid,
       );
       _pin.clear();
       _pinConfirm.clear();
