@@ -178,36 +178,40 @@ class VisitorReportsScreen extends StatelessWidget {
       pdf.addPage(pw.MultiPage(
         theme: pw.ThemeData.withFont(base: arabicFont, bold: boldFont),
         build: (_) => [
-          pw.Container(
-            padding: const pw.EdgeInsets.all(18),
-            decoration: const pw.BoxDecoration(
-              color: PdfColor.fromInt(0xFF16324F),
-              borderRadius: pw.BorderRadius.all(pw.Radius.circular(10)),
-            ),
-            child: pw.Directionality(
-              textDirection: pw.TextDirection.rtl,
-              child: pw.Column(children: [
-                pw.Text(_shapeArabic('منظومة زوار المستشفى'),
-                  textAlign: pw.TextAlign.center,
-                  textDirection: pw.TextDirection.rtl,
-                  style: pw.TextStyle(font: boldFont, fontSize: 20, color: PdfColors.white)),
-                pw.SizedBox(height: 6),
-                pw.Text(_shapeArabic('التقرير اليومي لحركة الزوار'),
-                  textAlign: pw.TextAlign.center,
-                  textDirection: pw.TextDirection.rtl,
-                  style: pw.TextStyle(font: arabicFont, fontSize: 15, color: PdfColors.white)),
-              ]),
+          pw.Directionality(
+            textDirection: pw.TextDirection.rtl,
+            child: pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.stretch,
+              children: [
+                pw.Text(
+                  _shapeArabic('منظومة زوار المستشفى'),
+                  textAlign: pw.TextAlign.right,
+                  style: pw.TextStyle(
+                    font: boldFont, fontSize: 20, color: PdfColors.black,
+                  ),
+                ),
+                pw.SizedBox(height: 7),
+                pw.Container(height: 1.3, color: PdfColors.black),
+                pw.SizedBox(height: 9),
+                pw.Text(
+                  _shapeArabic('التقرير اليومي لحركة الزوار'),
+                  textAlign: pw.TextAlign.right,
+                  style: pw.TextStyle(
+                    font: boldFont, fontSize: 14, color: PdfColors.black,
+                  ),
+                ),
+              ],
             ),
           ),
           pw.SizedBox(height: 18),
           pw.Directionality(textDirection: pw.TextDirection.rtl, child: pw.Column(
             crossAxisAlignment: pw.CrossAxisAlignment.stretch,
             children: [
-              pw.Text(_shapeArabic('التاريخ: $dateLabel'), style: pw.TextStyle(font: boldFont, fontSize: 12)),
+              pw.Text(_shapeArabic('تاريخ ووقت إعداد التقرير: ${DateFormat('yyyy/MM/dd  HH:mm').format(now)}'),
+                style: pw.TextStyle(font: boldFont, fontSize: 11, color: PdfColors.black)),
               pw.SizedBox(height: 5),
-              pw.Text(_shapeArabic('اسم الموظف المسؤول: $staffName'), style: pw.TextStyle(font: arabicFont, fontSize: 12)),
-              pw.SizedBox(height: 5),
-              pw.Text(_shapeArabic('رقم هاتف الموظف: $staffPhone'), style: pw.TextStyle(font: arabicFont, fontSize: 12)),
+              pw.Text(_shapeArabic('رقم هاتف الموظف: $staffPhone'),
+                style: pw.TextStyle(font: arabicFont, fontSize: 11, color: PdfColors.black)),
               pw.SizedBox(height: 12),
               pw.Text(_shapeArabic('عدد سجلات الزيارات: ${visits.length}  |  إجمالي الزوار: $visitorTotal'),
                 style: pw.TextStyle(font: boldFont, fontSize: 12)),
@@ -236,9 +240,16 @@ class VisitorReportsScreen extends StatelessWidget {
                   ]),
                 ),
               pw.SizedBox(height: 10),
-              pw.Divider(),
+              pw.Divider(color: PdfColors.grey600),
               pw.Text(_shapeArabic('تم إعداد التقرير من سجلات قاعدة بيانات المستشفى.'),
-                textAlign: pw.TextAlign.center, style: pw.TextStyle(font: arabicFont, fontSize: 9)),
+                textAlign: pw.TextAlign.right,
+                style: pw.TextStyle(font: arabicFont, fontSize: 9, color: PdfColors.black)),
+              pw.SizedBox(height: 20),
+              pw.Container(height: 0.8, color: PdfColors.grey500),
+              pw.SizedBox(height: 8),
+              pw.Text(_shapeArabic('مرسل التقرير: $staffName'),
+                textAlign: pw.TextAlign.right,
+                style: pw.TextStyle(font: boldFont, fontSize: 11, color: PdfColors.black)),
             ],
           )),
         ],
