@@ -28,6 +28,7 @@ class _AccountProfileScreenState extends State<AccountProfileScreen> {
   final _pinConfirm = TextEditingController();
   bool _loading = true;
   bool _saving = false;
+  bool _hasPin = false;
   String _email = '';
   String _role = '';
 
@@ -61,6 +62,9 @@ class _AccountProfileScreenState extends State<AccountProfileScreen> {
       final localPhoto = await _secureStorage.read(
         key: 'hospital_visitor_photo_path_' + user.uid,
       );
+      _hasPin = await _secureStorage.read(
+        key: 'hospital_visitor_pin_' + user.uid,
+      ) != null;
       _photoUrl.text = localPhoto != null && await File(localPhoto).exists()
           ? localPhoto
           : (data['photoURL'] as String? ?? '').trim();
@@ -178,6 +182,7 @@ class _AccountProfileScreenState extends State<AccountProfileScreen> {
         key: 'hospital_visitor_pin_' + user.uid,
         value: pin,
       );
+      if (mounted) setState(() => _hasPin = true);
       _pin.clear();
       _pinConfirm.clear();
       if (mounted) {
@@ -203,6 +208,7 @@ class _AccountProfileScreenState extends State<AccountProfileScreen> {
       await _secureStorage.delete(
         key: 'hospital_visitor_pin_' + user.uid,
       );
+      if (mounted) setState(() => _hasPin = false);
       _pin.clear();
       _pinConfirm.clear();
       if (mounted) {
@@ -321,6 +327,96 @@ class _AccountProfileScreenState extends State<AccountProfileScreen> {
                           label: const Text('اختيار صورة من الهاتف'),
                         ),
                         const SizedBox(height: 8),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 22),
+                  Container(
+                    padding: const EdgeInsets.all(18),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF3F7FA),
+                      borderRadius: BorderRadius.circular(18),
+                      border: Border.all(color: const Color(0xFFDDE7EF)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        const Text(
+                          'رمز الدخول السريع (PIN)',
+                          style: TextStyle(
+                            color: _navy,
+                            fontSize: 19,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          _hasPin
+                              ? 'يوجد رمز محفوظ على هذا الجهاز. أدخل رمزًا جديدًا لتعديله.'
+                              : 'أنشئ رمزًا من 4 أرقام لتسهيل الدخول على هذا الجهاز.',
+                          style: const TextStyle(
+                            color: Color(0xFF526579),
+                            fontSize: 13,
+                            height: 1.5,
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+                        TextField(
+                          controller: _pin,
+                          obscureText: true,
+                          keyboardType: TextInputType.number,
+                          inputFormatters: [
+                            FilteringTextInputFormatter.digitsOnly,
+                            LengthLimitingTextInputFormatter(4),
+                          ],
+                          decoration: const InputDecoration(
+                            labelText: 'رمز PIN الجديد (4 أرقام)',
+                            prefixIcon: Icon(Icons.pin_outlined),
+                            counterText: '',
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        TextField(
+                          controller: _pinConfirm,
+                          obscureText: true,
+                          keyboardType: TextInputType.number,
+                          inputFormatters: [
+                            FilteringTextInputFormatter.digitsOnly,
+                            LengthLimitingTextInputFormatter(4),
+                          ],
+                          decoration: const InputDecoration(
+                            labelText: 'تأكيد رمز PIN',
+                            prefixIcon: Icon(Icons.lock_outline_rounded),
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+                        FilledButton.icon(
+                          onPressed: _saving ? null : _savePin,
+                          icon: const Icon(Icons.lock_reset_rounded),
+                          label: Text(_hasPin ? 'حفظ الرمز الجديد' : 'إضافة رمز PIN'),
+                          style: FilledButton.styleFrom(
+                            backgroundColor: _navy,
+                            minimumSize: const Size.fromHeight(48),
+                          ),
+                        ),
+                        if (_hasPin) ...[
+                          const SizedBox(height: 8),
+                          OutlinedButton.icon(
+                            onPressed: _saving ? null : _removePin,
+                            icon: const Icon(Icons.delete_outline_rounded),
+                            label: const Text('إلغاء رمز الدخول السريع'),
+                          ),
+                        ],
+                        const SizedBox(height: 4),
+                        const Text(
+                          'الرمز محفوظ بأمان على هذا الهاتف فقط، ولا يحل محل كلمة المرور بعد تسجيل الخروج الكامل.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: Color(0xFF637487),
+                            fontSize: 11,
+                            height: 1.5,
+                          ),
+                        ),
                       ],
                     ),
                   ),
