@@ -9,6 +9,11 @@ void main() {
 
   testWidgets('welcome screen displays the current sign-in entry point',
       (tester) async {
+    tester.view.physicalSize = const Size(800, 1000);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
     await tester.pumpWidget(const HospitalVisitorApp());
 
     expect(find.text('منظومة زوار المستشفى'), findsOneWidget);
@@ -22,6 +27,11 @@ void main() {
 
   testWidgets('tapping sign-in opens the authentication screen',
       (tester) async {
+    tester.view.physicalSize = const Size(800, 1000);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
     await tester.pumpWidget(const HospitalVisitorApp());
 
     final signInButton = find.text('تسجيل الدخول إلى النظام');
