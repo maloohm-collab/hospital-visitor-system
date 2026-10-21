@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../widgets/official_hospital_header.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:intl/intl.dart';
@@ -397,6 +398,7 @@ class _DutyReportsScreenState extends State<DutyReportsScreen> {
         icon: const Icon(Icons.note_add_outlined),
         label: Text(supervisor ? 'إنشاء تقرير مشرف' : 'إعداد تقرير المناوبة')),
       body: ListView(padding: const EdgeInsets.all(18), children: [
+        const OfficialHospitalHeader(),
         Container(
           padding: const EdgeInsets.fromLTRB(18, 18, 18, 20),
           decoration: BoxDecoration(
