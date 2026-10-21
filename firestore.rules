@@ -200,6 +200,19 @@ service cloud.firestore {
           'status', 'createdBy', 'createdAt', 'updatedAt'
         ]);
 
+      // Officers may hide their own completed visit records from their personal list.
+      // The shared visit record remains available to supervisors and administrators.
+      allow update: if isActiveUser()
+        && resource.data.createdBy == request.auth.uid
+        && resource.data.status == 'completed'
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['hiddenFor'])
+        && request.resource.data.hiddenFor is list
+        && request.resource.data.hiddenFor.hasAll(resource.data.get('hiddenFor', []))
+        && request.resource.data.hiddenFor.size()
+          == resource.data.get('hiddenFor', []).size() + 1
+        && !resource.data.get('hiddenFor', []).hasAny([request.auth.uid])
+        && request.resource.data.hiddenFor.hasAny([request.auth.uid]);
+
       // Staff can view their own records; supervisors and admins can review all records.
       allow get, list: if isActiveUser()
         && (
