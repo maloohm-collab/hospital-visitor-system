@@ -64,6 +64,13 @@ class _VisitorLogsScreenState extends State<VisitorLogsScreen> {
     super.dispose();
   }
 
+  void _message(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(message)));
+  }
+
   void _selectFloor(String floorId) {
     setState(() {
       _selectedFloorId = floorId;
