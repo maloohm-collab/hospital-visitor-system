@@ -140,11 +140,9 @@ class VisitorReportsScreen extends StatelessWidget {
             const SizedBox(height: 20),
             const Text('الزيارات حسب القسم', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: Color(0xFF16324F))),
             const SizedBox(height: 10),
-            if (departmentList.isEmpty) const _ReportEmpty(message: 'ستظهر الأقسام هنا عند تسجيل زيارات اليوم.')
+            if (departmentList.isEmpty) const _ReportEmpty(message: 'لا توجد أقسام مسجلة اليوم.')
             else for (final item in departmentList) _BreakdownTile(title: item.key, count: item.value, total: today.length),
-            const SizedBox(height: 16),
-            Text('تحديث مباشر من قاعدة البيانات • إجمالي السجلات المتاحة: ${docs.length}',
-              style: const TextStyle(fontSize: 11, color: Color(0xFF637487), height: 1.5)),
+
           ]);
         },
               ),
