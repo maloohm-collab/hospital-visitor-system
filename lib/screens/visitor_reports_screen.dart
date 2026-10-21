@@ -5,6 +5,7 @@ import 'dart:io';
 
 import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
+import '../widgets/official_hospital_header.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:arabic_reshaper/arabic_reshaper.dart';
@@ -24,7 +25,15 @@ class VisitorReportsScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(title: const Text('التقارير والإحصاءات')),
-      body: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+      body: SafeArea(
+        child: Column(
+          children: [
+            const Padding(
+              padding: EdgeInsets.fromLTRB(16, 12, 16, 0),
+              child: OfficialHospitalHeader(),
+            ),
+            Expanded(
+              child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
         stream: query.snapshots(),
         builder: (context, snapshot) {
           if (snapshot.hasError) return const Center(child: Padding(
@@ -138,6 +147,10 @@ class VisitorReportsScreen extends StatelessWidget {
               style: const TextStyle(fontSize: 11, color: Color(0xFF637487), height: 1.5)),
           ]);
         },
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
