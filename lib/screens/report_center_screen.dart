@@ -166,23 +166,97 @@ class _ReportCenterScreenState extends State<ReportCenterScreen> {
     final regular = await PdfGoogleFonts.cairoRegular(), bold = await PdfGoogleFonts.cairoBold();
     final pdf = pw.Document();
     final ts = d['createdAt'] is Timestamp ? (d['createdAt'] as Timestamp).toDate() : DateTime.now();
-    pdf.addPage(pw.MultiPage(theme: pw.ThemeData.withFont(base: regular, bold: bold),
-      build: (_) => [pw.Directionality(textDirection: pw.TextDirection.rtl, child: pw.Column(
-        crossAxisAlignment: pw.CrossAxisAlignment.stretch, children: [
-          pw.Text(_shapeArabic('منظومة زوار المستشفى'), style: pw.TextStyle(font: bold, fontSize: 20)),
-          pw.Divider(),
-          pw.Text(_shapeArabic('عنوان التقرير: ${d['title'] ?? ''}'), style: pw.TextStyle(font: bold, fontSize: 15)),
-          pw.Text(_shapeArabic('النوع: ${d['type'] ?? ''}')),
-          pw.Text(_shapeArabic('الأولوية: ${d['priority'] ?? 'normal'}')),
-          pw.Text(_shapeArabic('اسم مقدم التقرير: ${d['createdByName'] ?? d['createdByEmail'] ?? 'غير مسجل'}')),
-          pw.Text(_shapeArabic('رقم هاتف مقدم التقرير: ${d['createdByPhone'] ?? 'غير مسجل'}')),
-          pw.Text(_shapeArabic('التاريخ: ${DateFormat('yyyy/MM/dd HH:mm').format(ts)}')),
-          if ((d['employeeName'] as String? ?? '').isNotEmpty) pw.Text(_shapeArabic('الموظف المعني: ${d['employeeName']}')),
-          pw.SizedBox(height: 12), pw.Text(_shapeArabic('التفاصيل:'), style: pw.TextStyle(font: bold)),
-          pw.Text(_shapeArabic(d['body'] as String? ?? ''), style: const pw.TextStyle(fontSize: 12, lineSpacing: 4)),
-          pw.SizedBox(height: 18), pw.Text(_shapeArabic('الرقم المرجعي: ${d['reportId'] ?? ''}')),
-        ],
-      ))]));
+    final typeLabel = switch (d['type']) {
+      'security_incident' => 'حادث أو ملاحظة أمنية',
+      'shift_summary' => 'تقرير سير المناوبة',
+      'technical_note' => 'ملاحظة فنية',
+      'recommendation_positive' => 'توصية إيجابية',
+      'recommendation_concern' => 'ملاحظة مهنية سرية',
+      _ => 'تقرير مناوبة',
+    };
+    final priorityLabel = switch (d['priority']) {
+      'urgent' => 'عاجل',
+      'important' => 'مهم',
+      _ => 'عادي',
+    };
+    final senderName =
+        (d['createdByName'] as String? ?? '').trim().isNotEmpty
+            ? (d['createdByName'] as String).trim()
+            : 'غير مسجل';
+    pdf.addPage(pw.MultiPage(
+      theme: pw.ThemeData.withFont(base: regular, bold: bold),
+      build: (_) => [
+        pw.Directionality(
+          textDirection: pw.TextDirection.rtl,
+          child: pw.Column(
+            crossAxisAlignment: pw.CrossAxisAlignment.stretch,
+            children: [
+              pw.Text(
+                _shapeArabic('منظومة زوار المستشفى'),
+                textAlign: pw.TextAlign.right,
+                style: pw.TextStyle(
+                  font: bold, fontSize: 20, color: PdfColors.black,
+                ),
+              ),
+              pw.SizedBox(height: 7),
+              pw.Container(height: 1.3, color: PdfColors.black),
+              pw.SizedBox(height: 10),
+              pw.Text(
+                _shapeArabic(d['title'] as String? ?? 'تقرير المناوبة'),
+                textAlign: pw.TextAlign.right,
+                style: pw.TextStyle(
+                  font: bold, fontSize: 15, color: PdfColors.black,
+                ),
+              ),
+              pw.SizedBox(height: 16),
+              pw.Container(
+                padding: const pw.EdgeInsets.all(10),
+                decoration: pw.BoxDecoration(
+                  border: pw.Border.all(color: PdfColors.grey400),
+                  borderRadius: pw.BorderRadius.circular(5),
+                ),
+                child: pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.stretch,
+                  children: [
+                    pw.Text(_shapeArabic('نوع التقرير: $typeLabel'),
+                      style: pw.TextStyle(font: regular, fontSize: 11, color: PdfColors.black)),
+                    pw.SizedBox(height: 5),
+                    pw.Text(_shapeArabic('الأولوية: $priorityLabel'),
+                      style: pw.TextStyle(font: regular, fontSize: 11, color: PdfColors.black)),
+                    pw.SizedBox(height: 5),
+                    pw.Text(_shapeArabic('التاريخ والوقت: ${DateFormat('yyyy/MM/dd  HH:mm').format(ts)}'),
+                      style: pw.TextStyle(font: regular, fontSize: 11, color: PdfColors.black)),
+                    pw.SizedBox(height: 5),
+                    pw.Text(_shapeArabic('هاتف مقدم التقرير: ${d['createdByPhone'] ?? 'غير مسجل'}'),
+                      style: pw.TextStyle(font: regular, fontSize: 11, color: PdfColors.black)),
+                    if ((d['employeeName'] as String? ?? '').trim().isNotEmpty) ...[
+                      pw.SizedBox(height: 5),
+                      pw.Text(_shapeArabic('الموظف المعني: ${d['employeeName']}'),
+                        style: pw.TextStyle(font: regular, fontSize: 11, color: PdfColors.black)),
+                    ],
+                  ],
+                ),
+              ),
+              pw.SizedBox(height: 18),
+              pw.Text(_shapeArabic('تفاصيل التقرير'),
+                style: pw.TextStyle(font: bold, fontSize: 13, color: PdfColors.black)),
+              pw.SizedBox(height: 7),
+              pw.Text(_shapeArabic(d['body'] as String? ?? ''),
+                style: pw.TextStyle(font: regular, fontSize: 12, lineSpacing: 4, color: PdfColors.black)),
+              pw.SizedBox(height: 18),
+              pw.Text(_shapeArabic('الرقم المرجعي: ${d['reportId'] ?? ''}'),
+                style: pw.TextStyle(font: regular, fontSize: 9, color: PdfColors.grey700)),
+              pw.SizedBox(height: 26),
+              pw.Divider(color: PdfColors.grey500),
+              pw.SizedBox(height: 8),
+              pw.Text(_shapeArabic('مرسل التقرير: $senderName'),
+                textAlign: pw.TextAlign.right,
+                style: pw.TextStyle(font: bold, fontSize: 11, color: PdfColors.black)),
+            ],
+          ),
+        ),
+      ],
+    ));
     final dir = await getApplicationDocumentsDirectory();
     final folder = Directory('${dir.path}/تقارير_المناوبة');
     if (!await folder.exists()) await folder.create(recursive: true);
