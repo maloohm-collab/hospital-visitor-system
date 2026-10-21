@@ -449,21 +449,7 @@ class _ReportCenterScreenState extends State<ReportCenterScreen> {
             ),
             const SizedBox(height: 8),
             Container(height: 1.2, color: const Color(0xFF101820)),
-            const SizedBox(height: 10),
-            Text(
-              admin
-                  ? 'تظهر هنا التقارير التي رفعها المشرفون للإدارة فقط.'
-                  : supervisor
-                      ? 'راجع تقارير ضباط الأمن، واحتفظ بما يلزم داخليًا أو ارفع المهم للإدارة.'
-                      : 'تظهر تقاريرك أنت فقط. أنشئ التقرير وعدّله أو شاركه كملف PDF.',
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                color: Color(0xFF263238),
-                fontSize: 13,
-                height: 1.6,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
+
           ],
         ),
       ),
