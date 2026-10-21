@@ -63,21 +63,43 @@ class VisitorReportsScreen extends StatelessWidget {
 
           return ListView(padding: const EdgeInsets.all(16), children: [
             Container(
-              padding: const EdgeInsets.all(20),
+              padding: const EdgeInsets.fromLTRB(18, 18, 18, 20),
               decoration: BoxDecoration(
-                gradient: const LinearGradient(begin: Alignment.topRight, end: Alignment.bottomLeft, colors: [Color(0xFF16324F), Color(0xFF245878)]),
+                color: const Color(0xFFF3F7FA),
                 borderRadius: BorderRadius.circular(21),
+                border: Border.all(color: const Color(0xFFDDE7EF)),
               ),
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                const Text('تقرير حركة الزوار', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w800)),
-                const SizedBox(height: 6),
-                Text('اليوم: ${DateFormat('yyyy/MM/dd', 'en').format(now)}', style: const TextStyle(color: Colors.white70)),
-                const SizedBox(height: 18),
-                Row(children: [
-                  Expanded(child: _ReportBigNumber(label: 'زيارات اليوم', value: today.length.toString())),
-                  Expanded(child: _ReportBigNumber(label: 'إجمالي الزوار', value: visitors.toString())),
-                ]),
-              ]),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const Text(
+                    'تقرير حركة الزوار',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: Color(0xFF101820),
+                      fontSize: 20,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Container(height: 1.2, color: const Color(0xFF101820)),
+                  const SizedBox(height: 9),
+                  Text(
+                    'تاريخ اليوم: ${DateFormat('yyyy/MM/dd', 'en').format(now)}',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      color: Color(0xFF263238),
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(children: [
+                    Expanded(child: _ReportBigNumber(label: 'زيارات اليوم', value: today.length.toString())),
+                    Expanded(child: _ReportBigNumber(label: 'إجمالي الزوار', value: visitors.toString())),
+                  ]),
+                ],
+              ),
             ),
             if (userRole == 'security_officer') ...[
               const SizedBox(height: 16),
@@ -283,9 +305,9 @@ class _ReportBigNumber extends StatelessWidget {
   final String label; final String value;
   @override
   Widget build(BuildContext context) => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-    Text(value, style: const TextStyle(color: Colors.white, fontSize: 29, fontWeight: FontWeight.w800)),
+    Text(value, style: const TextStyle(color: Color(0xFF101820), fontSize: 29, fontWeight: FontWeight.w900)),
     const SizedBox(height: 4),
-    Text(label, style: const TextStyle(color: Colors.white70, fontSize: 12)),
+    Text(label, style: const TextStyle(color: Color(0xFF526579), fontSize: 12, fontWeight: FontWeight.w600)),
   ]);
 }
 
