@@ -224,7 +224,18 @@ service cloud.firestore {
           || isActiveAdmin()
         );
 
-      allow delete: if false;
+      // Only completed visits can be deleted. Officers may delete their own;
+      // supervisors and administrators may delete any completed visit.
+      allow delete: if isActiveUser()
+        && resource.data.status == 'completed'
+        && (
+          isActiveAdmin()
+          || isActiveSupervisor()
+          || (
+            resource.data.createdBy == request.auth.uid
+            && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'security_officer'
+          )
+        );
     }
 
     match /duty_reports/{reportId} {
