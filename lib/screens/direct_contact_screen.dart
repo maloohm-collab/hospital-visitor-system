@@ -4,8 +4,21 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 /// دليل التواصل المباشر بين الموظفين النشطين.
-class DirectContactScreen extends StatelessWidget {
+class DirectContactScreen extends StatefulWidget {
   const DirectContactScreen({super.key});
+
+  @override
+  State<DirectContactScreen> createState() => _DirectContactScreenState();
+}
+
+class _DirectContactScreenState extends State<DirectContactScreen> {
+  final TextEditingController _searchController = TextEditingController();
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
 
   static const _navy = Color(0xFF16324F);
   static const _teal = Color(0xFF168C8C);
@@ -111,12 +124,15 @@ class DirectContactScreen extends StatelessWidget {
             if (snapshot.connectionState == ConnectionState.waiting) {
               return const Center(child: CircularProgressIndicator());
             }
+            final query = _searchController.text.trim().toLowerCase();
             final staff = (snapshot.data?.docs ?? []).where((doc) {
               final data = doc.data();
+              final name = (data['displayName'] ?? '').toString().trim().toLowerCase();
               return doc.id != currentUid &&
                   data['status'] == 'active' &&
                   ['admin', 'supervisor', 'security_officer']
-                      .contains(data['role']);
+                      .contains(data['role']) &&
+                  (query.isEmpty || name.contains(query));
             }).toList()
               ..sort((a, b) {
                 final aName = (a.data()['displayName'] ?? '').toString();
@@ -149,6 +165,36 @@ class DirectContactScreen extends StatelessWidget {
                         ),
                       ),
                     ],
+                  ),
+                ),
+                const SizedBox(height: 14),
+                TextField(
+                  controller: _searchController,
+                  textInputAction: TextInputAction.search,
+                  onChanged: (_) => setState(() {}),
+                  decoration: InputDecoration(
+                    hintText: 'ابحث عن اسم الموظف...',
+                    prefixIcon: const Icon(Icons.search_rounded),
+                    suffixIcon: _searchController.text.isEmpty
+                        ? null
+                        : IconButton(
+                            tooltip: 'مسح البحث',
+                            icon: const Icon(Icons.close_rounded),
+                            onPressed: () {
+                              _searchController.clear();
+                              setState(() {});
+                            },
+                          ),
+                    filled: true,
+                    fillColor: const Color(0xFFF6F8FA),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: const BorderSide(color: Color(0xFFD9E3EA)),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: const BorderSide(color: Color(0xFFD9E3EA)),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 16),
