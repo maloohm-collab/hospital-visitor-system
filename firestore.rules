@@ -321,7 +321,7 @@ service cloud.firestore {
       // A report owner may edit only the text fields; routing and review state stay protected.
       allow update: if isActiveUser()
         && resource.data.createdBy == request.auth.uid
-        && !(resource.data.destination == 'admin' && resource.data.status == 'forwarded')
+        && !(resource.data.destination == 'admin' && resource.data.status in ['forwarded', 'acknowledged'])
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
           'title', 'body', 'employeeName', 'priority', 'updatedAt'
         ])
@@ -366,7 +366,7 @@ service cloud.firestore {
       // Owners may permanently delete only their own report before it is forwarded to administration.
       allow delete: if isActiveUser()
         && resource.data.createdBy == request.auth.uid
-        && !(resource.data.destination == 'admin' && resource.data.status == 'forwarded');
+        && !(resource.data.destination == 'admin' && resource.data.status in ['forwarded', 'acknowledged']);
 
     }
 
