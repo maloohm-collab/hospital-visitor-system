@@ -4,6 +4,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import '../widgets/official_hospital_header.dart';
 
 /// ملف الحساب: يسمح بتعديل البيانات الشخصية فقط، ولا يتيح تغيير الدور أو حالة الحساب.
 class AccountProfileScreen extends StatefulWidget {
@@ -151,6 +152,7 @@ class _AccountProfileScreenState extends State<AccountProfileScreen> {
               child: ListView(
                 padding: const EdgeInsets.all(20),
                 children: [
+                  const OfficialHospitalHeader(),
                   Container(
                     padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
@@ -232,25 +234,6 @@ class _AccountProfileScreenState extends State<AccountProfileScreen> {
                           label: const Text('اختيار صورة من الهاتف'),
                         ),
                         const SizedBox(height: 8),
-                        TextFormField(
-                          controller: _photoUrl,
-                          keyboardType: TextInputType.url,
-                          decoration: const InputDecoration(
-                            labelText: 'رابط الصورة الشخصية (اختياري)',
-                            hintText: 'https://...',
-                            prefixIcon: Icon(Icons.image_outlined),
-                          ),
-                          validator: (value) {
-                            final url = (value ?? '').trim();
-                            if (url.isEmpty) return null;
-                            final uri = Uri.tryParse(url);
-                            if (url.startsWith('/')) return null;
-                            return uri != null && uri.scheme == 'https' && uri.host.isNotEmpty
-                                ? null
-                                : 'اختر صورة من الهاتف أو استخدم رابط https صحيحًا';
-                          },
-                          onChanged: (_) => setState(() {}),
-                        ),
                       ],
                     ),
                   ),
