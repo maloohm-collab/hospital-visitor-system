@@ -7,7 +7,6 @@ import 'staff_management_screen.dart';
 import 'duty_reports_screen.dart';
 import 'visitor_form_screen.dart';
 import 'visitor_logs_screen.dart';
-import 'visitor_search_screen.dart';
 import 'visitor_reports_screen.dart';
 import 'admin_approval_screen.dart';
 import 'report_center_screen.dart';
@@ -172,19 +171,13 @@ class DashboardScreen extends StatelessWidget {
               Container(width: 76, height: 76, decoration: BoxDecoration(color: Colors.white.withValues(alpha: .12), borderRadius: BorderRadius.circular(24)), child: const Icon(Icons.local_hospital_rounded, color: Colors.white, size: 42)),
             ]),
           ),
-          const SizedBox(height: 24),
-          const Text('ملخص اليوم', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: navy)),
-          const SizedBox(height: 12),
-          _buildTodaySummary(),
           const SizedBox(height: 26),
           const Text('الخدمات السريعة', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: navy)),
           const SizedBox(height: 12),
           if (userRole == 'security_officer') ...[
             _ActionTile(icon: Icons.person_add_alt_1_rounded, title: 'تسجيل زائر جديد', subtitle: 'إضافة بيانات الزيارة وتوثيق الدخول والخروج', color: teal, onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const VisitorFormScreen()))),
             const SizedBox(height: 10),
-            _ActionTile(icon: Icons.search_rounded, title: 'البحث عن زيارة', subtitle: 'البحث ضمن السجلات المسموح لك بها', color: const Color(0xFF4F67B1), onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => VisitorSearchScreen(userRole: userRole)))),
-            const SizedBox(height: 10),
-            _ActionTile(icon: Icons.assignment_outlined, title: 'سجل زياراتي', subtitle: 'عرض السجلات التي قمت بتسجيلها فقط', color: const Color(0xFF27865B), onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => VisitorLogsScreen(userRole: userRole)))),
+            _ActionTile(icon: Icons.assignment_outlined, title: 'سجل زياراتي', subtitle: 'عرض سجلاتي حسب الطابق والقسم', color: const Color(0xFF27865B), onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => VisitorLogsScreen(userRole: userRole)))),
             const SizedBox(height: 10),
             _ActionTile(icon: Icons.post_add_rounded, title: 'تقاريري', subtitle: 'إنشاء التقارير ومراجعتها وإدارتها', color: const Color(0xFF8757A5), onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ReportCenterScreen(userRole: userRole)))),
             const SizedBox(height: 10),
@@ -194,9 +187,7 @@ class DashboardScreen extends StatelessWidget {
             const SizedBox(height: 10),
             _ActionTile(icon: Icons.picture_as_pdf_rounded, title: 'تقارير المناوبة PDF', subtitle: 'إنشاء وحفظ تقرير PDF محلي ومشاركته يدويًا', color: const Color(0xFF27865B), onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => DutyReportsScreen(userRole: userRole)))),
             const SizedBox(height: 10),
-            _ActionTile(icon: Icons.search_rounded, title: 'البحث في سجل الزيارات', subtitle: 'متابعة سجلات الزيارات ضمن صلاحيات المشرف', color: const Color(0xFF4F67B1), onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => VisitorSearchScreen(userRole: userRole)))),
-            const SizedBox(height: 10),
-            _ActionTile(icon: Icons.assignment_outlined, title: 'سجل الزيارات', subtitle: 'عرض سجلات المستشفى للمراجعة والإشراف', color: const Color(0xFF27865B), onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => VisitorLogsScreen(userRole: userRole)))),
+            _ActionTile(icon: Icons.assignment_outlined, title: 'سجل الزيارات حسب الطابق والقسم', subtitle: 'اختر الطابق ثم القسم لمراجعة سجلاته', color: const Color(0xFF27865B), onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => VisitorLogsScreen(userRole: userRole)))),
           ] else ...[
             _ActionTile(icon: Icons.mark_email_read_outlined, title: 'التقارير المرفوعة للإدارة', subtitle: 'التقارير التي اختار المشرفون رفعها فقط', color: const Color(0xFF8757A5), onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ReportCenterScreen(userRole: userRole)))),
             const SizedBox(height: 10),
@@ -221,9 +212,7 @@ class DashboardScreen extends StatelessWidget {
             const SizedBox(height: 10),
             _ActionTile(icon: Icons.notifications_active_outlined, title: 'الملحوظات الإدارية', subtitle: 'إرسال ملحوظة لجميع المشرفين أو لضابط أمن محدد', color: const Color(0xFFD28A25), onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => NotificationsScreen(userRole: userRole)))),
             const SizedBox(height: 10),
-            _ActionTile(icon: Icons.search_rounded, title: 'البحث في سجل الزيارات', subtitle: 'متابعة السجلات على مستوى المستشفى', color: const Color(0xFF4F67B1), onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => VisitorSearchScreen(userRole: userRole)))),
-            const SizedBox(height: 10),
-            _ActionTile(icon: Icons.assignment_outlined, title: 'سجل الزيارات', subtitle: 'عرض السجلات ضمن صلاحيات الإدارة', color: const Color(0xFF27865B), onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => VisitorLogsScreen(userRole: userRole)))),
+            _ActionTile(icon: Icons.assignment_outlined, title: 'سجل الزيارات حسب الطابق والقسم', subtitle: 'اختر الطابق ثم القسم للوصول إلى السجلات', color: const Color(0xFF27865B), onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => VisitorLogsScreen(userRole: userRole)))),
           ],
           const SizedBox(height: 10),
           _ActionTile(icon: Icons.account_circle_outlined, title: 'حسابي', subtitle: 'تعديل الاسم ورقم الهاتف والصورة الشخصية', color: const Color(0xFF168C8C), onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AccountProfileScreen()))),
