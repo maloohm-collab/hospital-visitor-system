@@ -27,6 +27,10 @@ void main() {
     final signInButton = find.text('تسجيل الدخول إلى النظام');
     expect(signInButton, findsOneWidget);
 
+    // The welcome content can extend below the test viewport.
+    // Bring the button into view before tapping it.
+    await tester.ensureVisible(signInButton);
+    await tester.pumpAndSettle();
     await tester.tap(signInButton);
     await tester.pumpAndSettle();
 
