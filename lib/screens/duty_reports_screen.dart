@@ -362,28 +362,57 @@ class _DutyReportsScreenState extends State<DutyReportsScreen> {
         label: Text(supervisor ? 'إنشاء تقرير مشرف' : 'إعداد تقرير المناوبة')),
       body: ListView(padding: const EdgeInsets.all(18), children: [
         Container(
-          padding: const EdgeInsets.all(18),
+          padding: const EdgeInsets.fromLTRB(18, 18, 18, 20),
           decoration: BoxDecoration(
-            gradient: const LinearGradient(begin: Alignment.topRight, end: Alignment.bottomLeft,
-              colors: [navy, Color(0xFF245878)]),
-            borderRadius: BorderRadius.circular(20)),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Icon(admin ? Icons.admin_panel_settings_rounded
-              : supervisor ? Icons.fact_check_rounded : Icons.security_rounded,
-              color: Colors.white, size: 34),
-            const SizedBox(height: 12),
-            Text(admin ? 'استلام ما يختاره المشرف فقط'
-              : supervisor ? 'مراجعة وانتقاء ما يستحق الرفع'
-              : 'تقرير للمناوبة، لا تقرير لكل زائر',
-              style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 8),
-            Text(admin
-              ? 'تصل التقارير المختارة عبر واتساب أو المشاركة المباشرة. افتح ملف PDF الوارد لمراجعته والرد عليه.'
-              : supervisor
-                ? 'استقبل ملفات ضباط الأمن عبر المشاركة، راجعها، ثم أنشئ تقريرًا إداريًا انتقائيًا. اختر داخليًا للملاحظات التي لا تحتاج الإدارة.'
-                : 'أنشئ تقرير المناوبة أو الحوادث المهمة في PDF واحد، ثم شاركه مع مشرف المناوبة.',
-              style: const TextStyle(color: Colors.white70, height: 1.6)),
-          ]),
+            color: const Color(0xFFF3F7FA),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: const Color(0xFFDDE7EF)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Icon(
+                admin
+                    ? Icons.admin_panel_settings_rounded
+                    : supervisor
+                        ? Icons.fact_check_rounded
+                        : Icons.security_rounded,
+                color: teal,
+                size: 32,
+              ),
+              const SizedBox(height: 10),
+              Text(
+                admin
+                    ? 'استلام ما يختاره المشرف فقط'
+                    : supervisor
+                        ? 'مراجعة وانتقاء ما يستحق الرفع'
+                        : 'تقرير للمناوبة، لا تقرير لكل زائر',
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: Color(0xFF101820),
+                  fontSize: 18,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Container(height: 1.2, color: const Color(0xFF101820)),
+              const SizedBox(height: 10),
+              Text(
+                admin
+                    ? 'تصل التقارير المختارة عبر واتساب أو المشاركة المباشرة. افتح ملف PDF الوارد لمراجعته والرد عليه.'
+                    : supervisor
+                        ? 'استقبل ملفات ضباط الأمن عبر المشاركة، راجعها، ثم أنشئ تقريرًا إداريًا انتقائيًا. اختر داخليًا للملاحظات التي لا تحتاج الإدارة.'
+                        : 'أنشئ تقرير المناوبة أو الحوادث المهمة في PDF واحد، ثم شاركه مع مشرف المناوبة.',
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: Color(0xFF263238),
+                  height: 1.6,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
         ),
         const SizedBox(height: 14),
         _info(Icons.phone_android_rounded, 'حفظ محلي فقط',
