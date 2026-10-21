@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'direct_contact_screen.dart';
 import 'package:flutter/material.dart';
 import 'account_profile_screen.dart';
 import 'auth_screen.dart';
@@ -155,12 +156,17 @@ class DashboardScreen extends StatelessWidget {
             Navigator.push(context, MaterialPageRoute(
               builder: (_) => const AccountProfileScreen(),
             ));
+          } else if (index == 3) {
+            Navigator.push(context, MaterialPageRoute(
+              builder: (_) => const DirectContactScreen(),
+            ));
           }
         },
         destinations: const [
           NavigationDestination(icon: Icon(Icons.home_rounded), label: 'الرئيسية'),
           NavigationDestination(icon: Icon(Icons.meeting_room_outlined), label: 'الزيارات'),
           NavigationDestination(icon: Icon(Icons.account_circle_outlined), label: 'حسابي'),
+          NavigationDestination(icon: Icon(Icons.contact_phone_rounded), label: 'تواصل مباشر'),
         ],
       ),
       body: SafeArea(child: ListView(
