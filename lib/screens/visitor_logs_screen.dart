@@ -192,13 +192,16 @@ class _VisitorLogsScreenState extends State<VisitorLogsScreen> {
                           );
                         }
 
-                        return ListView.separated(
+                        return ListView(
                           padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-                          itemCount: docs.length,
-                          separatorBuilder: (_, __) =>
+                          children: [
+                            _buildStats(docs),
+                            const SizedBox(height: 14),
+                            for (final doc in docs) ...[
+                              _buildVisitCard(doc.data()),
                               const SizedBox(height: 10),
-                          itemBuilder: (context, index) =>
-                              _buildVisitCard(docs[index].data()),
+                            ],
+                          ],
                         );
                       },
                     ),
@@ -338,6 +341,78 @@ class _VisitorLogsScreenState extends State<VisitorLogsScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildStats(
+      List<QueryDocumentSnapshot<Map<String, dynamic>>> docs) {
+    final inside = docs.where((doc) => doc.data()['status'] == 'inside').length;
+    final completed =
+        docs.where((doc) => doc.data()['status'] == 'completed').length;
+    final visitorCount = docs.fold<int>(0, (sum, doc) {
+      final count = doc.data()['visitorCount'];
+      return sum + (count is int ? count : 0);
+    });
+
+    Widget metric(String title, String value, IconData icon, Color color) {
+      return Expanded(
+        child: Container(
+          padding: const EdgeInsets.all(13),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: const Color(0xFFE1E8EF)),
+          ),
+          child: Row(
+            children: [
+              Icon(icon, color: color, size: 23),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(value,
+                        style: TextStyle(
+                            color: color,
+                            fontSize: 19,
+                            fontWeight: FontWeight.w900)),
+                    const SizedBox(height: 2),
+                    Text(title,
+                        style: const TextStyle(
+                            color: _muted,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return Column(
+      children: [
+        Row(
+          children: [
+            metric('عدد الزيارات', docs.length.toString(),
+                Icons.fact_check_outlined, _navy),
+            const SizedBox(width: 9),
+            metric('داخل المستشفى', inside.toString(),
+                Icons.meeting_room_outlined, const Color(0xFFB54708)),
+          ],
+        ),
+        const SizedBox(height: 9),
+        Row(
+          children: [
+            metric('زيارات مكتملة', completed.toString(),
+                Icons.check_circle_outline, const Color(0xFF27865B)),
+            const SizedBox(width: 9),
+            metric('إجمالي الزوار', visitorCount.toString(),
+                Icons.groups_2_outlined, _teal),
+          ],
+        ),
+      ],
     );
   }
 
