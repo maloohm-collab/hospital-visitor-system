@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'direct_contact_screen.dart';
 import 'package:flutter/material.dart';
+import '../widgets/official_hospital_header.dart';
 import 'account_profile_screen.dart';
 import 'auth_screen.dart';
 import 'staff_management_screen.dart';
@@ -56,6 +57,7 @@ class DashboardScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final currentUid = FirebaseAuth.instance.currentUser?.uid;
     return Scaffold(
       appBar: AppBar(
         centerTitle: true,
@@ -172,6 +174,7 @@ class DashboardScreen extends StatelessWidget {
       body: SafeArea(child: ListView(
         padding: const EdgeInsets.fromLTRB(18, 18, 18, 28),
         children: [
+          const OfficialHospitalHeader(),
           Container(
             padding: const EdgeInsets.fromLTRB(18, 18, 18, 20),
             decoration: BoxDecoration(
@@ -198,13 +201,33 @@ class DashboardScreen extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 10),
-                const Text(
-                  'أهلاً بك',
+                StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+                  stream: currentUid == null
+                      ? null
+                      : FirebaseFirestore.instance.collection('users').doc(currentUid).snapshots(),
+                  builder: (context, snapshot) {
+                    final profile = snapshot.data?.data() ?? const <String, dynamic>{};
+                    final name = (profile['displayName'] ?? '').toString().trim();
+                    final shownName = name.isEmpty ? 'الموظف' : name;
+                    return Text(
+                      'أهلًا، $shownName',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        color: Color(0xFF101820),
+                        fontSize: 20,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    );
+                  },
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  _roleLabel(userRole),
                   textAlign: TextAlign.center,
-                  style: TextStyle(
+                  style: const TextStyle(
                     color: Color(0xFF263238),
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
                   ),
                 ),
                 const SizedBox(height: 5),
