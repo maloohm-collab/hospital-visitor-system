@@ -1,3 +1,6 @@
+import 'dart:io';
+import 'package:file_picker/file_picker.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -58,6 +61,37 @@ class _AccountProfileScreenState extends State<AccountProfileScreen> {
       }
     } finally {
       if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _pickPhoto() async {
+    try {
+      final picked = await FilePicker.platform.pickFiles(
+        type: FileType.image,
+        allowMultiple: false,
+      );
+      if (picked == null || picked.files.single.path == null) return;
+      final source = File(picked.files.single.path!);
+      final directory = await getApplicationDocumentsDirectory();
+      final photoDirectory = Directory('${directory.path}/profile_photos');
+      if (!await photoDirectory.exists()) {
+        await photoDirectory.create(recursive: true);
+      }
+      final extension = picked.files.single.extension?.toLowerCase() ?? 'jpg';
+      final userId = FirebaseAuth.instance.currentUser?.uid ?? 'profile';
+      final destination = File('${photoDirectory.path}/${userId}_profile.$extension');
+      await source.copy(destination.path);
+      if (!mounted) return;
+      setState(() => _photoUrl.text = destination.path);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('تم اختيار الصورة على هذا الجهاز. اضغط حفظ بيانات الحساب لتثبيتها.')),
+      );
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('تعذر اختيار الصورة. حاول مجددًا.')),
+        );
+      }
     }
   }
 
@@ -132,8 +166,12 @@ class _AccountProfileScreenState extends State<AccountProfileScreen> {
                         CircleAvatar(
                           radius: 42,
                           backgroundColor: Colors.white,
-                          backgroundImage: photo.startsWith('https://') ? NetworkImage(photo) : null,
-                          child: photo.startsWith('https://')
+                          backgroundImage: photo.startsWith('https://')
+                              ? NetworkImage(photo)
+                              : photo.startsWith('/')
+                                  ? FileImage(File(photo))
+                                  : null,
+                          child: (photo.startsWith('https://') || photo.startsWith('/'))
                               ? null
                               : const Icon(Icons.person_rounded, size: 46, color: _teal),
                         ),
@@ -188,6 +226,12 @@ class _AccountProfileScreenState extends State<AccountProfileScreen> {
                           ),
                         ),
                         const SizedBox(height: 14),
+                        OutlinedButton.icon(
+                          onPressed: _saving ? null : _pickPhoto,
+                          icon: const Icon(Icons.add_a_photo_outlined),
+                          label: const Text('اختيار صورة من الهاتف'),
+                        ),
+                        const SizedBox(height: 8),
                         TextFormField(
                           controller: _photoUrl,
                           keyboardType: TextInputType.url,
@@ -200,9 +244,10 @@ class _AccountProfileScreenState extends State<AccountProfileScreen> {
                             final url = (value ?? '').trim();
                             if (url.isEmpty) return null;
                             final uri = Uri.tryParse(url);
+                            if (url.startsWith('/')) return null;
                             return uri != null && uri.scheme == 'https' && uri.host.isNotEmpty
                                 ? null
-                                : 'استخدم رابط صورة يبدأ بـ https://';
+                                : 'اختر صورة من الهاتف أو استخدم رابط https صحيحًا';
                           },
                           onChanged: (_) => setState(() {}),
                         ),
