@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import '../widgets/official_hospital_header.dart';
 
 class VisitorFormScreen extends StatefulWidget {
   const VisitorFormScreen({super.key});
@@ -83,6 +84,7 @@ class _VisitorFormScreenState extends State<VisitorFormScreen> {
           child: ListView(
             padding: const EdgeInsets.fromLTRB(18, 16, 18, 28),
             children: [
+              const OfficialHospitalHeader(),
               _buildPageIntro(),
               const SizedBox(height: 16),
               _buildActiveVisits(),
