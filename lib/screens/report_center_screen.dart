@@ -148,7 +148,8 @@ class _ReportCenterScreenState extends State<ReportCenterScreen> {
 
   bool _canEdit(Map<String, dynamic> d) =>
       d['createdBy'] == user?.uid &&
-      !(d['destination'] == 'admin' && d['status'] == 'forwarded');
+      !(d['destination'] == 'admin' &&
+          (d['status'] == 'forwarded' || d['status'] == 'acknowledged'));
 
   bool _isHiddenForCurrentUser(Map<String, dynamic> d) =>
       (d['hiddenFor'] as List<dynamic>? ?? const []).contains(user?.uid);
