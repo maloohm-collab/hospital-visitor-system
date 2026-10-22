@@ -15,8 +15,8 @@ class VisitorLogsScreen extends StatefulWidget {
 }
 
 class _VisitorLogsScreenState extends State<VisitorLogsScreen> {
-  static const _navy = Color(0xFF16324F);
-  static const _teal = Color(0xFF168C8C);
+  static const _navy = Color(0xFF082B55);
+  static const _teal = Color(0xFF12B8B0);
   static const _muted = Color(0xFF637487);
 
   static const Map<String, Map<String, dynamic>> _floors = {
@@ -819,7 +819,7 @@ class _FloorChoice extends StatelessWidget {
                     color: const Color(0xFFE5F3F3),
                     borderRadius: BorderRadius.circular(13)),
                 child: const Icon(Icons.apartment_rounded,
-                    color: Color(0xFF168C8C)),
+                    color: Color(0xFF12B8B0)),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -828,7 +828,7 @@ class _FloorChoice extends StatelessWidget {
                   children: [
                     Text(title,
                         style: const TextStyle(
-                            color: Color(0xFF16324F),
+                            color: Color(0xFF082B55),
                             fontWeight: FontWeight.w800,
                             fontSize: 15)),
                     const SizedBox(height: 4),
@@ -892,14 +892,14 @@ class _LogsMessage extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 48, color: const Color(0xFF168C8C)),
+            Icon(icon, size: 48, color: const Color(0xFF12B8B0)),
             const SizedBox(height: 14),
             Text(title,
                 textAlign: TextAlign.center,
                 style: const TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w800,
-                    color: Color(0xFF16324F))),
+                    color: Color(0xFF082B55))),
             const SizedBox(height: 8),
             Text(message,
                 textAlign: TextAlign.center,
