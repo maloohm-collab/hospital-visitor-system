@@ -8,7 +8,7 @@ void main() {
     await initializeDateFormatting('en');
   });
 
-  testWidgets('welcome screen displays the current sign-in entry point',
+  testWidgets('welcome screen displays the approved background and sign-in entry point',
       (tester) async {
     tester.view.physicalSize = const Size(800, 1000);
     tester.view.devicePixelRatio = 1.0;
@@ -17,9 +17,9 @@ void main() {
 
     await tester.pumpWidget(const HospitalVisitorApp());
 
-    expect(find.text('منظومة زوار المستشفى'), findsOneWidget);
-    expect(find.text('أهلاً بك'), findsOneWidget);
-    expect(find.text('تسجيل الدخول إلى النظام'), findsOneWidget);
+    expect(find.byType(WelcomeScreen), findsOneWidget);
+    expect(find.byType(Image), findsOneWidget);
+    expect(find.text('تسجيل الدخول'), findsOneWidget);
 
     // Account creation is intentionally available from the sign-in screen,
     // not directly on the welcome screen.
@@ -36,7 +36,7 @@ void main() {
 
     final signInButton = find.widgetWithText(
       FilledButton,
-      'تسجيل الدخول إلى النظام',
+      'تسجيل الدخول',
     );
     expect(signInButton, findsOneWidget);
 
