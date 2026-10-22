@@ -34,8 +34,8 @@ class _DirectContactScreenState extends State<DirectContactScreen> {
     super.dispose();
   }
 
-  static const _navy = Color(0xFF16324F);
-  static const _teal = Color(0xFF168C8C);
+  static const _navy = Color(0xFF082B55);
+  static const _teal = Color(0xFF12B8B0);
 
   String _roleLabel(String role) {
     switch (role) {
