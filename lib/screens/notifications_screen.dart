@@ -10,7 +10,7 @@ class NotificationsScreen extends StatefulWidget {
   State<NotificationsScreen> createState() => _NotificationsScreenState();
 }
 class _NotificationsScreenState extends State<NotificationsScreen> {
-  static const navy = Color(0xFF16324F), teal = Color(0xFF168C8C);
+  static const navy = Color(0xFF082B55), teal = Color(0xFF12B8B0);
   final title = TextEditingController(), body = TextEditingController();
   String audience = 'supervisors', priority = 'normal';
   String? recipientUid;
