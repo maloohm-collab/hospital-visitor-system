@@ -119,7 +119,7 @@ class VisitorReportsScreen extends StatelessWidget {
                   icon: const Icon(Icons.picture_as_pdf_rounded),
                   label: const Text('إعداد التقرير اليومي وإرساله للمشرف (PDF)'),
                   style: FilledButton.styleFrom(
-                    backgroundColor: const Color(0xFF168C8C),
+                    backgroundColor: const Color(0xFF12B8B0),
                     foregroundColor: Colors.white,
                     minimumSize: const Size.fromHeight(52),
                   ),
@@ -133,12 +133,12 @@ class VisitorReportsScreen extends StatelessWidget {
               Expanded(child: _ReportMetric(title: 'مكتملة', value: completed.toString(), icon: Icons.check_circle_outline, color: const Color(0xFF27865B))),
             ]),
             const SizedBox(height: 22),
-            const Text('الزيارات حسب الطابق', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: Color(0xFF16324F))),
+            const Text('الزيارات حسب الطابق', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: Color(0xFF082B55))),
             const SizedBox(height: 10),
             if (floorList.isEmpty) const _ReportEmpty(message: 'لا توجد زيارات مسجلة لهذا اليوم.')
             else for (final item in floorList) _BreakdownTile(title: item.key, count: item.value, total: today.length),
             const SizedBox(height: 20),
-            const Text('الزيارات حسب القسم', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: Color(0xFF16324F))),
+            const Text('الزيارات حسب القسم', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: Color(0xFF082B55))),
             const SizedBox(height: 10),
             if (departmentList.isEmpty) const _ReportEmpty(message: 'لا توجد أقسام مسجلة اليوم.')
             else for (final item in departmentList) _BreakdownTile(title: item.key, count: item.value, total: today.length),
@@ -331,7 +331,7 @@ class _ReportMetric extends StatelessWidget {
     decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(17), border: Border.all(color: const Color(0xFFE1E8EF))),
     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Icon(icon, color: color, size: 24), const SizedBox(height: 12),
-      Text(value, style: const TextStyle(fontSize: 25, fontWeight: FontWeight.w800, color: Color(0xFF16324F))),
+      Text(value, style: const TextStyle(fontSize: 25, fontWeight: FontWeight.w800, color: Color(0xFF082B55))),
       const SizedBox(height: 3), Text(title, style: const TextStyle(fontSize: 12, color: Color(0xFF637487))),
     ]),
   );
@@ -348,11 +348,11 @@ class _BreakdownTile extends StatelessWidget {
       decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(14), border: Border.all(color: const Color(0xFFE1E8EF))),
       child: Column(children: [
         Row(children: [
-          Expanded(child: Text(title, style: const TextStyle(fontWeight: FontWeight.w700, color: Color(0xFF16324F)))),
-          Text('${count} زيارة', style: const TextStyle(fontWeight: FontWeight.w800, color: Color(0xFF168C8C))),
+          Expanded(child: Text(title, style: const TextStyle(fontWeight: FontWeight.w700, color: Color(0xFF082B55)))),
+          Text('${count} زيارة', style: const TextStyle(fontWeight: FontWeight.w800, color: Color(0xFF12B8B0))),
         ]),
         const SizedBox(height: 9),
-        ClipRRect(borderRadius: BorderRadius.circular(8), child: LinearProgressIndicator(value: ratio, minHeight: 6, backgroundColor: const Color(0xFFEAF0F5), color: const Color(0xFF168C8C))),
+        ClipRRect(borderRadius: BorderRadius.circular(8), child: LinearProgressIndicator(value: ratio, minHeight: 6, backgroundColor: const Color(0xFFEAF0F5), color: const Color(0xFF12B8B0))),
       ]),
     );
   }
