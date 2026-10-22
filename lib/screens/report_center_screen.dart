@@ -158,10 +158,24 @@ class _ReportCenterScreenState extends State<ReportCenterScreen> {
 
   // Deletion is reserved for an author's internal saved draft.
   // Submitted/forwarded reports remain in the shared audit trail.
-  bool _canDelete(Map<String, dynamic> d) =>
-      d['createdBy'] == user?.uid &&
-      d['destination'] == 'internal' &&
-      d['status'] == 'saved';
+  bool _canDelete(Map<String, dynamic> d) {
+    if (admin) {
+      return d['destination'] == 'admin' &&
+          (d['status'] == 'forwarded' || d['status'] == 'acknowledged');
+    }
+    if (supervisor) {
+      return (d['destination'] == 'supervisor' && d['status'] == 'submitted') ||
+          (d['createdBy'] == user?.uid &&
+              d['destination'] == 'internal' &&
+              d['status'] == 'saved') ||
+          (d['createdBy'] == user?.uid &&
+              d['destination'] == 'admin' &&
+              (d['status'] == 'forwarded' || d['status'] == 'acknowledged'));
+    }
+    return d['createdBy'] == user?.uid &&
+        d['destination'] == 'internal' &&
+        d['status'] == 'saved';
+  }
 
   bool _isHiddenForCurrentUser(Map<String, dynamic> d) =>
       (d['hiddenFor'] as List<dynamic>? ?? const []).contains(user?.uid);
@@ -625,7 +639,7 @@ class _ReportCenterScreenState extends State<ReportCenterScreen> {
                         OutlinedButton.icon(
                           onPressed: () => _delete(doc),
                           icon: const Icon(Icons.delete_outline, color: Colors.red),
-                          label: const Text('حذف المسودة الداخلية'),
+                          label: Text(admin ? 'حذف التقرير' : supervisor && d['createdBy'] != user?.uid ? 'حذف التقرير الوارد' : 'حذف التقرير'),
                         ),
                       if (!_isHiddenForCurrentUser(d))
                         OutlinedButton.icon(
