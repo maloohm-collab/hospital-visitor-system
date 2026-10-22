@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -103,6 +104,22 @@ class _StaffCard extends StatelessWidget {
   final ValueChanged<String> onStatus;
   final VoidCallback onDelete;
 
+  ImageProvider<Object>? _photoProvider(String photo) {
+    if (photo.startsWith('data:image/')) {
+      final comma = photo.indexOf(',');
+      if (comma < 0) return null;
+      try {
+        return MemoryImage(base64Decode(photo.substring(comma + 1)));
+      } catch (_) {
+        return null;
+      }
+    }
+    if (photo.startsWith('https://') || photo.startsWith('http://')) {
+      return NetworkImage(photo);
+    }
+    return null;
+  }
+
   @override
   Widget build(BuildContext context) {
     final name = data['displayName'] as String? ?? 'بدون اسم';
@@ -111,22 +128,40 @@ class _StaffCard extends StatelessWidget {
     final roleValue = data['role'] as String? ?? '';
     final statusValue = data['status'] as String? ?? '';
     final photo = data['photoURL'] as String? ?? '';
+    final photoProvider = _photoProvider(photo);
     return Card(
-      elevation: 0,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(17), side: BorderSide(color: tint.withOpacity(.35))),
+      elevation: 2,
+      color: Colors.white,
+      margin: EdgeInsets.zero,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+        side: BorderSide(color: tint.withOpacity(.28), width: 1),
+      ),
       child: Padding(
-        padding: const EdgeInsets.all(14),
+        padding: const EdgeInsets.all(16),
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          Row(children: [
-            CircleAvatar(
-              backgroundColor: const Color(0xFFEAF5F5),
-              backgroundImage: photo.startsWith('https://') ? NetworkImage(photo) : null,
-              child: photo.startsWith('https://') ? null : const Icon(Icons.person_outline, color: Color(0xFF168C8C)),
+          Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
+            Container(
+              padding: const EdgeInsets.all(3),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(color: const Color(0xFF168C8C).withOpacity(.35), width: 1.5),
+              ),
+              child: CircleAvatar(
+                radius: 29,
+                backgroundColor: const Color(0xFFEAF5F5),
+                backgroundImage: photoProvider,
+                child: photoProvider == null
+                    ? const Icon(Icons.person_rounded, color: Color(0xFF168C8C), size: 30)
+                    : null,
+              ),
             ),
             const SizedBox(width: 10),
             Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(name, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: Color(0xFF16324F))),
-              Text(role, style: const TextStyle(fontSize: 12, color: Color(0xFF637487))),
+              Text(name, maxLines: 2, overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontSize: 16, height: 1.3, fontWeight: FontWeight.w900, color: Color(0xFF16324F))),
+              const SizedBox(height: 3),
+              Text(role, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF637487))),
             ])),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
@@ -134,8 +169,24 @@ class _StaffCard extends StatelessWidget {
               child: Text(status, style: TextStyle(color: tint, fontWeight: FontWeight.w800, fontSize: 12)),
             ),
           ]),
-          if (phone.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 8), child: Text('الهاتف: $phone')),
-          if (email.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 4), child: Text(email, style: const TextStyle(fontSize: 12, color: Color(0xFF637487)))),
+          if (phone.isNotEmpty) Padding(
+            padding: const EdgeInsets.only(top: 12),
+            child: Row(children: [
+              const Icon(Icons.phone_outlined, size: 18, color: Color(0xFF168C8C)),
+              const SizedBox(width: 8),
+              Expanded(child: Text('الهاتف: $phone',
+                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF33485C)))),
+            ]),
+          ),
+          if (email.isNotEmpty) Padding(
+            padding: const EdgeInsets.only(top: 6),
+            child: Row(children: [
+              const Icon(Icons.email_outlined, size: 17, color: Color(0xFF637487)),
+              const SizedBox(width: 8),
+              Expanded(child: Text(email, maxLines: 2, overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontSize: 12, color: Color(0xFF637487)))),
+            ]),
+          ),
           if (roleValue != 'admin') ...[
             const SizedBox(height: 10),
             Wrap(spacing: 7, runSpacing: 6, children: [
