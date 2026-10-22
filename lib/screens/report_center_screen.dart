@@ -433,12 +433,15 @@ class _ReportCenterScreenState extends State<ReportCenterScreen> {
         child: OfficialHospitalHeader(),
       ),
       Container(
-        margin: const EdgeInsets.fromLTRB(16, 14, 16, 8),
-        padding: const EdgeInsets.fromLTRB(18, 16, 18, 17),
+        margin: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+        padding: const EdgeInsets.fromLTRB(18, 15, 18, 16),
         decoration: BoxDecoration(
-          color: const Color(0xFFF3F7FA),
+          color: Colors.white,
           borderRadius: BorderRadius.circular(18),
           border: Border.all(color: const Color(0xFFDDE7EF)),
+          boxShadow: const [
+            BoxShadow(color: Color(0x080D1F35), blurRadius: 12, offset: Offset(0, 4)),
+          ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -451,13 +454,21 @@ class _ReportCenterScreenState extends State<ReportCenterScreen> {
                       : 'إدارة تقاريري',
               textAlign: TextAlign.center,
               style: const TextStyle(
-                color: Color(0xFF101820),
-                fontSize: 18,
+                color: navy,
+                fontSize: 20,
+                height: 1.35,
                 fontWeight: FontWeight.w900,
               ),
             ),
-            const SizedBox(height: 8),
-            Container(height: 1.2, color: const Color(0xFF101820)),
+            const SizedBox(height: 10),
+            Container(
+              height: 2,
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: teal,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
 
           ],
         ),
@@ -490,23 +501,68 @@ class _ReportCenterScreenState extends State<ReportCenterScreen> {
                       : d['status'] == 'saved'
                           ? 'داخلي'
                           : 'بانتظار المراجعة';
-              return Card(elevation: 0, margin: const EdgeInsets.only(bottom: 12),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18),
-                  side: BorderSide(color: urgent ? const Color(0xFFE7B2AE) : const Color(0xFFE1E8EF))),
-                child: Padding(padding: const EdgeInsets.all(15), child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                  Row(children: [
-                    Icon(urgent ? Icons.priority_high_rounded : Icons.description_outlined, color: urgent ? Colors.red : teal, size: 30),
-                    const SizedBox(width: 10),
+              final senderName = (d['createdByName'] as String? ?? '').trim();
+              final senderPhone = (d['createdByPhone'] as String? ?? '').trim();
+              return Card(
+                elevation: 1,
+                color: Colors.white,
+                margin: const EdgeInsets.only(bottom: 12),
+                shadowColor: const Color(0x100D1F35),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(18),
+                  side: BorderSide(
+                    color: urgent ? const Color(0xFFE7B2AE) : const Color(0xFFDDE7EF),
+                  ),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                  Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Container(
+                      width: 42,
+                      height: 42,
+                      decoration: BoxDecoration(
+                        color: urgent ? const Color(0xFFFFF0EF) : const Color(0xFFEAF5F5),
+                        borderRadius: BorderRadius.circular(13),
+                      ),
+                      child: Icon(
+                        urgent ? Icons.priority_high_rounded : Icons.description_outlined,
+                        color: urgent ? const Color(0xFFB42318) : teal,
+                        size: 25,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
                     Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Text(d['title'] as String? ?? 'تقرير', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: navy)),
-                      Text(d['createdByEmail'] as String? ?? '', style: const TextStyle(fontSize: 12, color: Color(0xFF64748B))),
-                      if (created != null) Text(DateFormat('yyyy/MM/dd  HH:mm').format(created), style: const TextStyle(fontSize: 12, color: Color(0xFF64748B))),
+                      Text(
+                        d['title'] as String? ?? 'تقرير',
+                        maxLines: 3,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontSize: 17, height: 1.3, fontWeight: FontWeight.w900, color: navy),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        senderName.isNotEmpty ? senderName : (d['createdByEmail'] as String? ?? 'اسم المرسل غير متاح'),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF42576A)),
+                      ),
+                      if (senderPhone.isNotEmpty)
+                        Text('هاتف: $senderPhone', style: const TextStyle(fontSize: 12, color: Color(0xFF64748B))),
+                      if (created != null)
+                        Text(DateFormat('yyyy/MM/dd  HH:mm').format(created),
+                          style: const TextStyle(fontSize: 12, color: Color(0xFF64748B))),
                     ])),
                     Chip(label: Text(urgent ? 'عاجل' : d['priority'] == 'important' ? 'مهم' : 'عادي')),
                   ]),
-                  const SizedBox(height: 8),
-                  Text(d['body'] as String? ?? '', maxLines: 4, overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontSize: 14, height: 1.6, color: Color(0xFF33485C))),
+                  const SizedBox(height: 12),
+                  Text(
+                    d['body'] as String? ?? '',
+                    maxLines: 5,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 14, height: 1.7, color: Color(0xFF33485C)),
+                  ),
                   const SizedBox(height: 8),
                   Text(
                     'الحالة: $status',
