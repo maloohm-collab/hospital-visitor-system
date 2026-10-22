@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -225,12 +226,23 @@ class _DirectContactScreenState extends State<DirectContactScreen> {
                             children: [
                               Builder(builder: (context) {
                                 final photo = (data['photoURL'] ?? '').toString().trim();
-                                final ImageProvider<Object>? photoProvider =
-                                    photo.startsWith('http')
-                                        ? NetworkImage(photo)
-                                        : photo.startsWith('/') && File(photo).existsSync()
-                                            ? FileImage(File(photo))
-                                            : null;
+                                ImageProvider<Object>? photoProvider;
+                                if (photo.startsWith('data:image/')) {
+                                  final comma = photo.indexOf(',');
+                                  if (comma > 0) {
+                                    try {
+                                      photoProvider = MemoryImage(
+                                        base64Decode(photo.substring(comma + 1)),
+                                      );
+                                    } catch (_) {
+                                      photoProvider = null;
+                                    }
+                                  }
+                                } else if (photo.startsWith('http://') || photo.startsWith('https://')) {
+                                  photoProvider = NetworkImage(photo);
+                                } else if (photo.startsWith('/') && File(photo).existsSync()) {
+                                  photoProvider = FileImage(File(photo));
+                                }
                                 return CircleAvatar(
                                   radius: 25,
                                   backgroundColor: const Color(0xFFEAF5F5),
