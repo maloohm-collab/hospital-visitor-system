@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 
 class StaffManagementScreen extends StatelessWidget {
   const StaffManagementScreen({super.key});
-  static const navy = Color(0xFF16324F);
+  static const navy = Color(0xFF082B55);
 
   String _role(String value) => value == 'supervisor' ? 'مشرف' : value == 'admin' ? 'مسؤول النظام' : 'ضابط أمن';
   String _status(String value) => value == 'active' ? 'نشط' : value == 'suspended' ? 'معلّق' : value == 'blocked' ? 'محظور' : value;
@@ -145,21 +145,21 @@ class _StaffCard extends StatelessWidget {
               padding: const EdgeInsets.all(3),
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                border: Border.all(color: const Color(0xFF168C8C).withOpacity(.35), width: 1.5),
+                border: Border.all(color: const Color(0xFF12B8B0).withOpacity(.35), width: 1.5),
               ),
               child: CircleAvatar(
                 radius: 29,
                 backgroundColor: const Color(0xFFEAF5F5),
                 backgroundImage: photoProvider,
                 child: photoProvider == null
-                    ? const Icon(Icons.person_rounded, color: Color(0xFF168C8C), size: 30)
+                    ? const Icon(Icons.person_rounded, color: Color(0xFF12B8B0), size: 30)
                     : null,
               ),
             ),
             const SizedBox(width: 10),
             Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text(name, maxLines: 2, overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontSize: 16, height: 1.3, fontWeight: FontWeight.w900, color: Color(0xFF16324F))),
+                style: const TextStyle(fontSize: 16, height: 1.3, fontWeight: FontWeight.w900, color: Color(0xFF082B55))),
               const SizedBox(height: 3),
               Text(role, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF637487))),
             ])),
@@ -172,7 +172,7 @@ class _StaffCard extends StatelessWidget {
           if (phone.isNotEmpty) Padding(
             padding: const EdgeInsets.only(top: 12),
             child: Row(children: [
-              const Icon(Icons.phone_outlined, size: 18, color: Color(0xFF168C8C)),
+              const Icon(Icons.phone_outlined, size: 18, color: Color(0xFF12B8B0)),
               const SizedBox(width: 8),
               Expanded(child: Text('الهاتف: $phone',
                 style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF33485C)))),
