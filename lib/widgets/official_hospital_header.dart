@@ -11,7 +11,7 @@ class OfficialHospitalHeader extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(15),
-        border: Border.all(color: const Color(0xFFDDE7EF)),
+        border: Border.all(color: const Color(0xFFD5E7F0)),
       ),
       child: const Column(
         children: [
@@ -19,7 +19,7 @@ class OfficialHospitalHeader extends StatelessWidget {
             'مستشفى الزرقاء الحكومي',
             textAlign: TextAlign.center,
             style: TextStyle(
-              color: Color(0xFF16324F),
+              color: Color(0xFF082B55),
               fontSize: 17,
               fontWeight: FontWeight.w900,
             ),
@@ -29,7 +29,7 @@ class OfficialHospitalHeader extends StatelessWidget {
             'شركة الصخرة للأمن والحماية',
             textAlign: TextAlign.center,
             style: TextStyle(
-              color: Color(0xFF263238),
+              color: Color(0xFF35516B),
               fontSize: 14,
               fontWeight: FontWeight.w800,
             ),
