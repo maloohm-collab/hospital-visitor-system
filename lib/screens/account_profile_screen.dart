@@ -18,8 +18,8 @@ class AccountProfileScreen extends StatefulWidget {
 }
 
 class _AccountProfileScreenState extends State<AccountProfileScreen> {
-  static const _navy = Color(0xFF16324F);
-  static const _teal = Color(0xFF168C8C);
+  static const _navy = Color(0xFF082B55);
+  static const _teal = Color(0xFF12B8B0);
   static const _secureStorage = FlutterSecureStorage();
   final _formKey = GlobalKey<FormState>();
   final _name = TextEditingController();
