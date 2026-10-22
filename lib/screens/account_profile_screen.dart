@@ -1,7 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:file_picker/file_picker.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -278,6 +277,7 @@ class _AccountProfileScreenState extends State<AccountProfileScreen> {
   @override
   Widget build(BuildContext context) {
     final photo = _photoUrl.text.trim();
+    final photoProvider = _photoProvider(photo);
     return Scaffold(
       appBar: AppBar(title: const Text('حسابي')),
       body: _loading
@@ -302,8 +302,8 @@ class _AccountProfileScreenState extends State<AccountProfileScreen> {
                         CircleAvatar(
                           radius: 42,
                           backgroundColor: Colors.white,
-                          backgroundImage: _photoProvider(photo),
-                          child: _photoProvider(photo) != null
+                          backgroundImage: photoProvider,
+                          child: photoProvider != null
                               ? null
                               : const Icon(Icons.person_rounded, size: 46, color: _teal),
                         ),
