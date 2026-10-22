@@ -21,8 +21,8 @@ class _AuthScreenState extends State<AuthScreen> {
   final _pin = TextEditingController();
   bool _obscure = true, _register = false, _loading = false, _usePinLogin = false;
   String _role = 'security_officer';
-  static const _navy = Color(0xFF16324F);
-  static const _teal = Color(0xFF168C8C);
+  static const _navy = Color(0xFF082B55);
+  static const _teal = Color(0xFF12B8B0);
   static const _secureStorage = FlutterSecureStorage();
 
   @override
@@ -347,8 +347,8 @@ class _LiveDateTimeCard extends StatefulWidget {
 class _LiveDateTimeCardState extends State<_LiveDateTimeCard> {
   late DateTime _now;
   Timer? _timer;
-  static const _navy = Color(0xFF16324F);
-  static const _teal = Color(0xFF168C8C);
+  static const _navy = Color(0xFF082B55);
+  static const _teal = Color(0xFF12B8B0);
 
   @override
   void initState() {
