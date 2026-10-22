@@ -30,6 +30,57 @@ jobs:
       - name: Generate missing Android project files
         run: flutter create --platforms=android .
 
+      - name: Apply hospital and security launcher icon
+        run: |
+          mkdir -p android/app/src/main/res/drawable
+          cat > android/app/src/main/res/drawable/ic_launcher_custom.xml <<'XML'
+          <vector xmlns:android="http://schemas.android.com/apk/res/android"
+              android:width="108dp"
+              android:height="108dp"
+              android:viewportWidth="108"
+              android:viewportHeight="108">
+              <path android:fillColor="#082B55" android:pathData="M0,0h108v108h-108z" />
+              <path android:fillColor="#14558A" android:pathData="M54,10 L86,22 L84,53 C82,73 69,88 54,98 C39,88 26,73 24,53 L22,22 Z" />
+              <path android:fillColor="#D9AC55" android:fillType="evenOdd" android:pathData="M54,6 L91,20 L89,53 C87,77 72,93 54,103 C36,93 21,77 19,53 L17,20 Z M54,14 L25,25 L27,52 C29,72 41,84 54,92 C67,84 79,72 81,52 L83,25 Z" />
+              <path android:fillColor="#FFFFFF" android:pathData="M49,26h10v13h13v10h-13v13h-10v-13h-13v-10h13z" />
+              <path android:fillColor="#62E0D6" android:pathData="M34,70c0,-6 5,-11 11,-11s11,5 11,11v7h-22z M59,70c0,-6 5,-11 11,-11s11,5 11,11v7h-22z M47,65c0,-5 3,-8 7,-8s7,3 7,8v12h-14z" />
+          </vector>
+          XML
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          manifest = Path("android/app/src/main/AndroidManifest.xml")
+          content = manifest.read_text()
+          content, icon_count = re.subn(r'android:icon="[^"]+"', 'android:icon="@drawable/ic_launcher_custom"', content, count=1)
+          content, label_count = re.subn(r'android:label="[^"]+"', 'android:label="نظام زوار المستشفى"', content, count=1)
+          if icon_count != 1:
+              raise SystemExit("Could not locate Android app icon setting in generated manifest")
+          if label_count != 1:
+              raise SystemExit("Could not locate Android app label setting in generated manifest")
+          manifest.write_text(content)
+          print("Applied custom shield medical/security launcher icon and Arabic app label.")
+          PY
+
+      - name: Set Android compile SDK to 36
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          path = Path("android/app/build.gradle.kts")
+          content = path.read_text()
+          updated, count = re.subn(
+              r"(?m)^\s*compileSdk\s*=.*$",
+              "    compileSdk = 36",
+              content,
+              count=1,
+          )
+          if count != 1:
+              raise SystemExit("Could not find compileSdk setting in android/app/build.gradle.kts")
+          path.write_text(updated)
+          print("Configured compileSdk = 36")
+          PY
+
       - name: Configure Google Services Gradle plugin
         run: |
           sed -i '/^plugins {/a\    id("com.google.gms.google-services") version "4.4.3" apply false' android/settings.gradle.kts

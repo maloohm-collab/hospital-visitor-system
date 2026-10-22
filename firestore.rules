@@ -26,16 +26,18 @@ service cloud.firestore {
       allow create: if signedIn()
         && request.auth.uid == uid
         && request.resource.data.keys().hasOnly([
-          'uid', 'displayName', 'email', 'requestedRole', 'status', 'createdAt'
+          'uid', 'displayName', 'phone', 'email', 'requestedRole', 'status', 'createdAt'
         ])
         && request.resource.data.keys().hasAll([
-          'uid', 'displayName', 'email', 'requestedRole', 'status', 'createdAt'
+          'uid', 'displayName', 'phone', 'email', 'requestedRole', 'status', 'createdAt'
         ])
         && request.resource.data.uid == request.auth.uid
         && request.resource.data.status == 'pending'
         && request.resource.data.requestedRole in ['security_officer', 'supervisor']
         && request.resource.data.displayName is string
         && request.resource.data.displayName.size() >= 3
+        && request.resource.data.phone is string
+        && request.resource.data.phone.size() >= 9
         && request.resource.data.email is string
         && request.resource.data.createdAt == request.time;
 
@@ -49,11 +51,12 @@ service cloud.firestore {
           isActiveAdmin()
           && resource.data.status == 'pending'
           && request.resource.data.keys().hasOnly([
-            'uid', 'displayName', 'email', 'requestedRole', 'status',
+            'uid', 'displayName', 'phone', 'email', 'requestedRole', 'status',
             'createdAt', 'reviewedAt', 'reviewedBy'
           ])
           && request.resource.data.uid == resource.data.uid
           && request.resource.data.displayName == resource.data.displayName
+          && request.resource.data.phone == resource.data.phone
           && request.resource.data.email == resource.data.email
           && request.resource.data.requestedRole == resource.data.requestedRole
           && request.resource.data.createdAt == resource.data.createdAt
@@ -80,6 +83,7 @@ service cloud.firestore {
           && request.resource.data.uid == resource.data.uid
           && request.resource.data.email == resource.data.email
           && request.resource.data.displayName == resource.data.displayName
+          && request.resource.data.phone == resource.data.phone
           && request.resource.data.requestedRole == resource.data.requestedRole
           && request.resource.data.createdAt == request.time
           && !request.resource.data.keys().hasAny(['reviewedAt', 'reviewedBy'])
@@ -97,11 +101,11 @@ service cloud.firestore {
       allow create: if isActiveAdmin()
         && uid != request.auth.uid
         && request.resource.data.keys().hasOnly([
-          'uid', 'displayName', 'email', 'role', 'status',
+          'uid', 'displayName', 'phone', 'photoURL', 'email', 'role', 'status',
           'createdAt', 'approvedAt', 'approvedBy'
         ])
         && request.resource.data.keys().hasAll([
-          'uid', 'displayName', 'email', 'role', 'status',
+          'uid', 'displayName', 'phone', 'email', 'role', 'status',
           'createdAt', 'approvedAt', 'approvedBy'
         ])
         && request.resource.data.uid == uid
@@ -114,7 +118,38 @@ service cloud.firestore {
         && getAfter(/databases/$(database)/documents/account_requests/$(uid)).data.requestedRole == request.resource.data.role
         && getAfter(/databases/$(database)/documents/account_requests/$(uid)).data.reviewedBy == request.auth.uid;
 
-      allow list, update, delete: if false;
+      // Active staff may list only active profiles for the direct-contact directory.
+      // Admins retain the full list permission needed by staff management.
+      allow list: if isActiveAdmin()
+        || (isActiveUser() && resource.data.status == 'active');
+
+      // الموظف يعدّل بياناته الشخصية فقط، ولا يستطيع تغيير دوره أو حالته.
+      // الإدارة تستطيع تعليق الحساب أو حظره أو إعادة تفعيله دون تغيير الدور.
+      allow update: if isActiveUser() && (
+        (
+          request.auth.uid == uid
+          && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['displayName', 'phone', 'photoURL'])
+          && request.resource.data.displayName is string
+          && request.resource.data.displayName.size() >= 3
+          && request.resource.data.phone is string
+          && request.resource.data.phone.size() >= 9
+          && request.resource.data.photoURL is string
+          && request.resource.data.role == resource.data.role
+          && request.resource.data.status == resource.data.status
+          && request.resource.data.email == resource.data.email
+          && request.resource.data.uid == resource.data.uid
+        )
+        || (
+          isActiveAdmin()
+          && uid != request.auth.uid
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status'])
+          && request.resource.data.status in ['active', 'suspended', 'blocked']
+          && request.resource.data.role == resource.data.role
+        )
+      );
+
+      allow delete: if isActiveAdmin() && uid != request.auth.uid;
     }
 
     match /visitor_logs/{visitId} {
@@ -125,15 +160,17 @@ service cloud.firestore {
         && request.resource.data.keys().hasOnly([
           'visitId', 'floorId', 'floorName', 'department', 'roomNumber',
           'visitorCount', 'visitDate', 'entryAt', 'exitAt', 'notes',
-          'status', 'createdBy', 'createdByEmail', 'createdAt'
+          'status', 'createdBy', 'createdByEmail', 'createdByName', 'createdByPhone', 'createdAt'
         ])
         && request.resource.data.keys().hasAll([
           'visitId', 'floorId', 'floorName', 'department', 'roomNumber',
           'visitorCount', 'visitDate', 'entryAt', 'exitAt', 'notes',
-          'status', 'createdBy', 'createdAt'
+          'status', 'createdBy', 'createdByName', 'createdByPhone', 'createdAt'
         ])
         && request.resource.data.visitId == visitId
         && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.createdByName is string
+        && request.resource.data.createdByPhone is string
         && request.resource.data.floorId in [
           'floor_5', 'floor_4', 'floor_3', 'floor_2', 'floor_1', 'ccu'
         ]
@@ -156,14 +193,38 @@ service cloud.firestore {
         && request.resource.data.status == 'completed'
         && request.resource.data.exitAt is timestamp
         && request.resource.data.exitAt >= resource.data.entryAt
-        && request.resource.data.updatedAt == request.time
+        && request.resource.data.updatedAt is timestamp
+        && request.resource.data.notes is string
         && request.resource.data.diff(resource.data).affectedKeys()
-          .hasOnly(['exitAt', 'status', 'updatedAt'])
+          .hasOnly(['exitAt', 'status', 'updatedAt', 'notes'])
         && request.resource.data.keys().hasAll([
           'visitId', 'floorId', 'floorName', 'department', 'roomNumber',
           'visitorCount', 'visitDate', 'entryAt', 'exitAt', 'notes',
           'status', 'createdBy', 'createdAt', 'updatedAt'
         ]);
+
+      // Officers may hide their own completed visit records from their personal list.
+      // The shared visit record remains available to supervisors and administrators.
+      allow update: if isActiveUser()
+        && resource.data.createdBy == request.auth.uid
+        && resource.data.status == 'completed'
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['hiddenFor'])
+        && request.resource.data.hiddenFor is list
+        && request.resource.data.hiddenFor.hasAll(resource.data.get('hiddenFor', []))
+        && request.resource.data.hiddenFor.size()
+          == resource.data.get('hiddenFor', []).size() + 1
+        && !resource.data.get('hiddenFor', []).hasAny([request.auth.uid])
+        && request.resource.data.hiddenFor.hasAny([request.auth.uid]);
+
+      // The visit creator may add, edit, or clear only the notes field on their own visit,
+      // whether the visit is still inside or already completed. Other visit data stays immutable.
+      allow update: if isActiveUser()
+        && resource.data.createdBy == request.auth.uid
+        && resource.data.status in ['inside', 'completed']
+        && request.resource.data.status == resource.data.status
+        && request.resource.data.exitAt == resource.data.exitAt
+        && request.resource.data.notes is string
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['notes']);
 
       // Staff can view their own records; supervisors and admins can review all records.
       allow get, list: if isActiveUser()
@@ -173,7 +234,18 @@ service cloud.firestore {
           || isActiveAdmin()
         );
 
-      allow delete: if false;
+      // Only completed visits can be deleted. Officers may delete their own;
+      // supervisors and administrators may delete any completed visit.
+      allow delete: if isActiveUser()
+        && resource.data.status == 'completed'
+        && (
+          isActiveAdmin()
+          || isActiveSupervisor()
+          || (
+            resource.data.createdBy == request.auth.uid
+            && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'security_officer'
+          )
+        );
     }
 
     match /duty_reports/{reportId} {
@@ -182,12 +254,12 @@ service cloud.firestore {
       allow create: if isActiveUser()
         && request.resource.data.keys().hasOnly([
           'reportId', 'type', 'title', 'body', 'employeeName', 'priority',
-          'destination', 'status', 'createdBy', 'createdByEmail',
+          'destination', 'status', 'createdBy', 'createdByEmail', 'createdByName', 'createdByPhone',
           'createdByRole', 'createdAt', 'updatedAt'
         ])
         && request.resource.data.keys().hasAll([
           'reportId', 'type', 'title', 'body', 'employeeName', 'priority',
-          'destination', 'status', 'createdBy', 'createdByEmail',
+          'destination', 'status', 'createdBy', 'createdByEmail', 'createdByName', 'createdByPhone',
           'createdByRole', 'createdAt', 'updatedAt'
         ])
         && request.resource.data.reportId == reportId
@@ -199,6 +271,8 @@ service cloud.firestore {
         && request.resource.data.body is string
         && request.resource.data.body.size() >= 10
         && request.resource.data.employeeName is string
+        && request.resource.data.createdByName is string
+        && request.resource.data.createdByPhone is string
         && request.resource.data.priority in ['normal', 'important', 'urgent']
         && (
           (
@@ -229,7 +303,7 @@ service cloud.firestore {
         || (
           isActiveAdmin()
           && resource.data.destination == 'admin'
-          && resource.data.status == 'forwarded'
+          && resource.data.status in ['forwarded', 'acknowledged']
         )
       );
 
@@ -267,6 +341,124 @@ service cloud.firestore {
         && request.resource.data.status == 'submitted'
         && request.resource.data.updatedAt == request.time
       );
+
+      // A report owner may edit only the text fields; routing and review state stay protected.
+      allow update: if isActiveUser()
+        && resource.data.createdBy == request.auth.uid
+        && !(resource.data.destination == 'admin' && resource.data.status in ['forwarded', 'acknowledged'])
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'title', 'body', 'employeeName', 'priority', 'updatedAt'
+        ])
+        && request.resource.data.title is string
+        && request.resource.data.title.size() >= 4
+        && request.resource.data.body is string
+        && request.resource.data.body.size() >= 10
+        && request.resource.data.updatedAt == request.time;
+
+      // Administration can confirm receipt of a report forwarded by a supervisor.
+      allow update: if isActiveAdmin()
+        && resource.data.destination == 'admin'
+        && resource.data.status == 'forwarded'
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'status', 'adminConfirmedBy', 'adminConfirmedAt', 'updatedAt'
+        ])
+        && request.resource.data.status == 'acknowledged'
+        && request.resource.data.adminConfirmedBy == request.auth.uid
+        && request.resource.data.adminConfirmedAt == request.time
+        && request.resource.data.updatedAt == request.time;
+
+      // Each recipient may hide a report from their own list without deleting the shared record.
+      // The only allowed change is adding the current user's UID to hiddenFor.
+      allow update: if isActiveUser()
+        && (
+          isActiveSupervisor()
+          || (
+            isActiveAdmin()
+            && resource.data.destination == 'admin'
+            && resource.data.status in ['forwarded', 'acknowledged']
+          )
+          || resource.data.createdBy == request.auth.uid
+        )
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['hiddenFor'])
+        && request.resource.data.hiddenFor is list
+        && request.resource.data.hiddenFor.hasAll(resource.data.get('hiddenFor', []))
+        && request.resource.data.hiddenFor.size()
+          == resource.data.get('hiddenFor', []).size() + 1
+        && !resource.data.get('hiddenFor', []).hasAny([request.auth.uid])
+        && request.resource.data.hiddenFor.hasAny([request.auth.uid]);
+
+      // Report deletion follows role and destination:
+      // - A supervisor may delete submitted reports routed to the supervisor,
+      //   their own internal drafts, and their own reports forwarded to administration.
+      // - An administrator may delete reports explicitly routed to administration
+      //   after forwarding or acknowledgement.
+      // - Other users may delete only their own internal saved drafts.
+      allow delete: if isActiveUser() && (
+        (
+          isActiveSupervisor()
+          && (
+            (resource.data.destination == 'supervisor'
+              && resource.data.status == 'submitted')
+            || (resource.data.createdBy == request.auth.uid
+              && resource.data.destination == 'internal'
+              && resource.data.status == 'saved')
+            || (resource.data.createdBy == request.auth.uid
+              && resource.data.createdByRole == 'supervisor'
+              && resource.data.destination == 'admin'
+              && resource.data.status in ['forwarded', 'acknowledged'])
+          )
+        )
+        || (
+          isActiveAdmin()
+          && resource.data.destination == 'admin'
+          && resource.data.status in ['forwarded', 'acknowledged']
+        )
+        || (
+          resource.data.createdBy == request.auth.uid
+          && resource.data.destination == 'internal'
+          && resource.data.status == 'saved'
+        )
+      );
+
+    }
+
+    match /notifications/{notificationId} {
+      // Only the administration can issue notices. A recipient must be an active user.
+      allow create: if isActiveAdmin()
+        && request.resource.data.keys().hasOnly([
+          'notificationId', 'recipientUid', 'recipientRole', 'senderUid',
+          'senderEmail', 'title', 'body', 'priority', 'read', 'createdAt'
+        ])
+        && request.resource.data.keys().hasAll([
+          'notificationId', 'recipientUid', 'recipientRole', 'senderUid',
+          'senderEmail', 'title', 'body', 'priority', 'read', 'createdAt'
+        ])
+        && request.resource.data.notificationId == notificationId
+        && request.resource.data.recipientUid is string
+        && exists(/databases/$(database)/documents/users/$(request.resource.data.recipientUid))
+        && get(/databases/$(database)/documents/users/$(request.resource.data.recipientUid)).data.status == 'active'
+        && request.resource.data.recipientRole in ['supervisor', 'security_officer']
+        && get(/databases/$(database)/documents/users/$(request.resource.data.recipientUid)).data.role == request.resource.data.recipientRole
+        && request.resource.data.senderUid == request.auth.uid
+        && request.resource.data.title is string
+        && request.resource.data.title.size() >= 3
+        && request.resource.data.body is string
+        && request.resource.data.body.size() >= 5
+        && request.resource.data.priority in ['normal', 'important', 'urgent']
+        && request.resource.data.read == false
+        && request.resource.data.createdAt == request.time;
+
+      allow get, list: if isActiveUser()
+        && (resource.data.recipientUid == request.auth.uid
+          || (isActiveAdmin() && resource.data.senderUid == request.auth.uid));
+
+      // Recipients may mark their own notice read, but cannot edit its content or recipient.
+      allow update: if isActiveUser()
+        && resource.data.recipientUid == request.auth.uid
+        && resource.data.read == false
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read', 'readAt'])
+        && request.resource.data.read == true
+        && request.resource.data.readAt == request.time;
 
       allow delete: if false;
     }

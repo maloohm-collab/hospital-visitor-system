@@ -5,8 +5,10 @@ import 'dart:io';
 
 import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
+import '../widgets/official_hospital_header.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
+import 'package:arabic_reshaper/arabic_reshaper.dart';
 import 'package:printing/printing.dart';
 import 'package:share_plus/share_plus.dart';
 
@@ -23,7 +25,15 @@ class VisitorReportsScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(title: const Text('التقارير والإحصاءات')),
-      body: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+      body: SafeArea(
+        child: Column(
+          children: [
+            const Padding(
+              padding: EdgeInsets.fromLTRB(16, 12, 16, 0),
+              child: OfficialHospitalHeader(),
+            ),
+            Expanded(
+              child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
         stream: query.snapshots(),
         builder: (context, snapshot) {
           if (snapshot.hasError) return const Center(child: Padding(
@@ -62,21 +72,43 @@ class VisitorReportsScreen extends StatelessWidget {
 
           return ListView(padding: const EdgeInsets.all(16), children: [
             Container(
-              padding: const EdgeInsets.all(20),
+              padding: const EdgeInsets.fromLTRB(18, 18, 18, 20),
               decoration: BoxDecoration(
-                gradient: const LinearGradient(begin: Alignment.topRight, end: Alignment.bottomLeft, colors: [Color(0xFF16324F), Color(0xFF245878)]),
+                color: const Color(0xFFF3F7FA),
                 borderRadius: BorderRadius.circular(21),
+                border: Border.all(color: const Color(0xFFDDE7EF)),
               ),
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                const Text('تقرير حركة الزوار', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w800)),
-                const SizedBox(height: 6),
-                Text('اليوم: ${DateFormat('yyyy/MM/dd', 'en').format(now)}', style: const TextStyle(color: Colors.white70)),
-                const SizedBox(height: 18),
-                Row(children: [
-                  Expanded(child: _ReportBigNumber(label: 'زيارات اليوم', value: today.length.toString())),
-                  Expanded(child: _ReportBigNumber(label: 'إجمالي الزوار', value: visitors.toString())),
-                ]),
-              ]),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const Text(
+                    'تقرير حركة الزوار',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: Color(0xFF101820),
+                      fontSize: 20,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Container(height: 1.2, color: const Color(0xFF101820)),
+                  const SizedBox(height: 9),
+                  Text(
+                    'تاريخ اليوم: ${DateFormat('yyyy/MM/dd', 'en').format(now)}',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      color: Color(0xFF263238),
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(children: [
+                    Expanded(child: _ReportBigNumber(label: 'زيارات اليوم', value: today.length.toString())),
+                    Expanded(child: _ReportBigNumber(label: 'إجمالي الزوار', value: visitors.toString())),
+                  ]),
+                ],
+              ),
             ),
             if (userRole == 'security_officer') ...[
               const SizedBox(height: 16),
@@ -87,7 +119,7 @@ class VisitorReportsScreen extends StatelessWidget {
                   icon: const Icon(Icons.picture_as_pdf_rounded),
                   label: const Text('إعداد التقرير اليومي وإرساله للمشرف (PDF)'),
                   style: FilledButton.styleFrom(
-                    backgroundColor: const Color(0xFF168C8C),
+                    backgroundColor: const Color(0xFF12B8B0),
                     foregroundColor: Colors.white,
                     minimumSize: const Size.fromHeight(52),
                   ),
@@ -101,23 +133,27 @@ class VisitorReportsScreen extends StatelessWidget {
               Expanded(child: _ReportMetric(title: 'مكتملة', value: completed.toString(), icon: Icons.check_circle_outline, color: const Color(0xFF27865B))),
             ]),
             const SizedBox(height: 22),
-            const Text('الزيارات حسب الطابق', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: Color(0xFF16324F))),
+            const Text('الزيارات حسب الطابق', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: Color(0xFF082B55))),
             const SizedBox(height: 10),
             if (floorList.isEmpty) const _ReportEmpty(message: 'لا توجد زيارات مسجلة لهذا اليوم.')
             else for (final item in floorList) _BreakdownTile(title: item.key, count: item.value, total: today.length),
             const SizedBox(height: 20),
-            const Text('الزيارات حسب القسم', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: Color(0xFF16324F))),
+            const Text('الزيارات حسب القسم', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: Color(0xFF082B55))),
             const SizedBox(height: 10),
-            if (departmentList.isEmpty) const _ReportEmpty(message: 'ستظهر الأقسام هنا عند تسجيل زيارات اليوم.')
+            if (departmentList.isEmpty) const _ReportEmpty(message: 'لا توجد أقسام مسجلة اليوم.')
             else for (final item in departmentList) _BreakdownTile(title: item.key, count: item.value, total: today.length),
-            const SizedBox(height: 16),
-            Text('تحديث مباشر من قاعدة البيانات • إجمالي السجلات المتاحة: ${docs.length}',
-              style: const TextStyle(fontSize: 11, color: Color(0xFF637487), height: 1.5)),
+
           ]);
         },
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
+
+  String _shapeArabic(String value) => ArabicReshaper.instance.reshape(value);
 
   Future<void> _createDailyPdf(
     BuildContext context,
@@ -155,41 +191,68 @@ class VisitorReportsScreen extends StatelessWidget {
       final groups = grouped.entries.toList()..sort((a, b) => a.key.compareTo(b.key));
       String timeOf(dynamic value) => value is Timestamp
           ? DateFormat('HH:mm', 'en').format(value.toDate()) : 'لم يسجل';
-      final staffName = user.displayName?.trim().isNotEmpty == true
-          ? user.displayName! : user.email ?? user.uid;
+      // الاسم المعتمد من ملف المستخدم في Firestore، وليس البريد الإلكتروني.
+      final profileSnapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .get();
+      final profileName =
+          (profileSnapshot.data()?['displayName'] as String?)?.trim();
+      final staffName = profileName != null && profileName.isNotEmpty
+          ? profileName
+          : (user.displayName?.trim().isNotEmpty == true
+              ? user.displayName!.trim()
+              : 'غير مسجل');
+      final profilePhone = (profileSnapshot.data()?['phone'] as String? ?? '').trim();
+      final staffPhone = profilePhone.isNotEmpty
+          ? profilePhone
+          : (visits.isNotEmpty ? (visits.first.data()['createdByPhone'] as String? ?? 'غير مسجل') : 'غير مسجل');
       final pdf = pw.Document();
       pdf.addPage(pw.MultiPage(
         theme: pw.ThemeData.withFont(base: arabicFont, bold: boldFont),
         build: (_) => [
-          pw.Container(
-            padding: const pw.EdgeInsets.all(18),
-            decoration: const pw.BoxDecoration(
-              color: PdfColor.fromInt(0xFF16324F),
-              borderRadius: pw.BorderRadius.all(pw.Radius.circular(10)),
+          pw.Directionality(
+            textDirection: pw.TextDirection.rtl,
+            child: pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.stretch,
+              children: [
+                pw.Text(
+                  _shapeArabic('منظومة زوار المستشفى'),
+                  textAlign: pw.TextAlign.right,
+                  style: pw.TextStyle(
+                    font: boldFont, fontSize: 20, color: PdfColors.black,
+                  ),
+                ),
+                pw.SizedBox(height: 7),
+                pw.Container(height: 1.3, color: PdfColors.black),
+                pw.SizedBox(height: 9),
+                pw.Text(
+                  _shapeArabic('التقرير اليومي لحركة الزوار'),
+                  textAlign: pw.TextAlign.right,
+                  style: pw.TextStyle(
+                    font: boldFont, fontSize: 14, color: PdfColors.black,
+                  ),
+                ),
+              ],
             ),
-            child: pw.Column(children: [
-              pw.Text('منظومة زوار المستشفى', textAlign: pw.TextAlign.center,
-                style: pw.TextStyle(font: boldFont, fontSize: 20, color: PdfColors.white)),
-              pw.SizedBox(height: 6),
-              pw.Text('التقرير اليومي لحركة الزوار', textAlign: pw.TextAlign.center,
-                style: pw.TextStyle(font: arabicFont, fontSize: 15, color: PdfColors.white)),
-            ]),
           ),
           pw.SizedBox(height: 18),
           pw.Directionality(textDirection: pw.TextDirection.rtl, child: pw.Column(
             crossAxisAlignment: pw.CrossAxisAlignment.stretch,
             children: [
-              pw.Text('التاريخ: $dateLabel', style: pw.TextStyle(font: boldFont, fontSize: 12)),
+              pw.Text(_shapeArabic('تاريخ ووقت إعداد التقرير: ${DateFormat('yyyy/MM/dd  HH:mm').format(now)}'),
+                style: pw.TextStyle(font: boldFont, fontSize: 11, color: PdfColors.black)),
               pw.SizedBox(height: 5),
-              pw.Text('اسم الموظف المسؤول: $staffName', style: pw.TextStyle(font: arabicFont, fontSize: 12)),
+              pw.Text(_shapeArabic('رقم هاتف الموظف: $staffPhone'),
+                style: pw.TextStyle(font: arabicFont, fontSize: 11, color: PdfColors.black)),
               pw.SizedBox(height: 12),
-              pw.Text('عدد سجلات الزيارات: ${visits.length}  |  إجمالي الزوار: $visitorTotal',
+              pw.Text(_shapeArabic('عدد سجلات الزيارات: ${visits.length}  |  إجمالي الزوار: $visitorTotal'),
                 style: pw.TextStyle(font: boldFont, fontSize: 12)),
               pw.SizedBox(height: 5),
-              pw.Text('داخل المستشفى: $insideCount  |  مكتملة الخروج: $completedCount',
+              pw.Text(_shapeArabic('داخل المستشفى: $insideCount  |  مكتملة الخروج: $completedCount'),
                 style: pw.TextStyle(font: arabicFont, fontSize: 11)),
               pw.SizedBox(height: 14),
-              pw.Text('التفاصيل حسب الطابق والقسم والغرفة', style: pw.TextStyle(font: boldFont, fontSize: 14)),
+              pw.Text(_shapeArabic('التفاصيل حسب الطابق والقسم والغرفة'), style: pw.TextStyle(font: boldFont, fontSize: 14)),
               pw.SizedBox(height: 8),
               for (final entry in groups)
                 pw.Container(
@@ -200,19 +263,26 @@ class VisitorReportsScreen extends StatelessWidget {
                     borderRadius: pw.BorderRadius.circular(6),
                   ),
                   child: pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.stretch, children: [
-                    pw.Text(entry.key.replaceAll('||', ' — '), style: pw.TextStyle(font: boldFont, fontSize: 11)),
-                    pw.Text('عدد الزوار: ${entry.value.fold<int>(0, (sum, d) => sum + ((d['visitorCount'] is int) ? d['visitorCount'] as int : 0))}  •  عدد السجلات: ${entry.value.length}',
+                    pw.Text(_shapeArabic(entry.key.replaceAll('||', ' — ')), style: pw.TextStyle(font: boldFont, fontSize: 11)),
+                    pw.Text(_shapeArabic('عدد الزوار: ${entry.value.fold<int>(0, (sum, d) => sum + ((d['visitorCount'] is int) ? d['visitorCount'] as int : 0))}  •  عدد السجلات: ${entry.value.length}'),
                       style: pw.TextStyle(font: arabicFont, fontSize: 10)),
                     for (final item in entry.value)
                       pw.Text(
-                        'دخول: ${timeOf(item['entryAt'])} | خروج: ${timeOf(item['exitAt'])} | العدد: ${item['visitorCount'] ?? 0}${(item['notes'] as String? ?? '').trim().isEmpty ? '' : ' | ملاحظة: ${item['notes']}'}',
+                        _shapeArabic('دخول: ${timeOf(item['entryAt'])} | خروج: ${timeOf(item['exitAt'])} | العدد: ${item['visitorCount'] ?? 0}${(item['notes'] as String? ?? '').trim().isEmpty ? '' : ' | ملاحظة: ${item['notes']}'}'),
                         style: pw.TextStyle(font: arabicFont, fontSize: 9)),
                   ]),
                 ),
               pw.SizedBox(height: 10),
-              pw.Divider(),
-              pw.Text('تم إعداد التقرير من سجلات قاعدة بيانات المستشفى.',
-                textAlign: pw.TextAlign.center, style: pw.TextStyle(font: arabicFont, fontSize: 9)),
+              pw.Divider(color: PdfColors.grey600),
+              pw.Text(_shapeArabic('تم إعداد التقرير من سجلات قاعدة بيانات المستشفى.'),
+                textAlign: pw.TextAlign.right,
+                style: pw.TextStyle(font: arabicFont, fontSize: 9, color: PdfColors.black)),
+              pw.SizedBox(height: 20),
+              pw.Container(height: 0.8, color: PdfColors.grey500),
+              pw.SizedBox(height: 8),
+              pw.Text(_shapeArabic('مرسل التقرير: $staffName'),
+                textAlign: pw.TextAlign.right,
+                style: pw.TextStyle(font: boldFont, fontSize: 11, color: PdfColors.black)),
             ],
           )),
         ],
@@ -228,7 +298,7 @@ class VisitorReportsScreen extends StatelessWidget {
         subject: 'التقرير اليومي لحركة الزوار — $dateLabel');
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('تم حفظ التقرير على الهاتف. يمكنك مشاركته مباشرة مع المشرف من نافذة المشاركة.')),
+          const SnackBar(content: Text('تم إنشاء التقرير بنجاح.')),
         );
       }
     } catch (error) {
@@ -246,9 +316,9 @@ class _ReportBigNumber extends StatelessWidget {
   final String label; final String value;
   @override
   Widget build(BuildContext context) => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-    Text(value, style: const TextStyle(color: Colors.white, fontSize: 29, fontWeight: FontWeight.w800)),
+    Text(value, style: const TextStyle(color: Color(0xFF101820), fontSize: 29, fontWeight: FontWeight.w900)),
     const SizedBox(height: 4),
-    Text(label, style: const TextStyle(color: Colors.white70, fontSize: 12)),
+    Text(label, style: const TextStyle(color: Color(0xFF526579), fontSize: 12, fontWeight: FontWeight.w600)),
   ]);
 }
 
@@ -261,7 +331,7 @@ class _ReportMetric extends StatelessWidget {
     decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(17), border: Border.all(color: const Color(0xFFE1E8EF))),
     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Icon(icon, color: color, size: 24), const SizedBox(height: 12),
-      Text(value, style: const TextStyle(fontSize: 25, fontWeight: FontWeight.w800, color: Color(0xFF16324F))),
+      Text(value, style: const TextStyle(fontSize: 25, fontWeight: FontWeight.w800, color: Color(0xFF082B55))),
       const SizedBox(height: 3), Text(title, style: const TextStyle(fontSize: 12, color: Color(0xFF637487))),
     ]),
   );
@@ -278,11 +348,11 @@ class _BreakdownTile extends StatelessWidget {
       decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(14), border: Border.all(color: const Color(0xFFE1E8EF))),
       child: Column(children: [
         Row(children: [
-          Expanded(child: Text(title, style: const TextStyle(fontWeight: FontWeight.w700, color: Color(0xFF16324F)))),
-          Text('${count} زيارة', style: const TextStyle(fontWeight: FontWeight.w800, color: Color(0xFF168C8C))),
+          Expanded(child: Text(title, style: const TextStyle(fontWeight: FontWeight.w700, color: Color(0xFF082B55)))),
+          Text('${count} زيارة', style: const TextStyle(fontWeight: FontWeight.w800, color: Color(0xFF12B8B0))),
         ]),
         const SizedBox(height: 9),
-        ClipRRect(borderRadius: BorderRadius.circular(8), child: LinearProgressIndicator(value: ratio, minHeight: 6, backgroundColor: const Color(0xFFEAF0F5), color: const Color(0xFF168C8C))),
+        ClipRRect(borderRadius: BorderRadius.circular(8), child: LinearProgressIndicator(value: ratio, minHeight: 6, backgroundColor: const Color(0xFFEAF0F5), color: const Color(0xFF12B8B0))),
       ]),
     );
   }

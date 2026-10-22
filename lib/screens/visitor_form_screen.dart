@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import '../widgets/official_hospital_header.dart';
 
 class VisitorFormScreen extends StatefulWidget {
   const VisitorFormScreen({super.key});
@@ -11,8 +12,8 @@ class VisitorFormScreen extends StatefulWidget {
 }
 
 class _VisitorFormScreenState extends State<VisitorFormScreen> {
-  static const _navy = Color(0xFF16324F);
-  static const _teal = Color(0xFF168C8C);
+  static const _navy = Color(0xFF082B55);
+  static const _teal = Color(0xFF12B8B0);
   static const _muted = Color(0xFF637487);
   static const _line = Color(0xFFE1E8EF);
 
@@ -83,7 +84,10 @@ class _VisitorFormScreenState extends State<VisitorFormScreen> {
           child: ListView(
             padding: const EdgeInsets.fromLTRB(18, 16, 18, 28),
             children: [
+              const OfficialHospitalHeader(),
               _buildPageIntro(),
+              const SizedBox(height: 16),
+              _buildActiveVisits(),
               const SizedBox(height: 22),
               _buildSectionHeading(
                 number: '01',
@@ -215,18 +219,65 @@ class _VisitorFormScreenState extends State<VisitorFormScreen> {
               ),
               const SizedBox(height: 12),
               _buildCard(
-                child: TextFormField(
-                  controller: _notesController,
-                  readOnly: _savedVisitId != null,
-                  minLines: 3,
-                  maxLines: 5,
-                  textCapitalization: TextCapitalization.sentences,
-                  style: const TextStyle(fontSize: 15, height: 1.5),
-                  decoration: _inputDecoration(
-                    label: 'الملاحظات',
-                    hint: 'اكتب الملاحظات هنا إن وجدت...',
-                    icon: Icons.notes_rounded,
-                  ).copyWith(alignLabelWithHint: true),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    TextFormField(
+                      controller: _notesController,
+                      onChanged: (_) => setState(() {}),
+                      readOnly: false,
+                      minLines: 3,
+                      maxLines: 5,
+                      textCapitalization: TextCapitalization.sentences,
+                      style: const TextStyle(fontSize: 15, height: 1.5),
+                      decoration: _inputDecoration(
+                        label: 'الملاحظات',
+                        hint: 'اكتب الملاحظات هنا إن وجدت...',
+                        icon: Icons.notes_rounded,
+                      ).copyWith(alignLabelWithHint: true),
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: FilledButton.icon(
+                            onPressed: _savedVisitId == null || _isSavingVisit
+                                ? null
+                                : _saveVisitNote,
+                            icon: Icon(_notesController.text.trim().isEmpty
+                                ? Icons.add_comment_outlined
+                                : Icons.save_outlined),
+                            label: Text(_notesController.text.trim().isEmpty
+                                ? 'إضافة الملاحظة'
+                                : 'حفظ تعديل الملاحظة'),
+                            style: FilledButton.styleFrom(
+                              backgroundColor: _teal,
+                              foregroundColor: Colors.white,
+                              minimumSize: const Size.fromHeight(46),
+                            ),
+                          ),
+                        ),
+                        if (_notesController.text.trim().isNotEmpty) ...[
+                          const SizedBox(width: 8),
+                          IconButton.filledTonal(
+                            tooltip: 'حذف الملاحظة',
+                            onPressed: _savedVisitId == null || _isSavingVisit
+                                ? null
+                                : _deleteVisitNote,
+                            icon: const Icon(Icons.delete_outline_rounded),
+                          ),
+                        ],
+                      ],
+                    ),
+                    if (_savedVisitId == null)
+                      const Padding(
+                        padding: EdgeInsets.only(top: 7),
+                        child: Text(
+                          'احفظ دخول الزيارة أولًا، ثم يمكنك إضافة الملاحظة أو تعديلها أو حذفها.',
+                          style: TextStyle(fontSize: 12, color: _muted, height: 1.5),
+                        ),
+                      ),
+                  ],
                 ),
               ),
               const SizedBox(height: 24),
@@ -321,49 +372,51 @@ class _VisitorFormScreenState extends State<VisitorFormScreen> {
 
   Widget _buildPageIntro() {
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.fromLTRB(18, 18, 18, 20),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          begin: Alignment.topRight,
-          end: Alignment.bottomLeft,
-          colors: [_navy, Color(0xFF244D6D)],
-        ),
-        borderRadius: BorderRadius.circular(22),
-        boxShadow: [
-          BoxShadow(
-            color: _navy.withValues(alpha: 0.13),
-            blurRadius: 18,
-            offset: const Offset(0, 8),
-          ),
-        ],
+        color: const Color(0xFFF3F7FA),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFDDE7EF)),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Container(
-            width: 56,
-            height: 56,
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.13),
-              borderRadius: BorderRadius.circular(17),
-              border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+          Center(
+            child: Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                color: const Color(0xFFE5F3F3),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: const Icon(
+                Icons.fact_check_outlined,
+                color: _teal,
+                size: 26,
+              ),
             ),
-            child: const Icon(Icons.fact_check_outlined, color: Colors.white, size: 29),
           ),
-          const SizedBox(width: 15),
-          const Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'سجل حركة الزوار',
-                  style: TextStyle(color: Colors.white, fontSize: 19, fontWeight: FontWeight.w800),
-                ),
-                SizedBox(height: 6),
-                Text(
-                  'سجّل البيانات والأوقات، ثم أنشئ تقريرًا جاهزًا للحفظ والمشاركة.',
-                  style: TextStyle(color: Color(0xFFE4EDF5), fontSize: 13, height: 1.6),
-                ),
-              ],
+          const SizedBox(height: 10),
+          const Text(
+            'سجل حركة الزوار',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: Color(0xFF101820),
+              fontSize: 19,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Container(height: 1.2, color: const Color(0xFF101820)),
+          const SizedBox(height: 10),
+          const Text(
+            'سجّل البيانات والأوقات، ثم أنشئ تقريرًا جاهزًا للحفظ والمشاركة.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: Color(0xFF263238),
+              fontSize: 13,
+              height: 1.6,
+              fontWeight: FontWeight.w600,
             ),
           ),
         ],
@@ -535,6 +588,8 @@ class _VisitorFormScreenState extends State<VisitorFormScreen> {
     setState(() => _isSavingVisit = true);
     try {
       final floor = _hospitalLocations[_selectedFloor!]!;
+      final staffSnapshot = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+      final staffData = staffSnapshot.data() ?? <String, dynamic>{};
       final visitRef = FirebaseFirestore.instance.collection('visitor_logs').doc();
       await visitRef.set({
         'visitId': visitRef.id,
@@ -550,6 +605,8 @@ class _VisitorFormScreenState extends State<VisitorFormScreen> {
         'status': 'inside',
         'createdBy': user.uid,
         'createdByEmail': user.email ?? '',
+        'createdByName': (staffData['displayName'] as String? ?? user.displayName ?? '').trim(),
+        'createdByPhone': (staffData['phone'] as String? ?? '').trim(),
         'createdAt': FieldValue.serverTimestamp(),
       });
       if (!mounted) return;
@@ -579,52 +636,270 @@ class _VisitorFormScreenState extends State<VisitorFormScreen> {
 
   Future<void> _registerExit() async {
     final visitId = _savedVisitId;
-    if (visitId == null || _entryTime == null || _exitTime != null) return;
-    final exitTime = DateTime.now();
-    if (exitTime.isBefore(_entryTime!)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('وقت الخروج لا يمكن أن يسبق وقت الدخول.')),
-      );
+    if (visitId == null || _entryTime == null || _exitTime != null || _isSavingVisit) return;
+
+    try {
+      final visit = await FirebaseFirestore.instance
+          .collection('visitor_logs')
+          .doc(visitId)
+          .get();
+
+      if (!mounted) return;
+      if (!visit.exists) {
+        _showMessage('لم يتم العثور على سجل الزيارة. حدّث الشاشة وحاول مجددًا.');
+        return;
+      }
+      if (visit.data()?['status'] != 'inside') {
+        _showMessage('تم تسجيل الخروج لهذه الزيارة مسبقًا.');
+        return;
+      }
+
+      // استخدم نفس نافذة الخروج المستخدمة في قائمة الزيارات النشطة
+      // حتى تُحفظ الملاحظات مع سجل الزيارة الصحيح.
+      await _finishActiveVisit(visit);
+    } on FirebaseException catch (error) {
+      _showMessage(error.code == 'permission-denied'
+          ? 'رفضت قواعد Firestore قراءة سجل الزيارة. تحقق من صلاحيات الحساب.'
+          : 'تعذر فتح سجل الخروج (${error.code}). حاول مجددًا.');
+    } catch (_) {
+      _showMessage('تعذر فتح تسجيل الخروج. تحقق من الاتصال ثم حاول مجددًا.');
+    }
+  }
+
+  // قائمة مباشرة بكل الزيارات التي ما زالت داخل المستشفى لهذا المستخدم.
+  // تسمح بتسجيل خروج أي زيارة مستقلة حتى مع وجود زيارات أخرى نشطة.
+  Widget _buildActiveVisits() {
+    final currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser == null) return const SizedBox.shrink();
+
+    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+      stream: FirebaseFirestore.instance
+          .collection('visitor_logs')
+          .where('createdBy', isEqualTo: currentUser.uid)
+          .snapshots(),
+      builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return _buildCard(
+            child: const Text('تعذر تحميل الزيارات النشطة. تحقق من الاتصال وقواعد Firestore.'),
+          );
+        }
+        final visits = (snapshot.data?.docs ?? [])
+            .where((visit) => visit.data()['status'] == 'inside')
+            .toList();
+        if (visits.isEmpty) return const SizedBox.shrink();
+
+        return _buildCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Text(
+                'زيارات ما زالت داخل المستشفى',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: _navy),
+              ),
+              const SizedBox(height: 5),
+              const Text(
+                'يمكنك تسجيل الدخول لعدة غرف، ثم إنهاء كل زيارة من سجلها الصحيح.',
+                style: TextStyle(fontSize: 12, height: 1.5, color: _muted),
+              ),
+              const SizedBox(height: 10),
+              for (final visit in visits) ...[
+                const Divider(height: 18, color: _line),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Icon(Icons.meeting_room_outlined, color: _teal, size: 22),
+                    const SizedBox(width: 9),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'الغرفة ${visit.data()['roomNumber'] ?? '—'}',
+                            style: const TextStyle(fontWeight: FontWeight.w800, color: _navy),
+                          ),
+                          const SizedBox(height: 3),
+                          Text(
+                            '${visit.data()['floorName'] ?? ''} — ${visit.data()['department'] ?? ''}',
+                            style: const TextStyle(fontSize: 12, height: 1.4, color: _muted),
+                          ),
+                          Text(
+                            'عدد الزوار: ${visit.data()['visitorCount'] ?? 1}',
+                            style: const TextStyle(fontSize: 12, color: _muted),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    OutlinedButton(
+                      onPressed: _isSavingVisit ? null : () => _finishActiveVisit(visit),
+                      child: const Text('خروج + ملاحظات'),
+                    ),
+                  ],
+                ),
+              ],
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _finishActiveVisit(
+    DocumentSnapshot<Map<String, dynamic>> visit,
+  ) async {
+    final data = visit.data() ?? <String, dynamic>{};
+    final entryValue = data['entryAt'];
+    final entryTime = entryValue is Timestamp ? entryValue.toDate() : null;
+    final notes = TextEditingController(text: data['notes'] as String? ?? '');
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text('تسجيل خروج الغرفة ${data['roomNumber'] ?? ''}'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Text('أضف أو عدّل الملاحظات قبل حفظ وقت الخروج.'),
+              const SizedBox(height: 12),
+              TextField(
+                controller: notes,
+                minLines: 3,
+                maxLines: 6,
+                decoration: const InputDecoration(
+                  labelText: 'ملاحظات الخروج',
+                  hintText: 'اكتب أي ملاحظات متعلقة بالزيارة...',
+                  border: OutlineInputBorder(),
+                  alignLabelWithHint: true,
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('إلغاء'),
+          ),
+          FilledButton.icon(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            icon: const Icon(Icons.logout_rounded),
+            label: const Text('حفظ الخروج'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) {
+      notes.dispose();
       return;
     }
+
+    final exitTime = DateTime.now();
+    if (entryTime != null && exitTime.isBefore(entryTime)) {
+      notes.dispose();
+      _showMessage('وقت الخروج لا يمكن أن يسبق وقت الدخول.');
+      return;
+    }
+
     setState(() => _isSavingVisit = true);
     try {
-      await FirebaseFirestore.instance.collection('visitor_logs').doc(visitId).update({
+      await visit.reference.update({
         'exitAt': Timestamp.fromDate(exitTime),
+        'notes': notes.text.trim(),
         'status': 'completed',
         'updatedAt': FieldValue.serverTimestamp(),
       });
-      if (!mounted) return;
-      setState(() => _exitTime = exitTime);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('تم تسجيل الخروج وتحديث سجل الزيارة.')),
-      );
+      if (mounted && visit.id == _savedVisitId) {
+        setState(() {
+          _exitTime = exitTime;
+          _notesController.text = notes.text.trim();
+        });
+      }
+      _showMessage('تم حفظ وقت الخروج والملاحظات للزيارة المحددة.');
     } on FirebaseException catch (error) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.code == 'permission-denied'
-            ? 'لا تسمح قواعد Firestore بتحديث هذا السجل. انشر آخر نسخة من firestore.rules.'
-            : 'تعذر حفظ الخروج (' + error.code + '). حاول مجددًا.')),
-      );
+      _showMessage(error.code == 'permission-denied'
+          ? 'رفضت قواعد Firestore تحديث الخروج أو الملاحظات. تأكد من نشر القواعد المحدّثة.'
+          : 'تعذر حفظ الخروج (${error.code}). حاول مجددًا.');
     } catch (_) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('تعذر تسجيل الخروج. تحقق من الاتصال.')),
-      );
+      _showMessage('تعذر حفظ الخروج. تحقق من الاتصال ثم حاول مجددًا.');
+    } finally {
+      notes.dispose();
+      if (mounted) setState(() => _isSavingVisit = false);
+    }
+  }
+
+  Future<void> _saveVisitNote() async {
+    final visitId = _savedVisitId;
+    if (visitId == null || _isSavingVisit) return;
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      _showMessage('انتهت جلسة الدخول. سجّل الدخول مجددًا.');
+      return;
+    }
+    final note = _notesController.text.trim();
+    setState(() => _isSavingVisit = true);
+    try {
+      final ref = FirebaseFirestore.instance.collection('visitor_logs').doc(visitId);
+      final snapshot = await ref.get();
+      if (!snapshot.exists || snapshot.data()?['createdBy'] != user.uid) {
+        _showMessage('لا يمكنك تعديل ملاحظات زيارة ليست مسجلة باسمك.');
+        return;
+      }
+      await ref.update({'notes': note});
+      _showMessage(note.isEmpty ? 'تم مسح الملاحظة.' : 'تم حفظ الملاحظة بنجاح.');
+    } on FirebaseException catch (error) {
+      _showMessage(error.code == 'permission-denied'
+          ? 'رفضت قواعد Firestore حفظ الملاحظة. لم تتغير القواعد تلقائيًا.'
+          : 'تعذر حفظ الملاحظة (${error.code}). حاول مجددًا.');
+    } catch (_) {
+      _showMessage('تعذر حفظ الملاحظة. تحقق من الاتصال ثم حاول مجددًا.');
     } finally {
       if (mounted) setState(() => _isSavingVisit = false);
     }
   }
 
+  Future<void> _deleteVisitNote() async {
+    if (_savedVisitId == null || _isSavingVisit) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('حذف الملاحظة؟'),
+        content: const Text('سيتم حذف ملاحظة هذه الزيارة من سجلها.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('إلغاء'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('حذف'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    _notesController.clear();
+    await _saveVisitNote();
+  }
+
+  void _showMessage(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(message)));
+  }
 
   Widget _buildNextVisitorButton() {
-    if (_exitTime == null) return const SizedBox.shrink();
+    // يمكن بدء سجل آخر بمجرد حفظ دخول الزائر الحالي، حتى لو بقي داخل المستشفى.
+    if (_savedVisitId == null) return const SizedBox.shrink();
     return SizedBox(
       width: double.infinity,
       child: FilledButton.icon(
         onPressed: _isSavingVisit ? null : _resetForNextVisitor,
         icon: const Icon(Icons.person_add_alt_1_rounded, size: 21),
-        label: const Text('إضافة / تسجيل زائر جديد'),
+        label: const Text('تسجيل زائر أو غرفة أخرى'),
         style: FilledButton.styleFrom(
           backgroundColor: _teal,
           foregroundColor: Colors.white,

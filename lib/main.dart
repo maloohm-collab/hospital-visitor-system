@@ -5,27 +5,24 @@ import 'screens/auth_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
-  // تهيئة Firebase قبل استخدام المصادقة أو قاعدة البيانات.
   await Firebase.initializeApp();
-
-  // تهيئة بيانات تنسيق التاريخ قبل بناء أي شاشة تستخدم DateFormat.
   await initializeDateFormatting('en');
-
   runApp(const HospitalVisitorApp());
 }
 
 class HospitalVisitorApp extends StatelessWidget {
   const HospitalVisitorApp({super.key});
 
+  static const navy = Color(0xFF082B55);
+  static const blue = Color(0xFF14558A);
+  static const teal = Color(0xFF12B8B0);
+  static const gold = Color(0xFFD9AC55);
+
   @override
   Widget build(BuildContext context) {
-    const navy = Color(0xFF16324F);
-    const teal = Color(0xFF168C8C);
-
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'منظومة زوار المستشفى',
+      title: 'نظام زوار المستشفى',
       locale: const Locale('ar'),
       theme: ThemeData(
         useMaterial3: true,
@@ -33,9 +30,39 @@ class HospitalVisitorApp extends StatelessWidget {
           seedColor: teal,
           primary: navy,
           secondary: teal,
-          surface: const Color(0xFFF5F7FA),
+          surface: const Color(0xFFF4F7FB),
         ),
-        scaffoldBackgroundColor: const Color(0xFFF5F7FA),
+        scaffoldBackgroundColor: const Color(0xFFF4F7FB),
+        cardTheme: CardThemeData(
+          color: Colors.white,
+          elevation: 2,
+          shadowColor: const Color(0x16082B55),
+          margin: const EdgeInsets.symmetric(vertical: 6),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(18),
+            side: const BorderSide(color: Color(0xFFE1EAF1)),
+          ),
+        ),
+        dividerTheme: const DividerThemeData(
+          color: Color(0xFFDCE7EF),
+          thickness: 1,
+          space: 20,
+        ),
+        navigationBarTheme: NavigationBarThemeData(
+          backgroundColor: Colors.white,
+          indicatorColor: const Color(0xFFDDF7F4),
+          labelTextStyle: WidgetStateProperty.resolveWith(
+            (states) => TextStyle(
+              fontSize: 12,
+              fontWeight: states.contains(WidgetState.selected)
+                  ? FontWeight.w800
+                  : FontWeight.w600,
+              color: states.contains(WidgetState.selected)
+                  ? navy
+                  : const Color(0xFF65788A),
+            ),
+          ),
+        ),
         appBarTheme: const AppBarTheme(
           backgroundColor: navy,
           foregroundColor: Colors.white,
@@ -58,7 +85,7 @@ class HospitalVisitorApp extends StatelessWidget {
         filledButtonTheme: FilledButtonThemeData(
           style: FilledButton.styleFrom(
             minimumSize: const Size.fromHeight(52),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800),
           ),
         ),
@@ -80,7 +107,6 @@ class HospitalVisitorApp extends StatelessWidget {
           ),
         ),
       ),
-      // اتجاه العربية عام لكل الصفحات، بما فيها المسارات التي تُفتح عبر Navigator.
       builder: (context, child) => Directionality(
         textDirection: TextDirection.rtl,
         child: child ?? const SizedBox.shrink(),
@@ -93,143 +119,193 @@ class HospitalVisitorApp extends StatelessWidget {
 class WelcomeScreen extends StatelessWidget {
   const WelcomeScreen({super.key});
 
-  static const _navy = Color(0xFF16324F);
-  static const _teal = Color(0xFF168C8C);
+  static const _navy = HospitalVisitorApp.navy;
+  static const _blue = HospitalVisitorApp.blue;
+  static const _teal = HospitalVisitorApp.teal;
+  static const _gold = HospitalVisitorApp.gold;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: SafeArea(
-        child: LayoutBuilder(
-          builder: (context, constraints) => SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(22, 22, 22, 24),
-            child: ConstrainedBox(
-              constraints: BoxConstraints(
-                minHeight: constraints.maxHeight - 46,
-                maxWidth: 520,
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        width: 46,
-                        height: 46,
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Color(0xFFEAF5FC), Colors.white, Color(0xFFE9F4F8)],
+          ),
+        ),
+        child: SafeArea(
+          child: LayoutBuilder(
+            builder: (context, constraints) => SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(22, 16, 22, 22),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(minHeight: constraints.maxHeight - 38),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const SizedBox(height: 8),
+                    const _OfficialNames(),
+                    const SizedBox(height: 24),
+                    Center(
+                      child: Container(
+                        width: 142,
+                        height: 142,
                         decoration: BoxDecoration(
-                          color: _navy,
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                        child: const Icon(Icons.local_hospital_rounded, color: Colors.white, size: 25),
-                      ),
-                      const SizedBox(width: 12),
-                      const Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'منظومة زوار المستشفى',
-                              style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: _navy),
-                            ),
-                            SizedBox(height: 2),
-                            Text(
-                              'تسجيل واضح • تقرير منظم',
-                              style: TextStyle(fontSize: 12, color: Color(0xFF6B7D8F)),
+                          shape: BoxShape.circle,
+                          gradient: const RadialGradient(
+                            colors: [Colors.white, Color(0xFFD8ECF8)],
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: _blue.withValues(alpha: 0.14),
+                              blurRadius: 28,
+                              spreadRadius: 3,
                             ),
                           ],
                         ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 28),
-                  Container(
-                    padding: const EdgeInsets.all(22),
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        begin: Alignment.topRight,
-                        end: Alignment.bottomLeft,
-                        colors: [_navy, Color(0xFF285673)],
-                      ),
-                      borderRadius: BorderRadius.circular(26),
-                      boxShadow: const [
-                        BoxShadow(
-                          color: Color(0x1A16324F),
-                          blurRadius: 22,
-                          offset: Offset(0, 10),
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Container(
-                          width: 64,
-                          height: 64,
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.12),
-                            borderRadius: BorderRadius.circular(19),
-                            border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+                        child: Center(
+                          child: Container(
+                            width: 112,
+                            height: 124,
+                            decoration: BoxDecoration(
+                              gradient: const LinearGradient(
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                                colors: [_blue, _navy],
+                              ),
+                              borderRadius: const BorderRadius.only(
+                                topLeft: Radius.circular(48),
+                                topRight: Radius.circular(48),
+                                bottomLeft: Radius.circular(38),
+                                bottomRight: Radius.circular(38),
+                              ),
+                              border: Border.all(color: _gold, width: 3),
+                              boxShadow: const [
+                                BoxShadow(color: Color(0x33203E61), blurRadius: 12, offset: Offset(0, 6)),
+                              ],
+                            ),
+                            child: const Stack(
+                              alignment: Alignment.center,
+                              children: [
+                                Icon(Icons.shield_rounded, size: 82, color: Color(0xFF2877A5)),
+                                Positioned(
+                                  top: 17,
+                                  child: Icon(Icons.add_rounded, size: 36, color: Colors.white),
+                                ),
+                                Positioned(
+                                  bottom: 18,
+                                  child: Icon(Icons.groups_rounded, size: 42, color: Color(0xFF62E0D6)),
+                                ),
+                              ],
+                            ),
                           ),
-                          child: const Icon(Icons.fact_check_rounded, size: 33, color: Colors.white),
-                        ),
-                        const SizedBox(height: 24),
-                        const Text(
-                          'أهلاً بك',
-                          style: TextStyle(fontSize: 30, fontWeight: FontWeight.w800, color: Colors.white),
-                        ),
-                        const SizedBox(height: 9),
-                        const Text(
-                          'سجّل حركة زوار المستشفى بطريقة بسيطة ومنظمة، مع توثيق أوقات الدخول والخروج وإنشاء تقرير جاهز للمشاركة.',
-                          style: TextStyle(fontSize: 15, height: 1.8, color: Color(0xFFE8F0F6)),
-                        ),
-                        const SizedBox(height: 22),
-                        const _WelcomeFeature(
-                          icon: Icons.edit_note_rounded,
-                          text: 'بيانات الزيارة في نموذج واضح',
-                        ),
-                        const SizedBox(height: 12),
-                        const _WelcomeFeature(
-                          icon: Icons.schedule_rounded,
-                          text: 'تسجيل وقت الدخول والخروج',
-                        ),
-                        const SizedBox(height: 12),
-                        const _WelcomeFeature(
-                          icon: Icons.picture_as_pdf_rounded,
-                          text: 'تقرير PDF محفوظ على الهاتف',
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 22),
-                  FilledButton.icon(
-                    onPressed: () => Navigator.of(context).push(
-                      MaterialPageRoute(builder: (_) => const AuthScreen()),
-                    ),
-                    icon: const Icon(Icons.arrow_forward_rounded),
-                    label: const Text('تسجيل الدخول إلى النظام'),
-                    style: FilledButton.styleFrom(
-                      backgroundColor: _teal,
-                      foregroundColor: Colors.white,
-                      minimumSize: const Size.fromHeight(58),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-                  const Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.shield_outlined, size: 16, color: Color(0xFF6B7D8F)),
-                      SizedBox(width: 7),
-                      Flexible(
-                        child: Text(
-                          'تُحفظ سجلات الزيارات في قاعدة بيانات المستشفى مع صلاحيات وصول محددة',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(fontSize: 11, height: 1.5, color: Color(0xFF6B7D8F)),
                         ),
                       ),
-                    ],
-                  ),
-                ],
+                    ),
+                    const SizedBox(height: 20),
+                    const Text(
+                      'منظومة زوار المستشفى',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: _navy,
+                        fontSize: 27,
+                        height: 1.3,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(height: 9),
+                    const Text(
+                      'أهلاً بك',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: _teal,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0.2,
+                      ),
+                    ),
+                    const SizedBox(height: 23),
+                    Container(
+                      height: 172,
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [Color(0xFF236A9B), _navy],
+                        ),
+                        borderRadius: BorderRadius.circular(26),
+                        border: Border.all(color: Colors.white, width: 2),
+                        boxShadow: const [
+                          BoxShadow(color: Color(0x1F082B55), blurRadius: 22, offset: Offset(0, 10)),
+                        ],
+                      ),
+                      child: Stack(
+                        children: [
+                          Positioned(
+                            right: 14,
+                            top: 14,
+                            child: Icon(Icons.add_rounded, size: 38, color: Colors.white.withValues(alpha: 0.10)),
+                          ),
+                          const Center(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.local_hospital_rounded, size: 72, color: Color(0xFF8BE5DF)),
+                                SizedBox(height: 8),
+                                Text(
+                                  'رعاية وطمأنينة',
+                                  style: TextStyle(color: Colors.white, fontSize: 21, fontWeight: FontWeight.w800),
+                                ),
+                                SizedBox(height: 4),
+                                Text(
+                                  'بيئة منظمة وآمنة للزوار والمرضى',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(color: Color(0xFFE0F1FA), fontSize: 13),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Positioned(
+                            left: 12,
+                            bottom: 12,
+                            child: Icon(Icons.health_and_safety_outlined, size: 34, color: _gold.withValues(alpha: 0.8)),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 22),
+                    const Row(
+                      children: [
+                        Expanded(child: _FeatureTile(icon: Icons.verified_user_rounded, title: 'أمن وحماية', subtitle: 'للمجتمع والمستشفى')),
+                        SizedBox(width: 10),
+                        Expanded(child: _FeatureTile(icon: Icons.how_to_reg_rounded, title: 'تنظيم الزيارات', subtitle: 'بيانات واضحة')),
+                        SizedBox(width: 10),
+                        Expanded(child: _FeatureTile(icon: Icons.description_rounded, title: 'تقارير منظمة', subtitle: 'سهلة المشاركة')),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
+                    FilledButton.icon(
+                      onPressed: () => Navigator.of(context).push(
+                        MaterialPageRoute(builder: (_) => const AuthScreen()),
+                      ),
+                      icon: const Icon(Icons.login_rounded),
+                      label: const Text('تسجيل الدخول إلى النظام'),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: _teal,
+                        foregroundColor: _navy,
+                        minimumSize: const Size.fromHeight(58),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                      ),
+                    ),
+                    const SizedBox(height: 13),
+                    const Text(
+                      'معاً نحو بيئة آمنة ومنظمة',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: Color(0xFF6A7D90), fontSize: 12, fontWeight: FontWeight.w600),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -239,25 +315,68 @@ class WelcomeScreen extends StatelessWidget {
   }
 }
 
-class _WelcomeFeature extends StatelessWidget {
-  const _WelcomeFeature({required this.icon, required this.text});
-
-  final IconData icon;
-  final String text;
+class _OfficialNames extends StatelessWidget {
+  const _OfficialNames();
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Icon(icon, size: 20, color: const Color(0xFF80D7D0)),
-        const SizedBox(width: 11),
-        Expanded(
-          child: Text(
-            text,
-            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white),
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 14),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.92),
+        borderRadius: BorderRadius.circular(19),
+        border: Border.all(color: const Color(0xFFD5E7F0)),
+        boxShadow: const [
+          BoxShadow(color: Color(0x10082B55), blurRadius: 12, offset: Offset(0, 4)),
+        ],
+      ),
+      child: const Column(
+        children: [
+          Text(
+            'مستشفى الزرقاء الحكومي',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: HospitalVisitorApp.navy, fontSize: 17, fontWeight: FontWeight.w900),
           ),
-        ),
-      ],
+          Padding(
+            padding: EdgeInsets.symmetric(vertical: 8),
+            child: Divider(height: 1, color: Color(0xFFE0E9F0)),
+          ),
+          Text(
+            'شركة الصخرة للأمن والحماية',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: Color(0xFF35516B), fontSize: 14, fontWeight: FontWeight.w800),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _FeatureTile extends StatelessWidget {
+  const _FeatureTile({required this.icon, required this.title, required this.subtitle});
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 13),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(17),
+        border: Border.all(color: const Color(0xFFDCE8EF)),
+      ),
+      child: Column(
+        children: [
+          Icon(icon, color: HospitalVisitorApp.teal, size: 26),
+          const SizedBox(height: 8),
+          Text(title, textAlign: TextAlign.center, style: const TextStyle(color: HospitalVisitorApp.navy, fontSize: 12, fontWeight: FontWeight.w800)),
+          const SizedBox(height: 4),
+          Text(subtitle, textAlign: TextAlign.center, style: const TextStyle(color: Color(0xFF718296), fontSize: 10, height: 1.3)),
+        ],
+      ),
     );
   }
 }

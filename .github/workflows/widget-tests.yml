@@ -1,21 +1,8 @@
 name: Flutter Widget Tests
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - "lib/**"
-      - "test/**"
-      - "pubspec.yaml"
-      - "pubspec.lock"
-      - ".github/workflows/widget-tests.yml"
-  pull_request:
-    paths:
-      - "lib/**"
-      - "test/**"
-      - "pubspec.yaml"
-      - "pubspec.lock"
-      - ".github/workflows/widget-tests.yml"
+  # تشغيل الاختبارات يدويًا فقط لتجنب استهلاك دقائق Actions تلقائيًا.
+  workflow_dispatch:
 
 jobs:
   widget-tests:

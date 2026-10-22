@@ -1,11 +1,17 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import '../widgets/official_hospital_header.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:intl/intl.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
+import 'package:share_plus/share_plus.dart';
 
-/// تدفق التقارير: الأمن يرسل للمشرف، والمشرف يقرر ما يرفع إلى الإدارة.
+/// تقارير المناوبة محلية فقط؛ لا تحفظ التقارير في Firestore ولا ترفع ملفات PDF.
 class DutyReportsScreen extends StatefulWidget {
   const DutyReportsScreen({super.key, required this.userRole});
   final String userRole;
@@ -14,38 +20,174 @@ class DutyReportsScreen extends StatefulWidget {
 }
 
 class _DutyReportsScreenState extends State<DutyReportsScreen> {
-  static const navy = Color(0xFF16324F);
-  static const teal = Color(0xFF168C8C);
-  final db = FirebaseFirestore.instance;
-  final auth = FirebaseAuth.instance;
+  static const navy = Color(0xFF082B55);
+  static const teal = Color(0xFF12B8B0);
   bool get supervisor => widget.userRole == 'supervisor';
   bool get admin => widget.userRole == 'admin';
 
-  Query<Map<String, dynamic>> get query {
-    Query<Map<String, dynamic>> q = db.collection('duty_reports');
-    if (widget.userRole == 'security_officer') {
-      q = q.where('createdBy', isEqualTo: auth.currentUser?.uid ?? '');
-    } else if (admin) {
-      q = q.where('destination', isEqualTo: 'admin').where('status', isEqualTo: 'forwarded');
-    }
-    return q;
+  String _typeLabel(String type) => switch (type) {
+    'security_incident' => 'حادث أو ملاحظة أمنية',
+    'shift_summary' => 'تقرير سير المناوبة',
+    'technical_note' => 'ملاحظة فنية على موظف',
+    'recommendation_positive' => 'توصية إيجابية / أداء متميز',
+    'recommendation_concern' => 'ملاحظة مهنية سرية',
+    _ => 'تقرير مناوبة',
+  };
+  String _priorityLabel(String value) => switch (value) {
+    'urgent' => 'عاجل', 'important' => 'مهم', _ => 'عادي',
+  };
+
+  Future<Directory> _localReportDirectory() async {
+    final appDir = await getApplicationDocumentsDirectory();
+    final dir = Directory('${appDir.path}/تقارير_المناوبة');
+    if (!await dir.exists()) await dir.create(recursive: true);
+    return dir;
   }
 
-  String date(dynamic value) => value is Timestamp
-      ? DateFormat('yyyy/MM/dd HH:mm', 'en').format(value.toDate()) : '—';
-  String typeLabel(String? type) {
-    switch (type) {
-      case 'security_incident': return 'حادث أو ملاحظة أمنية';
-      case 'shift_summary': return 'تقرير سير المناوبة';
-      case 'technical_note': return 'ملاحظة فنية على موظف';
-      case 'recommendation_positive': return 'توصية إيجابية لموظف';
-      case 'recommendation_concern': return 'ملاحظة مهنية سرية';
-      default: return 'تقرير مناوبة';
+  Future<void> _importReceivedPdf() async {
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['pdf'],
+        withData: false,
+      );
+      if (result == null || result.files.isEmpty) return;
+      final sourcePath = result.files.single.path;
+      if (sourcePath == null) {
+        _message('تعذر الوصول إلى الملف المحدد. اختر الملف من التنزيلات.');
+        return;
+      }
+      final source = File(sourcePath);
+      if (!await source.exists()) {
+        _message('الملف المحدد غير موجود.');
+        return;
+      }
+      final dir = await _localReportDirectory();
+      final stamp = DateFormat('yyyyMMdd_HHmmss').format(DateTime.now());
+      final safeName = result.files.single.name.replaceAll(RegExp(r'[^a-zA-Z0-9._-]'), '_');
+      final destination = File('${dir.path}/وارد_${stamp}_$safeName');
+      await source.copy(destination.path);
+      if (!mounted) return;
+      setState(() {});
+      _message('تم حفظ نسخة محلية من التقرير الوارد. لم يُرفع الملف إلى أي خدمة سحابية.');
+    } catch (_) {
+      _message('تعذر استيراد الملف. تأكد أنه PDF ويمكن الوصول إليه من الهاتف.');
     }
   }
 
-  Future<void> createReport() async {
-    final key = GlobalKey<FormState>();
+  Widget _buildLocalArchive() {
+    return FutureBuilder<List<File>>(
+      future: _readLocalReports(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Padding(padding: EdgeInsets.all(18),
+            child: Center(child: CircularProgressIndicator()));
+        }
+        final files = snapshot.data ?? const <File>[];
+        return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          Row(children: [
+            const Expanded(child: Text('أرشيف التقارير',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: navy))),
+            IconButton(tooltip: 'تحديث الأرشيف', onPressed: () => setState(() {}),
+              icon: const Icon(Icons.refresh_rounded)),
+          ]),
+          if (files.isEmpty)
+            _info(Icons.folder_open_rounded, 'لا توجد ملفات محفوظة بعد',
+              'بعد إنشاء تقرير أو استيراد PDF وارد سيظهر الملف هنا.')
+          else
+            ...files.map((file) => Container(
+              margin: const EdgeInsets.only(bottom: 9),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(color: Colors.white,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: const Color(0xFFE1E8EF))),
+              child: Row(children: [
+                const Icon(Icons.picture_as_pdf_rounded, color: teal, size: 30),
+                const SizedBox(width: 10),
+                Expanded(child: Text(file.uri.pathSegments.isEmpty ? file.path : file.uri.pathSegments.last,
+                  maxLines: 2, overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600))),
+                IconButton(tooltip: 'عرض PDF', onPressed: () => _previewPdf(file),
+                  icon: const Icon(Icons.visibility_outlined)),
+                IconButton(
+                  tooltip: 'مشاركة الملف',
+                  onPressed: () => Share.shareXFiles(
+                    [XFile(file.path, mimeType: 'application/pdf')],
+                    text: 'تقرير منظومة زوار المستشفى',
+                  ),
+                  icon: const Icon(Icons.share_outlined),
+                ),
+                IconButton(
+                  tooltip: 'حذف النسخة من هذا الهاتف',
+                  onPressed: () => _deleteLocalReport(file),
+                  icon: const Icon(Icons.delete_outline_rounded, color: Colors.red),
+                ),
+              ]),
+            )),
+        ]);
+      },
+    );
+  }
+
+  Future<void> _deleteLocalReport(File file) async {
+    final yes = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('حذف نسخة التقرير؟'),
+        content: const Text(
+          'سيُحذف ملف PDF من هذا الهاتف فقط. إذا كانت هناك نسخة أُرسلت إلى المشرف أو الإدارة فلن تتأثر.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('إلغاء'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('حذف النسخة'),
+          ),
+        ],
+      ),
+    );
+    if (yes != true) return;
+    try {
+      if (await file.exists()) await file.delete();
+      if (!mounted) return;
+      setState(() {});
+      _message('تم حذف نسخة التقرير من هذا الهاتف فقط.');
+    } catch (_) {
+      _message('تعذر حذف الملف. تحقق من صلاحيات الوصول إلى مساحة التطبيق.');
+    }
+  }
+
+  Future<List<File>> _readLocalReports() async {
+    final dir = await _localReportDirectory();
+    final entities = await dir.list().toList();
+    final files = entities.whereType<File>()
+      .where((file) => file.path.toLowerCase().endsWith('.pdf')).toList();
+    files.sort((a, b) => b.lastModifiedSync().compareTo(a.lastModifiedSync()));
+    return files;
+  }
+
+  Future<void> _previewPdf(File file) async {
+    if (!mounted) return;
+    await Navigator.of(context).push(MaterialPageRoute<void>(
+      builder: (_) => Scaffold(
+        appBar: AppBar(title: const Text('معاينة التقرير')),
+        body: PdfPreview(
+          canChangeOrientation: false,
+          canChangePageFormat: false,
+          allowPrinting: true,
+          allowSharing: true,
+          build: (_) => file.readAsBytes(),
+        ),
+      ),
+    ));
+  }
+
+  Future<void> _createReport() async {
+    final formKey = GlobalKey<FormState>();
     final title = TextEditingController();
     final body = TextEditingController();
     final employee = TextEditingController();
@@ -53,13 +195,15 @@ class _DutyReportsScreenState extends State<DutyReportsScreen> {
     String priority = 'normal';
     String destination = 'internal';
     bool busy = false;
+
     await showModalBottomSheet<void>(
       context: context, isScrollControlled: true, useSafeArea: true,
-      builder: (sheet) => StatefulBuilder(builder: (context, refresh) => Padding(
+      builder: (sheetContext) => StatefulBuilder(builder: (context, refresh) => Padding(
         padding: EdgeInsets.fromLTRB(18, 20, 18, MediaQuery.of(context).viewInsets.bottom + 18),
-        child: Form(key: key, child: SingleChildScrollView(child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            Text(supervisor ? 'إنشاء تقرير مشرف المناوب' : 'إرسال تقرير إلى المشرف',
+        child: Form(key: formKey, child: SingleChildScrollView(child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(supervisor ? 'إنشاء تقرير مشرف المناوبة' : 'إعداد تقرير ضابط الأمن',
               style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: navy)),
             const SizedBox(height: 14),
             DropdownButtonFormField<String>(
@@ -76,17 +220,19 @@ class _DutyReportsScreenState extends State<DutyReportsScreen> {
               onChanged: (v) { if (v != null) refresh(() => type = v); }),
             const SizedBox(height: 12),
             TextFormField(controller: title, decoration: const InputDecoration(labelText: 'عنوان التقرير'),
-              validator: (v) => (v == null || v.trim().length < 4) ? 'أدخل عنوانًا واضحًا' : null),
+              validator: (v) => v == null || v.trim().length < 4 ? 'أدخل عنوانًا واضحًا' : null),
             if (supervisor && (type == 'technical_note' || type.startsWith('recommendation_'))) ...[
               const SizedBox(height: 12),
-              TextField(controller: employee, decoration: const InputDecoration(labelText: 'اسم موظف الأمن (إن انطبق)')),
+              TextFormField(controller: employee, decoration: const InputDecoration(labelText: 'اسم موظف الأمن'),
+                validator: (v) => v == null || v.trim().isEmpty ? 'أدخل اسم الموظف المعني' : null),
             ],
             const SizedBox(height: 12),
             TextFormField(controller: body, minLines: 4, maxLines: 8,
-              decoration: const InputDecoration(labelText: 'التفاصيل والوقائع والإجراء المتخذ', alignLabelWithHint: true),
-              validator: (v) => (v == null || v.trim().length < 10) ? 'أضف تفاصيل كافية' : null),
+              decoration: const InputDecoration(labelText: 'التفاصيل والوقائع والإجراء أو التوصية', alignLabelWithHint: true),
+              validator: (v) => v == null || v.trim().length < 10 ? 'أضف تفاصيل كافية' : null),
             const SizedBox(height: 12),
-            DropdownButtonFormField<String>(value: priority, decoration: const InputDecoration(labelText: 'الأهمية'),
+            DropdownButtonFormField<String>(
+              value: priority, decoration: const InputDecoration(labelText: 'درجة الأهمية'),
               items: const [
                 DropdownMenuItem(value: 'normal', child: Text('عادي')),
                 DropdownMenuItem(value: 'important', child: Text('مهم')),
@@ -94,46 +240,54 @@ class _DutyReportsScreenState extends State<DutyReportsScreen> {
               ], onChanged: (v) { if (v != null) refresh(() => priority = v); }),
             if (supervisor) ...[
               const SizedBox(height: 12),
-              DropdownButtonFormField<String>(value: destination, decoration: const InputDecoration(labelText: 'الإجراء'),
+              DropdownButtonFormField<String>(
+                value: destination, decoration: const InputDecoration(labelText: 'جهة التقرير'),
                 items: const [
-                  DropdownMenuItem(value: 'internal', child: Text('حفظ داخلي للمتابعة')),
-                  DropdownMenuItem(value: 'admin', child: Text('رفع إلى الإدارة')),
+                  DropdownMenuItem(value: 'internal', child: Text('داخلي للمتابعة — لا يُرسل للإدارة')),
+                  DropdownMenuItem(value: 'admin', child: Text('اختيار التقرير لرفعه إلى الإدارة')),
                 ], onChanged: (v) { if (v != null) refresh(() => destination = v); }),
-              const SizedBox(height: 5),
-              const Text('التقارير الفنية والتوصيات سرية وتظهر فقط للجهات المخوّلة.',
-                style: TextStyle(fontSize: 12, color: Colors.black54)),
+              const SizedBox(height: 6),
             ],
             const SizedBox(height: 16),
             FilledButton.icon(
               onPressed: busy ? null : () async {
-                if (!key.currentState!.validate()) return;
-                final user = auth.currentUser;
-                if (user == null) return;
+                if (!formKey.currentState!.validate()) return;
                 refresh(() => busy = true);
                 try {
-                  final ref = db.collection('duty_reports').doc();
-                  final forwarded = supervisor && destination == 'admin';
-                  await ref.set({
-                    'reportId': ref.id, 'type': type, 'title': title.text.trim(),
-                    'body': body.text.trim(), 'employeeName': employee.text.trim(),
-                    'priority': priority, 'destination': supervisor ? destination : 'supervisor',
-                    'status': forwarded ? 'forwarded' : supervisor ? 'saved' : 'submitted',
-                    'createdBy': user.uid, 'createdByEmail': user.email ?? '',
-                    'createdByRole': widget.userRole, 'createdAt': FieldValue.serverTimestamp(),
-                    'updatedAt': FieldValue.serverTimestamp(),
-                  });
-                  if (sheet.mounted) Navigator.pop(sheet);
-                  message(forwarded ? 'تم رفع التقرير إلى الإدارة.' : supervisor ? 'تم حفظ التقرير داخليًا.' : 'تم إرسال التقرير للمشرف.');
-                } on FirebaseException catch (e) {
-                  refresh(() => busy = false);
-                  message('تعذر حفظ التقرير (' + e.code + '). تحقق من قواعد Firestore.');
+                  final now = DateTime.now();
+                  final id = DateFormat('yyyyMMdd_HHmmss').format(now);
+                  final user = FirebaseAuth.instance.currentUser;
+                  var creatorName = user?.displayName?.trim() ?? '';
+                  var creatorPhone = '';
+                  if (user != null) {
+                    final profile = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+                    final data = profile.data() ?? <String, dynamic>{};
+                    final storedName = (data['displayName'] as String? ?? '').trim();
+                    if (storedName.isNotEmpty) creatorName = storedName;
+                    creatorPhone = (data['phone'] as String? ?? '').trim();
+                  }
+                  if (creatorName.isEmpty) creatorName = 'غير مسجل';
+                  if (creatorPhone.isEmpty) creatorPhone = 'غير مسجل';
+                  final bytes = await _makePdf(title: title.text.trim(), body: body.text.trim(),
+                    employee: employee.text.trim(), creatorName: creatorName, creatorPhone: creatorPhone,
+                    type: type, priority: priority, destination: destination, createdAt: now, id: id);
+                  final appDir = await getApplicationDocumentsDirectory();
+                  final dir = Directory('${appDir.path}/تقارير_المناوبة');
+                  if (!await dir.exists()) await dir.create(recursive: true);
+                  final file = File('${dir.path}/duty_report_$id.pdf');
+                  await file.writeAsBytes(bytes, flush: true);
+                  if (!mounted) return;
+                  Navigator.of(sheetContext).pop();
+                  _showSaved(file: file, title: title.text.trim(), type: type,
+                    priority: priority, destination: destination, id: id);
                 } catch (_) {
                   refresh(() => busy = false);
-                  message('تعذر حفظ التقرير. تحقق من الاتصال.');
+                  _message('تعذر إنشاء PDF. حاول مرة أخرى.');
                 }
               },
-              icon: const Icon(Icons.send_rounded), label: Text(busy ? 'جارٍ الحفظ...' : 'حفظ التقرير'),
-              style: FilledButton.styleFrom(backgroundColor: teal)),
+              icon: const Icon(Icons.picture_as_pdf_rounded),
+              label: Text(busy ? 'جارٍ إنشاء التقرير...' : 'إنشاء وحفظ PDF على الهاتف'),
+              style: FilledButton.styleFrom(backgroundColor: teal, foregroundColor: Colors.white)),
           ],
         ))),
       )),
@@ -141,114 +295,111 @@ class _DutyReportsScreenState extends State<DutyReportsScreen> {
     title.dispose(); body.dispose(); employee.dispose();
   }
 
-  Future<void> review(String id, String status) async {
-    try {
-      await db.collection('duty_reports').doc(id).update({
-        'status': status, 'reviewedBy': auth.currentUser?.uid,
-        'reviewedAt': FieldValue.serverTimestamp(), 'updatedAt': FieldValue.serverTimestamp(),
-      });
-      message(status == 'forwarded' ? 'تم رفع التقرير إلى الإدارة.' : 'تم حفظ التقرير داخليًا.');
-    } on FirebaseException catch (e) {
-      message('تعذر تحديث التقرير (' + e.code + '). تحقق من قواعد Firestore.');
-    }
-  }
-
-  Future<void> exportPdf(Map<String, dynamic> r) async {
+  Future<List<int>> _makePdf({
+    required String title, required String body, required String employee,
+    required String creatorName, required String creatorPhone,
+    required String type, required String priority, required String destination,
+    required DateTime createdAt, required String id,
+  }) async {
+    final regular = await PdfGoogleFonts.cairoRegular();
+    final bold = await PdfGoogleFonts.cairoBold();
     final doc = pw.Document();
-    doc.addPage(pw.MultiPage(build: (_) => [
-      pw.Header(level: 0, child: pw.Text('Hospital Visitor System - Duty Report')),
-      pw.Text('Title: ' + (r['title'] as String? ?? 'Duty report')),
-      pw.Text('Type: ' + typeLabel(r['type'] as String?)),
-      pw.Text('Date: ' + date(r['createdAt'])),
-      pw.Text('Priority: ' + (r['priority'] as String? ?? 'normal')),
-      pw.Text('Author: ' + (r['createdByEmail'] as String? ?? '—')),
-      if ((r['employeeName'] as String? ?? '').isNotEmpty)
-        pw.Text('Employee: ' + (r['employeeName'] as String)),
-      pw.Divider(), pw.Text(r['body'] as String? ?? ''),
-      pw.SizedBox(height: 18),
-      pw.Text('Report ID: ' + (r['reportId'] as String? ?? ''), style: const pw.TextStyle(fontSize: 9)),
-    ]));
-    await Printing.sharePdf(bytes: await doc.save(), filename: 'duty_report_' + (r['reportId'] as String? ?? 'report') + '.pdf');
+    doc.addPage(pw.MultiPage(
+      theme: pw.ThemeData.withFont(base: regular, bold: bold), pageFormat: PdfPageFormat.a4,
+      build: (_) => [pw.Directionality(textDirection: pw.TextDirection.rtl, child: pw.Column(
+        crossAxisAlignment: pw.CrossAxisAlignment.stretch, children: [
+          pw.Text('منظومة زوار المستشفى', style: pw.TextStyle(font: bold, fontSize: 20)),
+          pw.Text(supervisor ? 'تقرير مشرف المناوبة' : 'تقرير ضابط الأمن',
+            style: pw.TextStyle(font: bold, fontSize: 15)),
+          pw.Divider(),
+          pw.SizedBox(height: 8),
+          pw.Text('عنوان التقرير: $title', style: pw.TextStyle(font: bold, fontSize: 14)),
+          pw.Text('نوع التقرير: ${_typeLabel(type)}'),
+          pw.Text('الأهمية: ${_priorityLabel(priority)}'),
+          pw.Text('التاريخ: ${DateFormat('yyyy/MM/dd HH:mm', 'en').format(createdAt)}'),
+          pw.Text('اسم معدّ التقرير: $creatorName'),
+          pw.Text('رقم هاتف معدّ التقرير: $creatorPhone'),
+          if (employee.isNotEmpty) pw.Text('الموظف المعني: $employee'),
+          pw.Text('الجهة: ${supervisor && destination == 'admin' ? 'الإدارة' : 'داخلي / مشرف المناوبة'}'),
+          pw.SizedBox(height: 14),
+          pw.Text('التفاصيل:', style: pw.TextStyle(font: bold)),
+          pw.SizedBox(height: 6),
+          pw.Text(body, style: const pw.TextStyle(fontSize: 12, lineSpacing: 4)),
+          pw.SizedBox(height: 24), pw.Divider(),
+          pw.Text('الرقم المرجعي المحلي: $id', style: const pw.TextStyle(fontSize: 9)),
+          pw.Text('حُفظ الملف محليًا؛ لا يكتمل الإرسال إلا بعد مشاركته يدويًا.',
+            style: const pw.TextStyle(fontSize: 9)),
+        ],
+      ))],
+    ));
+    return doc.save();
   }
 
-  void message(String text) {
+  Future<void> _showSaved({
+    required File file, required String title, required String type,
+    required String priority, required String destination, required String id,
+  }) async {
     if (!mounted) return;
-    ScaffoldMessenger.of(context)..hideCurrentSnackBar()..showSnackBar(SnackBar(content: Text(text)));
+    await showDialog<void>(context: context, builder: (dialogContext) => AlertDialog(
+      title: const Text('تم حفظ التقرير على الهاتف'),
+      content: const Text('تم حفظ التقرير بنجاح.'),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('لاحقًا')),
+        FilledButton.icon(
+          onPressed: () async {
+            Navigator.pop(dialogContext);
+            await Share.shareXFiles([XFile(file.path, mimeType: 'application/pdf')],
+              text: 'تقرير منظومة زوار المستشفى: $title');
+          },
+          icon: const Icon(Icons.share_rounded), label: const Text('مشاركة ملف PDF')),
+      ],
+    ));
+  }
+
+  void _message(String text) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context)..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(text)));
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: Text(supervisor ? 'إشراف المناوبة والتقارير' : admin ? 'التقارير المرفوعة للإدارة' : 'تقارير موظف الأمن')),
-    floatingActionButton: admin ? null : FloatingActionButton.extended(
-      onPressed: createReport, backgroundColor: teal, foregroundColor: Colors.white,
-      icon: const Icon(Icons.note_add_outlined), label: Text(supervisor ? 'إنشاء تقرير' : 'إرسال تقرير')),
-    body: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-      stream: query.snapshots(),
-      builder: (context, snapshot) {
-        if (snapshot.hasError) return empty(Icons.cloud_off_outlined, 'تعذر تحميل التقارير', 'تحقق من صلاحيات Firestore.');
-        if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
-        final docs = snapshot.data?.docs.toList() ?? [];
-        docs.sort((a, b) {
-          final av = a.data()['createdAt'], bv = b.data()['createdAt'];
-          if (av is Timestamp && bv is Timestamp) return bv.compareTo(av);
-          return 0;
-        });
-        if (docs.isEmpty) return empty(Icons.inbox_outlined,
-          admin ? 'لا توجد تقارير مرفوعة للإدارة' : supervisor ? 'لا توجد تقارير واردة' : 'لم ترسل أي تقارير بعد',
-          admin ? 'ستظهر التقارير التي اختار المشرف رفعها رسميًا.' : supervisor ? 'ستظهر هنا تقارير موظفي الأمن.' : 'اضغط إرسال تقرير لرفع ملاحظة أو حادث للمشرف.');
-        return ListView.separated(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 90), itemCount: docs.length,
-          separatorBuilder: (_, __) => const SizedBox(height: 10),
-          itemBuilder: (context, i) {
-            final r = <String, dynamic>{...docs[i].data(), 'reportId': docs[i].id};
-            final status = r['status'] as String? ?? 'submitted';
-            return Container(padding: const EdgeInsets.all(15),
-              decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(17),
-                border: Border.all(color: const Color(0xFFE1E8EF))),
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(r['title'] as String? ?? 'تقرير', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: navy)),
-                const SizedBox(height: 4),
-                Text(typeLabel(r['type'] as String?), style: const TextStyle(color: teal, fontSize: 12)),
-                const SizedBox(height: 9),
-                Text(r['body'] as String? ?? '', maxLines: 5, overflow: TextOverflow.ellipsis),
-                const Divider(height: 22),
-                Text('المرسل: ' + (r['createdByEmail'] as String? ?? '—'), style: const TextStyle(fontSize: 12, color: Colors.black54)),
-                Text('التاريخ: ' + date(r['createdAt']) + ' • الحالة: ' + statusLabel(status),
-                  style: const TextStyle(fontSize: 12, color: Colors.black54)),
-                if (supervisor && status == 'submitted') ...[
-                  const SizedBox(height: 10),
-                  Row(children: [
-                    Expanded(child: OutlinedButton(onPressed: () => review(r['reportId'] as String, 'saved'), child: const Text('حفظ داخلي'))),
-                    const SizedBox(width: 8),
-                    Expanded(child: FilledButton(onPressed: () => review(r['reportId'] as String, 'forwarded'), child: const Text('رفع للإدارة'))),
-                  ]),
-                ],
-                Align(alignment: Alignment.centerLeft, child: TextButton.icon(
-                  onPressed: () => exportPdf(r), icon: const Icon(Icons.picture_as_pdf_outlined),
-                  label: const Text('إنشاء ومشاركة PDF'))),
-              ]),
-            );
-          },
-        );
-      },
-    ),
-  );
-
-  String statusLabel(String s) {
-    switch (s) {
-      case 'submitted': return 'بانتظار مراجعة المشرف';
-      case 'saved': return 'محفوظ داخليًا';
-      case 'forwarded': return 'مرفوع للإدارة';
-      case 'closed': return 'مغلق';
-      default: return s;
-    }
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text(supervisor ? 'إشراف المناوبة والتقارير'
+        : admin ? 'التقارير الواردة للإدارة' : 'تقارير موظف الأمن')),
+      floatingActionButton: admin ? null : FloatingActionButton.extended(
+        onPressed: _createReport, backgroundColor: teal, foregroundColor: Colors.white,
+        icon: const Icon(Icons.note_add_outlined),
+        label: Text(supervisor ? 'إنشاء تقرير مشرف' : 'إعداد تقرير المناوبة')),
+      body: ListView(padding: const EdgeInsets.fromLTRB(18, 18, 18, 110), children: [
+        const OfficialHospitalHeader(),
+        OutlinedButton.icon(
+          onPressed: _importReceivedPdf,
+          icon: const Icon(Icons.file_open_rounded),
+          label: Text(admin
+            ? 'حفظ تقرير وارد في الأرشيف المحلي'
+            : 'استيراد PDF وارد من ضابط الأمن أو واتساب'),
+        ),
+        const SizedBox(height: 18),
+        _buildLocalArchive(),
+      ]),
+    );
   }
 
-  Widget empty(IconData icon, String title, String subtitle) => Center(
-    child: Padding(padding: const EdgeInsets.all(28), child: Column(mainAxisSize: MainAxisSize.min, children: [
-      Icon(icon, size: 50, color: teal), const SizedBox(height: 14),
-      Text(title, textAlign: TextAlign.center, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: navy)),
-      const SizedBox(height: 8), Text(subtitle, textAlign: TextAlign.center, style: const TextStyle(color: Colors.black54, height: 1.6)),
-    ])),
+  Widget _info(IconData icon, String title, String subtitle) => Container(
+    padding: const EdgeInsets.all(15),
+    decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16),
+      border: Border.all(color: const Color(0xFFE1E8EF))),
+    child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Container(width: 42, height: 42,
+        decoration: BoxDecoration(color: teal.withOpacity(.10), borderRadius: BorderRadius.circular(12)),
+        child: Icon(icon, color: teal)),
+      const SizedBox(width: 12),
+      Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text(title, style: const TextStyle(fontWeight: FontWeight.bold, color: navy)),
+        const SizedBox(height: 5),
+        Text(subtitle, style: const TextStyle(color: Colors.black54, height: 1.5, fontSize: 12)),
+      ])),
+    ]),
   );
 }
