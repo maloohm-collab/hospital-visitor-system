@@ -20,7 +20,7 @@ class ReportCenterScreen extends StatefulWidget {
 }
 
 class _ReportCenterScreenState extends State<ReportCenterScreen> {
-  static const navy = Color(0xFF16324F), teal = Color(0xFF168C8C);
+  static const navy = Color(0xFF082B55), teal = Color(0xFF12B8B0);
   User? get user => FirebaseAuth.instance.currentUser;
   bool get admin => widget.userRole == 'admin';
   bool get supervisor => widget.userRole == 'supervisor';
