@@ -387,12 +387,38 @@ service cloud.firestore {
         && !resource.data.get('hiddenFor', []).hasAny([request.auth.uid])
         && request.resource.data.hiddenFor.hasAny([request.auth.uid]);
 
-      // Permanent deletion is limited to the author's own internal saved draft.
-      // Submitted or forwarded reports remain in the shared audit trail.
-      allow delete: if isActiveUser()
-        && resource.data.createdBy == request.auth.uid
-        && resource.data.destination == 'internal'
-        && resource.data.status == 'saved';
+      // Report deletion follows role and destination:
+      // - A supervisor may delete submitted reports routed to the supervisor,
+      //   their own internal drafts, and their own reports forwarded to administration.
+      // - An administrator may delete reports explicitly routed to administration
+      //   after forwarding or acknowledgement.
+      // - Other users may delete only their own internal saved drafts.
+      allow delete: if isActiveUser() && (
+        (
+          isActiveSupervisor()
+          && (
+            (resource.data.destination == 'supervisor'
+              && resource.data.status == 'submitted')
+            || (resource.data.createdBy == request.auth.uid
+              && resource.data.destination == 'internal'
+              && resource.data.status == 'saved')
+            || (resource.data.createdBy == request.auth.uid
+              && resource.data.createdByRole == 'supervisor'
+              && resource.data.destination == 'admin'
+              && resource.data.status in ['forwarded', 'acknowledged'])
+          )
+        )
+        || (
+          isActiveAdmin()
+          && resource.data.destination == 'admin'
+          && resource.data.status in ['forwarded', 'acknowledged']
+        )
+        || (
+          resource.data.createdBy == request.auth.uid
+          && resource.data.destination == 'internal'
+          && resource.data.status == 'saved'
+        )
+      );
 
     }
 
