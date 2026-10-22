@@ -86,14 +86,14 @@ class _DutyReportsScreenState extends State<DutyReportsScreen> {
         final files = snapshot.data ?? const <File>[];
         return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           Row(children: [
-            const Expanded(child: Text('أرشيف التقارير على هذا الهاتف',
-              style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: navy))),
+            const Expanded(child: Text('أرشيف التقارير',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: navy))),
             IconButton(tooltip: 'تحديث الأرشيف', onPressed: () => setState(() {}),
               icon: const Icon(Icons.refresh_rounded)),
           ]),
           if (files.isEmpty)
             _info(Icons.folder_open_rounded, 'لا توجد ملفات محفوظة بعد',
-              'بعد إنشاء تقرير أو استيراد PDF وارد سيظهر الملف هنا. الأرشيف خاص بهذا الهاتف فقط.')
+              'بعد إنشاء تقرير أو استيراد PDF وارد سيظهر الملف هنا.')
           else
             ...files.map((file) => Container(
               margin: const EdgeInsets.only(bottom: 9),
@@ -374,12 +374,15 @@ class _DutyReportsScreenState extends State<DutyReportsScreen> {
         label: Text(supervisor ? 'إنشاء تقرير مشرف' : 'إعداد تقرير المناوبة')),
       body: ListView(padding: const EdgeInsets.fromLTRB(18, 18, 18, 110), children: [
         const OfficialHospitalHeader(),
-        Container(
+        if (!admin) Container(
           padding: const EdgeInsets.fromLTRB(18, 18, 18, 20),
           decoration: BoxDecoration(
-            color: const Color(0xFFF3F7FA),
+            color: Colors.white,
             borderRadius: BorderRadius.circular(20),
             border: Border.all(color: const Color(0xFFDDE7EF)),
+            boxShadow: const [
+              BoxShadow(color: Color(0x080D1F35), blurRadius: 12, offset: Offset(0, 4)),
+            ],
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -403,14 +406,17 @@ class _DutyReportsScreenState extends State<DutyReportsScreen> {
                 textAlign: TextAlign.center,
                 style: const TextStyle(
                   color: Color(0xFF101820),
-                  fontSize: 21,
-                  height: 1.3,
+                  fontSize: 20,
+                  height: 1.35,
                   fontWeight: FontWeight.w900,
                 ),
               ),
-              const SizedBox(height: 8),
-              Container(height: 1.2, color: const Color(0xFF101820)),
               const SizedBox(height: 10),
+              Container(
+                height: 2,
+                decoration: BoxDecoration(color: teal, borderRadius: BorderRadius.circular(2)),
+              ),
+              const SizedBox(height: 12),
               Text(
                 admin
                     ? 'تصل التقارير المختارة عبر واتساب أو المشاركة المباشرة. افتح ملف PDF الوارد لمراجعته والرد عليه.'
