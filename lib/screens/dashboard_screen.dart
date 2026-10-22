@@ -17,8 +17,8 @@ import 'notifications_screen.dart';
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({super.key, this.userRole = 'security_officer'});
   final String userRole;
-  static const navy = Color(0xFF16324F);
-  static const teal = Color(0xFF168C8C);
+  static const navy = Color(0xFF082B55);
+  static const teal = Color(0xFF12B8B0);
 
   Future<void> _signOut(BuildContext context) async {
     final confirmed = await showDialog<bool>(
@@ -254,7 +254,7 @@ class DashboardScreen extends StatelessWidget {
                     child: Text(
                       _roleLabel(userRole),
                       style: const TextStyle(
-                        color: Color(0xFF16324F),
+                        color: Color(0xFF082B55),
                         fontSize: 12,
                         fontWeight: FontWeight.w800,
                       ),
@@ -308,7 +308,7 @@ class DashboardScreen extends StatelessWidget {
             _ActionTile(icon: Icons.assignment_outlined, title: 'سجل الزيارات حسب الطابق والقسم', subtitle: 'اختر الطابق ثم القسم للوصول إلى السجلات', color: const Color(0xFF27865B), onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => VisitorLogsScreen(userRole: userRole)))),
           ],
           const SizedBox(height: 10),
-          _ActionTile(icon: Icons.account_circle_outlined, title: 'حسابي', subtitle: 'تعديل الاسم ورقم الهاتف والصورة الشخصية', color: const Color(0xFF168C8C), onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AccountProfileScreen()))),
+          _ActionTile(icon: Icons.account_circle_outlined, title: 'حسابي', subtitle: 'تعديل الاسم ورقم الهاتف والصورة الشخصية', color: const Color(0xFF12B8B0), onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AccountProfileScreen()))),
           const SizedBox(height: 10),
           _ActionTile(icon: Icons.bar_chart_rounded, title: 'التقارير والإحصاءات', subtitle: userRole == 'security_officer' ? 'إحصاءات سجلاتك' : 'مؤشرات حركة الزوار على مستوى المستشفى', color: const Color(0xFFD28A25), onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => VisitorReportsScreen(userRole: userRole)))),
           const SizedBox(height: 20),
