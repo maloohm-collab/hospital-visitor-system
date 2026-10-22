@@ -33,7 +33,7 @@ class _VisitorSearchScreenState extends State<VisitorSearchScreen> {
             onChanged: (v) => setState(() => _term = v.trim().toLowerCase()),
             decoration: InputDecoration(
               hintText: 'رقم الغرفة، الطابق، القسم، الموظف...',
-              prefixIcon: const Icon(Icons.search_rounded, color: Color(0xFF168C8C)),
+              prefixIcon: const Icon(Icons.search_rounded, color: Color(0xFF12B8B0)),
               suffixIcon: _term.isEmpty ? null : IconButton(
                 onPressed: () { _controller.clear(); setState(() => _term = ''); },
                 icon: const Icon(Icons.close_rounded),
@@ -80,10 +80,10 @@ class _VisitorSearchScreenState extends State<VisitorSearchScreen> {
                   decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(17), border: Border.all(color: const Color(0xFFE1E8EF))),
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     Row(children: [
-                      const Icon(Icons.local_hospital_outlined, color: Color(0xFF168C8C)),
+                      const Icon(Icons.local_hospital_outlined, color: Color(0xFF12B8B0)),
                       const SizedBox(width: 8),
                       Expanded(child: Text(d['floorName'] as String? ?? 'طابق غير محدد',
-                        style: const TextStyle(fontWeight: FontWeight.w800, color: Color(0xFF16324F)))),
+                        style: const TextStyle(fontWeight: FontWeight.w800, color: Color(0xFF082B55)))),
                       Chip(label: Text(inside ? 'داخل المستشفى' : 'مكتملة')),
                     ]),
                     Text(d['department'] as String? ?? 'قسم غير محدد', style: const TextStyle(color: Color(0xFF526579))),
