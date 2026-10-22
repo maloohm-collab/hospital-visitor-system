@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:path_provider/path_provider.dart';
@@ -81,6 +82,37 @@ class _AccountProfileScreenState extends State<AccountProfileScreen> {
     }
   }
 
+  static const int _maxSharedPhotoBytes = 400 * 1024;
+
+  String _sharedPhotoData(File file, String extension) {
+    final bytes = file.readAsBytesSync();
+    if (bytes.length > _maxSharedPhotoBytes) {
+      throw const FormatException('حجم الصورة أكبر من الحد المسموح');
+    }
+    final ext = extension.toLowerCase();
+    final mime = ext == 'png' ? 'png' : ext == 'webp' ? 'webp' : 'jpeg';
+    return 'data:image/$mime;base64,${base64Encode(bytes)}';
+  }
+
+  ImageProvider<Object>? _photoProvider(String photo) {
+    if (photo.startsWith('data:image/')) {
+      final comma = photo.indexOf(',');
+      if (comma < 0) return null;
+      try {
+        return MemoryImage(base64Decode(photo.substring(comma + 1)));
+      } catch (_) {
+        return null;
+      }
+    }
+    if (photo.startsWith('http://') || photo.startsWith('https://')) {
+      return NetworkImage(photo);
+    }
+    if (photo.startsWith('/') && File(photo).existsSync()) {
+      return FileImage(File(photo));
+    }
+    return null;
+  }
+
   Future<void> _pickPhoto() async {
     try {
       final picked = await FilePicker.platform.pickFiles(
@@ -89,20 +121,21 @@ class _AccountProfileScreenState extends State<AccountProfileScreen> {
       );
       if (picked == null || picked.files.single.path == null) return;
       final source = File(picked.files.single.path!);
-      final directory = await getApplicationDocumentsDirectory();
-      final photoDirectory = Directory('${directory.path}/profile_photos');
-      if (!await photoDirectory.exists()) {
-        await photoDirectory.create(recursive: true);
-      }
-      final extension = picked.files.single.extension?.toLowerCase() ?? 'jpg';
-      final userId = FirebaseAuth.instance.currentUser?.uid ?? 'profile';
-      final destination = File('${photoDirectory.path}/${userId}_profile.$extension');
-      await source.copy(destination.path);
-      if (!mounted) return;
-      setState(() => _photoUrl.text = destination.path);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('تم اختيار الصورة على هذا الجهاز. اضغط حفظ بيانات الحساب لتثبيتها.')),
+      final dataUri = _sharedPhotoData(
+        source,
+        picked.files.single.extension ?? 'jpg',
       );
+      if (!mounted) return;
+      setState(() => _photoUrl.text = dataUri);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('تم تجهيز الصورة للمشاركة مع الإدارة. اضغط «حفظ بيانات الحساب» لنشرها في ملفك.')),
+      );
+    } on FormatException {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('الصورة كبيرة جدًا. اختر صورة أصغر من 400 كيلوبايت حتى تظهر لجميع الموظفين دون استخدام تخزين صور خارجي.')),
+        );
+      }
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -125,23 +158,24 @@ class _AccountProfileScreenState extends State<AccountProfileScreen> {
     if (user == null) return;
     setState(() => _saving = true);
     try {
-      final photo = _photoUrl.text.trim();
+      var photo = _photoUrl.text.trim();
+      // ترحيل أي صورة محلية قديمة إلى صورة مضمنة صغيرة داخل ملف الموظف
+      // كي تظهر على أجهزة الإدارة دون Firebase Storage أو خدمة تخزين خارجية.
+      if (photo.startsWith('/') && await File(photo).exists()) {
+        photo = _sharedPhotoData(File(photo), photo.split('.').last);
+      }
       final updates = <String, dynamic>{
         'displayName': _name.text.trim(),
         'phone': _phone.text.trim(),
+        'photoURL': photo,
       };
-      if (photo.startsWith('/') && await File(photo).exists()) {
-        await _secureStorage.write(
-          key: 'hospital_visitor_photo_path_' + user.uid,
-          value: photo,
-        );
-      } else {
-        await _secureStorage.delete(
-          key: 'hospital_visitor_photo_path_' + user.uid,
-        );
-        updates['photoURL'] = photo;
-      }
+      await _secureStorage.delete(
+        key: 'hospital_visitor_photo_path_' + user.uid,
+      );
       await FirebaseFirestore.instance.collection('users').doc(user.uid).update(updates);
+      if (mounted && photo != _photoUrl.text.trim()) {
+        setState(() => _photoUrl.text = photo);
+      }
       await user.updateDisplayName(_name.text.trim());
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -268,12 +302,8 @@ class _AccountProfileScreenState extends State<AccountProfileScreen> {
                         CircleAvatar(
                           radius: 42,
                           backgroundColor: Colors.white,
-                          backgroundImage: photo.startsWith('http')
-                              ? NetworkImage(photo)
-                              : photo.startsWith('/')
-                                  ? FileImage(File(photo))
-                                  : null,
-                          child: (photo.startsWith('http') || photo.startsWith('/'))
+                          backgroundImage: _photoProvider(photo),
+                          child: _photoProvider(photo) != null
                               ? null
                               : const Icon(Icons.person_rounded, size: 46, color: _teal),
                         ),
