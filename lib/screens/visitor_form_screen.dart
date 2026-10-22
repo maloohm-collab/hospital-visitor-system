@@ -12,8 +12,8 @@ class VisitorFormScreen extends StatefulWidget {
 }
 
 class _VisitorFormScreenState extends State<VisitorFormScreen> {
-  static const _navy = Color(0xFF16324F);
-  static const _teal = Color(0xFF168C8C);
+  static const _navy = Color(0xFF082B55);
+  static const _teal = Color(0xFF12B8B0);
   static const _muted = Color(0xFF637487);
   static const _line = Color(0xFFE1E8EF);
 
