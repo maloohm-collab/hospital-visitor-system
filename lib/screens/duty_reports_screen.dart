@@ -20,8 +20,8 @@ class DutyReportsScreen extends StatefulWidget {
 }
 
 class _DutyReportsScreenState extends State<DutyReportsScreen> {
-  static const navy = Color(0xFF16324F);
-  static const teal = Color(0xFF168C8C);
+  static const navy = Color(0xFF082B55);
+  static const teal = Color(0xFF12B8B0);
   bool get supervisor => widget.userRole == 'supervisor';
   bool get admin => widget.userRole == 'admin';
 
