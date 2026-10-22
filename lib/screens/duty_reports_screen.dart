@@ -364,7 +364,6 @@ class _DutyReportsScreenState extends State<DutyReportsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final officer = widget.userRole == 'security_officer';
     return Scaffold(
       appBar: AppBar(title: Text(supervisor ? 'إشراف المناوبة والتقارير'
         : admin ? 'التقارير الواردة للإدارة' : 'تقارير موظف الأمن')),
@@ -374,67 +373,6 @@ class _DutyReportsScreenState extends State<DutyReportsScreen> {
         label: Text(supervisor ? 'إنشاء تقرير مشرف' : 'إعداد تقرير المناوبة')),
       body: ListView(padding: const EdgeInsets.fromLTRB(18, 18, 18, 110), children: [
         const OfficialHospitalHeader(),
-        if (!admin) Container(
-          padding: const EdgeInsets.fromLTRB(18, 18, 18, 20),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: const Color(0xFFDDE7EF)),
-            boxShadow: const [
-              BoxShadow(color: Color(0x080D1F35), blurRadius: 12, offset: Offset(0, 4)),
-            ],
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Icon(
-                admin
-                    ? Icons.admin_panel_settings_rounded
-                    : supervisor
-                        ? Icons.fact_check_rounded
-                        : Icons.security_rounded,
-                color: teal,
-                size: 32,
-              ),
-              const SizedBox(height: 10),
-              Text(
-                admin
-                    ? 'استلام ما يختاره المشرف فقط'
-                    : supervisor
-                        ? 'مراجعة وانتقاء ما يستحق الرفع'
-                        : 'تقرير للمناوبة، لا تقرير لكل زائر',
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  color: Color(0xFF101820),
-                  fontSize: 20,
-                  height: 1.35,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-              const SizedBox(height: 10),
-              Container(
-                height: 2,
-                decoration: BoxDecoration(color: teal, borderRadius: BorderRadius.circular(2)),
-              ),
-              const SizedBox(height: 12),
-              Text(
-                admin
-                    ? 'تصل التقارير المختارة عبر واتساب أو المشاركة المباشرة. افتح ملف PDF الوارد لمراجعته والرد عليه.'
-                    : supervisor
-                        ? 'استقبل ملفات ضباط الأمن عبر المشاركة، راجعها، ثم أنشئ تقريرًا إداريًا انتقائيًا. اختر داخليًا للملاحظات التي لا تحتاج الإدارة.'
-                        : 'أنشئ تقرير المناوبة أو الحوادث المهمة في PDF واحد، ثم شاركه مع مشرف المناوبة.',
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  color: Color(0xFF263238),
-                  height: 1.6,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 18),
         OutlinedButton.icon(
           onPressed: _importReceivedPdf,
           icon: const Icon(Icons.file_open_rounded),
