@@ -218,122 +218,279 @@ class _AuthScreenState extends State<AuthScreen> {
 
   @override
   Widget build(BuildContext context) {
+    const gold = Color(0xFFD9AC55);
+    const ink = Color(0xFF10263F);
+    const muted = Color(0xFF66788A);
     return Scaffold(
-      appBar: AppBar(title: Text(_register ? 'طلب حساب جديد' : 'تسجيل الدخول')),
-      body: SafeArea(child: Center(child: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
-        child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 480),
-          child: Form(key: _formKey, child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const _LiveDateTimeCard(),
-              const SizedBox(height: 18),
-              const Icon(Icons.verified_user_rounded, size: 60, color: _teal),
-              const SizedBox(height: 18),
-              Text(_register ? 'طلب الانضمام للنظام' : 'مرحبًا بك',
-                textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 25, fontWeight: FontWeight.bold, color: _navy)),
-              const SizedBox(height: 8),
-              Text(_register
-                  ? 'أنشئ طلبًا لضابط أمن أو مشرف. لا يمكن إنشاء حساب مسؤول إداري من هنا.'
-                  : _usePinLogin
-                      ? 'أدخل رمز الدخول السريع المحفوظ على هذا الجهاز.'
-                      : 'أدخل البريد الإلكتروني وكلمة المرور لحسابك المعتمد.',
-                textAlign: TextAlign.center, style: const TextStyle(color: Colors.black54, height: 1.6)),
-              const SizedBox(height: 28),
-              if (_register) ...[
-                TextFormField(controller: _name, textInputAction: TextInputAction.next,
-                  decoration: const InputDecoration(labelText: 'الاسم الكامل', prefixIcon: Icon(Icons.person_outline)),
-                  validator: (v) => _register && (v == null || v.trim().length < 3) ? 'أدخل الاسم الكامل' : null),
-                const SizedBox(height: 14),
-                TextFormField(controller: _phone, keyboardType: TextInputType.phone,
-                  textInputAction: TextInputAction.next,
-                  decoration: const InputDecoration(labelText: 'رقم الهاتف', prefixIcon: Icon(Icons.phone_outlined), hintText: '07XXXXXXXX'),
-                  validator: (v) {
-                    if (!_register) return null;
-                    final digits = (v ?? '').replaceAll(RegExp(r'[^0-9+]'), '');
-                    return digits.length < 9 ? 'أدخل رقم هاتف صحيحًا' : null;
-                  }),
-                const SizedBox(height: 14),
-              ],
-              if (_register || !_usePinLogin) ...[
-              TextFormField(controller: _email, keyboardType: TextInputType.emailAddress,
-                textInputAction: TextInputAction.next, autocorrect: false,
-                decoration: const InputDecoration(labelText: 'البريد الإلكتروني', prefixIcon: Icon(Icons.email_outlined)),
-                validator: (v) {
-                  final e = v?.trim() ?? '';
-                  return e.contains('@') && e.contains('.') ? null : 'أدخل بريدًا إلكترونيًا صحيحًا';
-                }),
-              const SizedBox(height: 14),
-              TextFormField(controller: _password, obscureText: _obscure, textInputAction: TextInputAction.done,
-                decoration: InputDecoration(labelText: 'كلمة المرور', prefixIcon: const Icon(Icons.lock_outline),
-                  suffixIcon: IconButton(onPressed: () => setState(() => _obscure = !_obscure),
-                    icon: Icon(_obscure ? Icons.visibility_outlined : Icons.visibility_off_outlined))),
-                validator: (v) {
-                  if (v == null || v.isEmpty) return 'أدخل كلمة المرور';
-                  if (_register && v.length < 6) return 'استخدم 6 أحرف على الأقل';
-                  return null;
-                },
-                onFieldSubmitted: (_) { if (!_loading) _submit(); }),
-              ],
-              if (!_register && _usePinLogin) ...[
-                TextFormField(
-                  controller: _pin,
-                  obscureText: true,
-                  keyboardType: TextInputType.number,
-                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                  maxLength: 4,
-                  textInputAction: TextInputAction.done,
-                  decoration: const InputDecoration(
-                    labelText: 'رمز الدخول من 4 أرقام',
-                    prefixIcon: Icon(Icons.pin_outlined),
-                    counterText: '',
+      backgroundColor: const Color(0xFFF2F5F8),
+      body: SafeArea(
+        child: LayoutBuilder(
+          builder: (context, constraints) => SingleChildScrollView(
+            padding: EdgeInsets.zero,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Container(
+                  padding: const EdgeInsets.fromLTRB(22, 18, 22, 30),
+                  decoration: const BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topRight,
+                      end: Alignment.bottomLeft,
+                      colors: [Color(0xFF173F62), Color(0xFF08213D), Color(0xFF07172B)],
+                    ),
+                    borderRadius: BorderRadius.only(
+                      bottomLeft: Radius.circular(30),
+                      bottomRight: Radius.circular(30),
+                    ),
                   ),
-                  onFieldSubmitted: (_) { if (!_loading) _submitPinLogin(); },
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            width: 58,
+                            height: 58,
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.07),
+                              borderRadius: BorderRadius.circular(18),
+                              border: Border.all(color: gold, width: 1.4),
+                            ),
+                            child: const Icon(Icons.shield_rounded, color: gold, size: 35),
+                          ),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'الأمن والحماية',
+                                  style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w900, height: 1.2),
+                                ),
+                                const SizedBox(height: 5),
+                                Text(
+                                  'منظومة زوار المستشفى',
+                                  style: TextStyle(color: Colors.white.withValues(alpha: 0.78), fontSize: 13, fontWeight: FontWeight.w600),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+                            decoration: BoxDecoration(
+                              border: Border.all(color: gold.withValues(alpha: 0.7)),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.verified_user_outlined, size: 15, color: gold),
+                                SizedBox(width: 5),
+                                Text('دخول آمن', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w800)),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 23),
+                      Container(height: 2, width: 76, alignment: Alignment.centerRight,
+                        decoration: BoxDecoration(color: gold, borderRadius: BorderRadius.circular(4))),
+                      const SizedBox(height: 14),
+                      Text(
+                        _register ? 'طلب الانضمام إلى الفريق' : _usePinLogin ? 'الوصول السريع للنظام' : 'مرحبًا بك من جديد',
+                        style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w900),
+                      ),
+                      const SizedBox(height: 7),
+                      Text(
+                        _register
+                            ? 'قدّم طلب حسابك ليتم مراجعته واعتماده من الإدارة.'
+                            : _usePinLogin
+                                ? 'أدخل رمزك السريع للوصول إلى حسابك المعتمد.'
+                                : 'بوابة دخول مخصصة للكوادر المخوّلة في منظومة زوار المستشفى.',
+                        style: TextStyle(color: Colors.white.withValues(alpha: 0.76), fontSize: 13, height: 1.6),
+                      ),
+                      const SizedBox(height: 19),
+                      const _LiveDateTimeCard(),
+                    ],
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(18, 20, 18, 28),
+                  child: Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 520),
+                      child: Form(
+                        key: _formKey,
+                        child: Container(
+                          padding: const EdgeInsets.fromLTRB(18, 22, 18, 20),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(24),
+                            border: Border.all(color: const Color(0xFFE0E7ED)),
+                            boxShadow: const [
+                              BoxShadow(color: Color(0x120C2945), blurRadius: 24, offset: Offset(0, 9)),
+                            ],
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              Row(
+                                children: [
+                                  Container(
+                                    width: 42,
+                                    height: 42,
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFF12B8B0).withValues(alpha: 0.11),
+                                      borderRadius: BorderRadius.circular(13),
+                                    ),
+                                    child: Icon(_register ? Icons.person_add_alt_1_rounded : Icons.lock_person_rounded, color: _navy, size: 23),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(_register ? 'بيانات طلب الحساب' : 'بيانات الدخول',
+                                          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: ink)),
+                                        const SizedBox(height: 3),
+                                        const Text('يرجى إدخال البيانات بدقة', style: TextStyle(fontSize: 12, color: muted)),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 22),
+                              if (_register) ...[
+                                TextFormField(controller: _name, textInputAction: TextInputAction.next,
+                                  decoration: const InputDecoration(labelText: 'الاسم الكامل', prefixIcon: Icon(Icons.person_outline)),
+                                  validator: (v) => _register && (v == null || v.trim().length < 3) ? 'أدخل الاسم الكامل' : null),
+                                const SizedBox(height: 14),
+                                TextFormField(controller: _phone, keyboardType: TextInputType.phone,
+                                  textInputAction: TextInputAction.next,
+                                  decoration: const InputDecoration(labelText: 'رقم الهاتف', prefixIcon: Icon(Icons.phone_outlined), hintText: '07XXXXXXXX'),
+                                  validator: (v) {
+                                    if (!_register) return null;
+                                    final digits = (v ?? '').replaceAll(RegExp(r'[^0-9+]'), '');
+                                    return digits.length < 9 ? 'أدخل رقم هاتف صحيحًا' : null;
+                                  }),
+                                const SizedBox(height: 14),
+                              ],
+                              if (_register || !_usePinLogin) ...[
+                                TextFormField(controller: _email, keyboardType: TextInputType.emailAddress,
+                                  textInputAction: TextInputAction.next, autocorrect: false,
+                                  decoration: const InputDecoration(labelText: 'البريد الإلكتروني', prefixIcon: Icon(Icons.email_outlined)),
+                                  validator: (v) {
+                                    final e = v?.trim() ?? '';
+                                    return e.contains('@') && e.contains('.') ? null : 'أدخل بريدًا إلكترونيًا صحيحًا';
+                                  }),
+                                const SizedBox(height: 14),
+                                TextFormField(controller: _password, obscureText: _obscure, textInputAction: TextInputAction.done,
+                                  decoration: InputDecoration(labelText: 'كلمة المرور', prefixIcon: const Icon(Icons.lock_outline),
+                                    suffixIcon: IconButton(onPressed: () => setState(() => _obscure = !_obscure),
+                                      icon: Icon(_obscure ? Icons.visibility_outlined : Icons.visibility_off_outlined))),
+                                  validator: (v) {
+                                    if (v == null || v.isEmpty) return 'أدخل كلمة المرور';
+                                    if (_register && v.length < 6) return 'استخدم 6 أحرف على الأقل';
+                                    return null;
+                                  },
+                                  onFieldSubmitted: (_) { if (!_loading) _submit(); }),
+                              ],
+                              if (!_register && _usePinLogin) ...[
+                                TextFormField(
+                                  controller: _pin,
+                                  obscureText: true,
+                                  keyboardType: TextInputType.number,
+                                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                                  maxLength: 4,
+                                  textInputAction: TextInputAction.done,
+                                  decoration: const InputDecoration(
+                                    labelText: 'رمز الدخول من 4 أرقام',
+                                    prefixIcon: Icon(Icons.pin_outlined),
+                                    counterText: '',
+                                  ),
+                                  onFieldSubmitted: (_) { if (!_loading) _submitPinLogin(); },
+                                ),
+                              ],
+                              if (_register) ...[
+                                const SizedBox(height: 14),
+                                DropdownButtonFormField<String>(value: _role,
+                                  decoration: const InputDecoration(labelText: 'الدور المطلوب', prefixIcon: Icon(Icons.badge_outlined)),
+                                  items: const [
+                                    DropdownMenuItem(value: 'security_officer', child: Text('ضابط أمن')),
+                                    DropdownMenuItem(value: 'supervisor', child: Text('مشرف')),
+                                  ],
+                                  onChanged: _loading ? null : (v) { if (v != null) setState(() => _role = v); }),
+                              ],
+                              const SizedBox(height: 22),
+                              FilledButton.icon(
+                                onPressed: _loading ? null : (_usePinLogin ? _submitPinLogin : _submit),
+                                icon: _loading
+                                    ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                                    : Icon(_register ? Icons.person_add_alt_1_rounded : Icons.login_rounded),
+                                label: Text(_loading ? 'يرجى الانتظار...' : _register ? 'إرسال طلب الحساب' : _usePinLogin ? 'الدخول بالرمز السريع' : 'تسجيل الدخول'),
+                                style: FilledButton.styleFrom(
+                                  backgroundColor: _navy,
+                                  foregroundColor: Colors.white,
+                                  minimumSize: const Size.fromHeight(56),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                                  textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w900),
+                                ),
+                              ),
+                              const SizedBox(height: 10),
+                              TextButton(
+                                onPressed: _loading ? null : () => setState(() {
+                                  _register = !_register;
+                                  _usePinLogin = false;
+                                }),
+                                child: Text(_register ? 'لديك حساب؟ تسجيل الدخول' : 'طلب إنشاء حساب جديد'),
+                              ),
+                              if (!_register && FirebaseAuth.instance.currentUser != null)
+                                TextButton(
+                                  onPressed: _loading ? null : () => setState(() {
+                                    _usePinLogin = !_usePinLogin;
+                                    _pin.clear();
+                                  }),
+                                  child: Text(_usePinLogin
+                                      ? 'استخدام البريد الإلكتروني وكلمة المرور'
+                                      : 'الدخول بالرمز السريع من 4 أرقام'),
+                                ),
+                              const SizedBox(height: 14),
+                              Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFF4F7FA),
+                                  borderRadius: BorderRadius.circular(14),
+                                  border: Border.all(color: const Color(0xFFE6EBF0)),
+                                ),
+                                child: const Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Icon(Icons.admin_panel_settings_outlined, size: 19, color: Color(0xFF718296)),
+                                    SizedBox(width: 9),
+                                    Expanded(
+                                      child: Text(
+                                        'طلبات الحسابات الجديدة تبقى معلّقة حتى تعتمد الإدارة الحساب وتحدد صلاحياته.',
+                                        style: TextStyle(fontSize: 12, color: Color(0xFF65778A), height: 1.6),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
                 ),
               ],
-              if (_register) ...[
-                const SizedBox(height: 14),
-                DropdownButtonFormField<String>(value: _role,
-                  decoration: const InputDecoration(labelText: 'الدور المطلوب', prefixIcon: Icon(Icons.badge_outlined)),
-                  items: const [
-                    DropdownMenuItem(value: 'security_officer', child: Text('ضابط أمن')),
-                    DropdownMenuItem(value: 'supervisor', child: Text('مشرف')),
-                  ],
-                  onChanged: _loading ? null : (v) { if (v != null) setState(() => _role = v); }),
-              ],
-              const SizedBox(height: 22),
-              FilledButton.icon(onPressed: _loading ? null : (_usePinLogin ? _submitPinLogin : _submit),
-                icon: _loading
-                    ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                    : Icon(_register ? Icons.person_add_alt_1_rounded : Icons.login_rounded),
-                label: Text(_loading ? 'يرجى الانتظار...' : _register ? 'إرسال طلب الحساب' : _usePinLogin ? 'الدخول بالرمز السريع' : 'تسجيل الدخول'),
-                style: FilledButton.styleFrom(backgroundColor: _navy, minimumSize: const Size.fromHeight(52))),
-              const SizedBox(height: 12),
-              TextButton(onPressed: _loading ? null : () => setState(() {
-                _register = !_register;
-                _usePinLogin = false;
-              }),
-                child: Text(_register ? 'لديك حساب؟ تسجيل الدخول' : 'طلب إنشاء حساب جديد')),
-              if (!_register && FirebaseAuth.instance.currentUser != null)
-                TextButton(
-                  onPressed: _loading ? null : () => setState(() {
-                    _usePinLogin = !_usePinLogin;
-                    _pin.clear();
-                  }),
-                  child: Text(_usePinLogin
-                      ? 'استخدام البريد الإلكتروني وكلمة المرور'
-                      : 'الدخول بالرمز السريع من 4 أرقام'),
-                ),
-              const SizedBox(height: 8),
-              const Text('طلبات الحسابات الجديدة تبقى معلّقة حتى تعتمد الإدارة الحساب وتحدد صلاحياته.',
-                textAlign: TextAlign.center, style: TextStyle(fontSize: 12, color: Colors.black54, height: 1.6)),
-            ],
-          )),
+            ),
+          ),
         ),
-      ))),
+      ),
     );
   }
+
 }
 
 
