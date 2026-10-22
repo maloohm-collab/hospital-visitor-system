@@ -6,6 +6,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:image/image.dart' as img;
 import '../widgets/official_hospital_header.dart';
 
 /// ملف الحساب: يسمح بتعديل البيانات الشخصية فقط، ولا يتيح تغيير الدور أو حالة الحساب.
@@ -83,14 +84,33 @@ class _AccountProfileScreenState extends State<AccountProfileScreen> {
 
   static const int _maxSharedPhotoBytes = 400 * 1024;
 
-  String _sharedPhotoData(File file, String extension) {
-    final bytes = file.readAsBytesSync();
-    if (bytes.length > _maxSharedPhotoBytes) {
-      throw const FormatException('حجم الصورة أكبر من الحد المسموح');
+  String _sharedPhotoData(File file) {
+    final sourceBytes = file.readAsBytesSync();
+    final decoded = img.decodeImage(sourceBytes);
+    if (decoded == null) {
+      throw const FormatException('تعذر قراءة الصورة. اختر صورة JPG أو PNG أو WebP.');
     }
-    final ext = extension.toLowerCase();
-    final mime = ext == 'png' ? 'png' : ext == 'webp' ? 'webp' : 'jpeg';
-    return 'data:image/$mime;base64,${base64Encode(bytes)}';
+
+    // تصغير الصور الكبيرة وضغطها قبل حفظها في ملف الموظف، لتبقى ضمن
+    // حد Firestore دون الحاجة إلى Firebase Storage أو خدمة صور خارجية.
+    var resized = img.copyResize(
+      decoded,
+      width: decoded.width >= decoded.height ? 512 : null,
+      height: decoded.height > decoded.width ? 512 : null,
+    );
+    var bytes = img.encodeJpg(resized, quality: 78);
+    if (bytes.length > _maxSharedPhotoBytes) {
+      resized = img.copyResize(
+        decoded,
+        width: decoded.width >= decoded.height ? 384 : null,
+        height: decoded.height > decoded.width ? 384 : null,
+      );
+      bytes = img.encodeJpg(resized, quality: 60);
+    }
+    if (bytes.length > _maxSharedPhotoBytes) {
+      throw const FormatException('تعذر ضغط الصورة إلى الحجم المناسب');
+    }
+    return 'data:image/jpeg;base64,${base64Encode(bytes)}';
   }
 
   ImageProvider<Object>? _photoProvider(String photo) {
@@ -120,10 +140,7 @@ class _AccountProfileScreenState extends State<AccountProfileScreen> {
       );
       if (picked == null || picked.files.single.path == null) return;
       final source = File(picked.files.single.path!);
-      final dataUri = _sharedPhotoData(
-        source,
-        picked.files.single.extension ?? 'jpg',
-      );
+      final dataUri = _sharedPhotoData(source);
       if (!mounted) return;
       setState(() => _photoUrl.text = dataUri);
       ScaffoldMessenger.of(context).showSnackBar(
@@ -132,7 +149,7 @@ class _AccountProfileScreenState extends State<AccountProfileScreen> {
     } on FormatException {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('الصورة كبيرة جدًا. اختر صورة أصغر من 400 كيلوبايت حتى تظهر لجميع الموظفين دون استخدام تخزين صور خارجي.')),
+          const SnackBar(content: Text('تعذر تجهيز الصورة بالحجم المناسب. اختر صورة JPG أو PNG أو WebP أخرى وحاول مجددًا.')),
         );
       }
     } catch (_) {
@@ -161,7 +178,7 @@ class _AccountProfileScreenState extends State<AccountProfileScreen> {
       // ترحيل أي صورة محلية قديمة إلى صورة مضمنة صغيرة داخل ملف الموظف
       // كي تظهر على أجهزة الإدارة دون Firebase Storage أو خدمة تخزين خارجية.
       if (photo.startsWith('/') && await File(photo).exists()) {
-        photo = _sharedPhotoData(File(photo), photo.split('.').last);
+        photo = _sharedPhotoData(File(photo));
       }
       final updates = <String, dynamic>{
         'displayName': _name.text.trim(),
