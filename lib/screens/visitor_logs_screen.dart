@@ -117,6 +117,12 @@ class _VisitorLogsScreenState extends State<VisitorLogsScreen> {
   }
 
   Future<void> _deleteVisitsByDateRange() async {
+    // Officers must preserve completed visit records; they can hide yesterday's
+    // entries from their own list after sending the report instead.
+    if (_isOfficer) {
+      _message('يمكن لضابط الأمن إخفاء سجلات اليوم السابق من قائمته بعد إرسال التقرير، ولا يمكنه حذف السجلات نهائيًا.');
+      return;
+    }
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
     final now = DateTime.now();
@@ -409,16 +415,18 @@ class _VisitorLogsScreenState extends State<VisitorLogsScreen> {
                           children: [
                             _buildStats(docs),
                             const SizedBox(height: 12),
-                            OutlinedButton.icon(
-                              onPressed: _deleteVisitsByDateRange,
-                              icon: const Icon(Icons.delete_sweep_outlined, color: Colors.red),
-                              label: const Text('حذف السجلات المكتملة حسب الفترة'),
-                              style: OutlinedButton.styleFrom(
-                                foregroundColor: _navy,
-                                minimumSize: const Size.fromHeight(46),
+                            if (!_isOfficer) ...[
+                              OutlinedButton.icon(
+                                onPressed: _deleteVisitsByDateRange,
+                                icon: const Icon(Icons.delete_sweep_outlined, color: Colors.red),
+                                label: const Text('حذف السجلات المكتملة حسب الفترة'),
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: _navy,
+                                  minimumSize: const Size.fromHeight(46),
+                                ),
                               ),
-                            ),
-                            const SizedBox(height: 14),
+                              const SizedBox(height: 14),
+                            ],
                             for (final doc in docs) ...[
                               _buildVisitCard(doc),
                               const SizedBox(height: 10),
@@ -453,16 +461,18 @@ class _VisitorLogsScreenState extends State<VisitorLogsScreen> {
           ),
           const SizedBox(height: 12),
         ],
-        OutlinedButton.icon(
-          onPressed: _deleteVisitsByDateRange,
-          icon: const Icon(Icons.delete_sweep_outlined, color: Colors.red),
-          label: const Text('حذف السجلات المكتملة حسب اليوم أو الفترة'),
-          style: OutlinedButton.styleFrom(
-            foregroundColor: _navy,
-            minimumSize: const Size.fromHeight(48),
+        if (!_isOfficer) ...[
+          OutlinedButton.icon(
+            onPressed: _deleteVisitsByDateRange,
+            icon: const Icon(Icons.delete_sweep_outlined, color: Colors.red),
+            label: const Text('حذف السجلات المكتملة حسب اليوم أو الفترة'),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: _navy,
+              minimumSize: const Size.fromHeight(48),
+            ),
           ),
-        ),
-        const SizedBox(height: 12),
+          const SizedBox(height: 12),
+        ],
         Container(
           padding: const EdgeInsets.fromLTRB(18, 18, 18, 20),
           decoration: BoxDecoration(
