@@ -175,7 +175,7 @@ class WelcomeScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 20),
                     const Text(
-                      'نظام زوار المستشفى',
+                      'منظومة زوار المستشفى',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         color: _navy,
@@ -186,7 +186,7 @@ class WelcomeScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 9),
                     const Text(
-                      'أمان • تنظيم • خدمة أفضل',
+                      'أهلاً بك',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         color: _teal,
@@ -260,7 +260,7 @@ class WelcomeScreen extends StatelessWidget {
                         MaterialPageRoute(builder: (_) => const AuthScreen()),
                       ),
                       icon: const Icon(Icons.login_rounded),
-                      label: const Text('الدخول إلى النظام'),
+                      label: const Text('تسجيل الدخول إلى النظام'),
                       style: FilledButton.styleFrom(
                         backgroundColor: _teal,
                         foregroundColor: _navy,
