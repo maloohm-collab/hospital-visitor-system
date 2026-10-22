@@ -156,8 +156,8 @@ class _ReportCenterScreenState extends State<ReportCenterScreen> {
       !(d['destination'] == 'admin' &&
           (d['status'] == 'forwarded' || d['status'] == 'acknowledged'));
 
-  // Deletion is reserved for an author's internal saved draft.
-  // Submitted/forwarded reports remain in the shared audit trail.
+  // Deletion follows role and report status: admins can remove reports addressed
+  // to them; supervisors can remove submitted supervisor reports and their own eligible reports.
   bool _canDelete(Map<String, dynamic> d) {
     if (admin) {
       return d['destination'] == 'admin' &&
