@@ -131,10 +131,12 @@ class WelcomeScreen extends StatelessWidget {
           return Stack(
             fit: StackFit.expand,
             children: [
+              // Show the complete supplied artwork; cover crops its sides on
+              // tall/narrow phones and cuts off the hospital logos and text.
               Image.asset(
                 'assets/images/welcome_screen.jpg',
-                fit: BoxFit.cover,
-                alignment: Alignment.center,
+                fit: BoxFit.contain,
+                alignment: Alignment.topCenter,
                 errorBuilder: (context, error, stackTrace) => const ColoredBox(
                   color: _navy,
                   child: Center(
