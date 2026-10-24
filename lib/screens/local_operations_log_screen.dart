@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
@@ -27,6 +28,7 @@ class _LocalOperationsLogScreenState extends State<LocalOperationsLogScreen> {
   static const _navy = Color(0xFF082B55);
   static const _teal = Color(0xFF12B8B0);
   static const _muted = Color(0xFF64748B);
+  static const _secureStorage = FlutterSecureStorage();
   static const _noteTemplates = <String>[
     'تم التحقق من المعلومات وتوثيقها.',
     'تم إبلاغ المسؤول المعني.',
@@ -76,18 +78,11 @@ class _LocalOperationsLogScreenState extends State<LocalOperationsLogScreen> {
     super.dispose();
   }
 
-  Future<File> _recordsFile() async {
-    final root = await getApplicationDocumentsDirectory();
-    final dir = Directory('${root.path}/سجلات_محلية');
-    if (!await dir.exists()) await dir.create(recursive: true);
-    return File('${dir.path}/${_fileKey}_$_uid.json');
-  }
-
   Future<void> _loadRecords() async {
     try {
-      final file = await _recordsFile();
-      if (await file.exists()) {
-        final decoded = jsonDecode(await file.readAsString());
+      final stored = await _secureStorage.read(key: '${_fileKey}_$_uid');
+      if (stored != null && stored.isNotEmpty) {
+        final decoded = jsonDecode(stored);
         if (decoded is List) {
           _records = decoded
               .whereType<Map>()
@@ -130,9 +125,11 @@ class _LocalOperationsLogScreenState extends State<LocalOperationsLogScreen> {
     };
 
     try {
-      final file = await _recordsFile();
       final next = <Map<String, dynamic>>[record, ..._records];
-      await file.writeAsString(jsonEncode(next), flush: true);
+      await _secureStorage.write(
+        key: '${_fileKey}_$_uid',
+        value: jsonEncode(next),
+      );
       if (!mounted) return;
       setState(() {
         _records = next;
@@ -464,8 +461,10 @@ class _LocalOperationsLogScreenState extends State<LocalOperationsLogScreen> {
     if (confirmed != true) return;
     final next = [..._records]..removeAt(index);
     try {
-      final file = await _recordsFile();
-      await file.writeAsString(jsonEncode(next), flush: true);
+      await _secureStorage.write(
+        key: '${_fileKey}_$_uid',
+        value: jsonEncode(next),
+      );
       if (mounted) setState(() => _records = next);
       _showMessage('تم حذف السجل المحلي.');
     } catch (_) {
