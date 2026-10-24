@@ -101,7 +101,7 @@ class _DutyReportsScreenState extends State<DutyReportsScreen> {
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(color: Colors.white,
                 borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: const Color(0xFFE1E8EF))),
+                border: Border.all(color: const Color(0xFFDCE5ED))),
               child: Row(children: [
                 const Icon(Icons.picture_as_pdf_rounded, color: teal, size: 30),
                 const SizedBox(width: 10),
@@ -497,7 +497,7 @@ class _DutyReportsScreenState extends State<DutyReportsScreen> {
   Widget _info(IconData icon, String title, String subtitle) => Container(
     padding: const EdgeInsets.all(15),
     decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16),
-      border: Border.all(color: const Color(0xFFE1E8EF))),
+      border: Border.all(color: const Color(0xFFDCE5ED))),
     child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Container(width: 42, height: 42,
         decoration: BoxDecoration(color: teal.withOpacity(.10), borderRadius: BorderRadius.circular(12)),
