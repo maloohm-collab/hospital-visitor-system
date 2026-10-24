@@ -186,10 +186,31 @@ class VisitorReportsScreen extends StatelessWidget {
           }
         }
       }
-      if (visits.isEmpty && cprRecords.isEmpty) {
+      final storedEmergency = await const FlutterSecureStorage()
+          .read(key: 'emergency_security_log_${user.uid}');
+      final emergencyRecords = <Map<String, dynamic>>[];
+      if (storedEmergency != null && storedEmergency.isNotEmpty) {
+        final decoded = jsonDecode(storedEmergency);
+        if (decoded is List) {
+          final dayStart = DateTime(now.year, now.month, now.day);
+          final nextDay = dayStart.add(const Duration(days: 1));
+          for (final item in decoded.whereType<Map>()) {
+            final record = Map<String, dynamic>.from(item);
+            final createdAt = DateTime.tryParse(
+              record['createdAt']?.toString() ?? '',
+            );
+            if (createdAt != null &&
+                !createdAt.isBefore(dayStart) &&
+                createdAt.isBefore(nextDay)) {
+              emergencyRecords.add(record);
+            }
+          }
+        }
+      }
+      if (visits.isEmpty && cprRecords.isEmpty && emergencyRecords.isEmpty) {
         if (!context.mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('لا توجد زيارات أو حالات CPR مسجلة اليوم لإنشاء التقرير.')),
+          const SnackBar(content: Text('لا توجد زيارات أو سجلات طوارئ اليوم لإنشاء التقرير.')),
         );
         return;
       }
@@ -332,9 +353,46 @@ class VisitorReportsScreen extends StatelessWidget {
                     ),
                   ),
               ],
+              if (emergencyRecords.isNotEmpty) ...[
+                pw.SizedBox(height: 14),
+                pw.Text(
+                  _shapeArabic('سجل أمن الطوارئ اليومي'),
+                  style: pw.TextStyle(font: boldFont, fontSize: 14),
+                ),
+                pw.SizedBox(height: 7),
+                for (final record in emergencyRecords)
+                  pw.Container(
+                    margin: const pw.EdgeInsets.only(bottom: 8),
+                    padding: const pw.EdgeInsets.all(9),
+                    decoration: pw.BoxDecoration(
+                      border: pw.Border.all(color: const PdfColor.fromInt(0xFFE1E8EF)),
+                      borderRadius: pw.BorderRadius.circular(6),
+                    ),
+                    child: pw.Column(
+                      crossAxisAlignment: pw.CrossAxisAlignment.stretch,
+                      children: [
+                        pw.Text(
+                          _shapeArabic('وقت السجل: ${DateFormat('yyyy/MM/dd HH:mm', 'en').format(DateTime.parse(record['createdAt'].toString()))}'),
+                          style: pw.TextStyle(font: boldFont, fontSize: 10),
+                        ),
+                        pw.Text(_shapeArabic('نوع السجل: ${record['movementType'] ?? 'غير محدد'} | الموقع: ${record['site'] ?? 'غير محدد'}'),
+                            style: pw.TextStyle(font: boldFont, fontSize: 10)),
+                        if ((record['department'] ?? '').toString().trim().isNotEmpty)
+                          pw.Text(_shapeArabic('القسم / الجهة: ${record['department']}'),
+                              style: pw.TextStyle(font: arabicFont, fontSize: 10)),
+                        if ((record['material'] ?? '').toString().trim().isNotEmpty)
+                          pw.Text(_shapeArabic('المادة: ${record['material']} | الكمية: ${record['quantity'] ?? 'غير محددة'}'),
+                              style: pw.TextStyle(font: arabicFont, fontSize: 10)),
+                        if ((record['notes'] ?? '').toString().trim().isNotEmpty)
+                          pw.Text(_shapeArabic('ملاحظات: ${record['notes']}'),
+                              style: pw.TextStyle(font: arabicFont, fontSize: 10)),
+                      ],
+                    ),
+                  ),
+              ],
               pw.SizedBox(height: 10),
               pw.Divider(color: PdfColors.grey600),
-              pw.Text(_shapeArabic('أُعد التقرير من سجلات الزيارات، وحالات CPR المحلية المتاحة لهذا الحساب.'),
+              pw.Text(_shapeArabic('أُعد التقرير من سجلات الزيارات والسجلات المحلية المتاحة لهذا الحساب.'),
                 textAlign: pw.TextAlign.right,
                 style: pw.TextStyle(font: arabicFont, fontSize: 9, color: PdfColors.black)),
               pw.SizedBox(height: 20),
