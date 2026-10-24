@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'direct_contact_screen.dart';
 import 'package:flutter/material.dart';
 import '../widgets/official_hospital_header.dart';
+import '../widgets/digital_clock_card.dart';
 import 'account_profile_screen.dart';
 import 'auth_screen.dart';
 import 'staff_management_screen.dart';
@@ -175,6 +176,7 @@ class DashboardScreen extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(18, 18, 18, 28),
         children: [
           const OfficialHospitalHeader(),
+          const DigitalClockCard(),
           Container(
             padding: const EdgeInsets.fromLTRB(18, 18, 18, 20),
             decoration: BoxDecoration(
