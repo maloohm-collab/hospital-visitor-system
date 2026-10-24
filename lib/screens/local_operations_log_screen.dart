@@ -51,6 +51,7 @@ class _LocalOperationsLogScreenState extends State<LocalOperationsLogScreen> {
 
   bool _loading = true;
   bool _saving = false;
+  int? _editingIndex;
   List<Map<String, dynamic>> _records = [];
   String _outcome = 'نجح الإنعاش ولم تحدث وفاة';
   String _movementType = 'ملاحظة يومية';
@@ -105,8 +106,10 @@ class _LocalOperationsLogScreenState extends State<LocalOperationsLogScreen> {
     if (!_formKey.currentState!.validate() || _saving) return;
     setState(() => _saving = true);
     final now = DateTime.now();
+    final previous = _editingIndex == null ? null : _records[_editingIndex!];
     final record = <String, dynamic>{
-      'createdAt': now.toIso8601String(),
+      'createdAt': previous?['createdAt'] ?? now.toIso8601String(),
+      'updatedAt': now.toIso8601String(),
       'createdByUid': _uid,
       'kind': _fileKey,
       if (_isCpr) ...{
@@ -128,7 +131,13 @@ class _LocalOperationsLogScreenState extends State<LocalOperationsLogScreen> {
     };
 
     try {
-      final next = <Map<String, dynamic>>[record, ..._records];
+      final next = <Map<String, dynamic>>[..._records];
+      final editingIndex = _editingIndex;
+      if (editingIndex == null) {
+        next.insert(0, record);
+      } else {
+        next[editingIndex] = record;
+      }
       await _secureStorage.write(
         key: '${_fileKey}_$_uid',
         value: jsonEncode(next),
@@ -136,6 +145,7 @@ class _LocalOperationsLogScreenState extends State<LocalOperationsLogScreen> {
       if (!mounted) return;
       setState(() {
         _records = next;
+        _editingIndex = null;
         _patientName.clear();
         _age.clear();
         _department.clear();
@@ -148,7 +158,9 @@ class _LocalOperationsLogScreenState extends State<LocalOperationsLogScreen> {
         _outcome = 'نجح الإنعاش ولم تحدث وفاة';
         _movementType = 'ملاحظة يومية';
       });
-      _showMessage('تم حفظ السجل على هذا الجهاز فقط.');
+      _showMessage(previous == null
+          ? 'تم حفظ السجل على هذا الجهاز فقط.'
+          : 'تم تعديل السجل المحلي وحفظ التغييرات.');
     } catch (_) {
       _showMessage('تعذر حفظ السجل المحلي. تحقق من مساحة الجهاز.');
     } finally {
@@ -316,7 +328,9 @@ class _LocalOperationsLogScreenState extends State<LocalOperationsLogScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text(_isCpr ? 'بيانات الحالة' : 'بيانات سجل الطوارئ',
+              Text(_editingIndex == null
+                  ? (_isCpr ? 'بيانات الحالة' : 'بيانات سجل الطوارئ')
+                  : 'تعديل السجل المحدد',
                   style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: _navy)),
               const SizedBox(height: 12),
               if (_isCpr) ...[
@@ -398,11 +412,19 @@ class _LocalOperationsLogScreenState extends State<LocalOperationsLogScreen> {
                   },
                 )).toList(),
               ),
+              if (_editingIndex != null) ...[
+                const SizedBox(height: 8),
+                TextButton.icon(
+                  onPressed: _saving ? null : _cancelEditing,
+                  icon: const Icon(Icons.close_rounded),
+                  label: const Text('إلغاء التعديل'),
+                ),
+              ],
               const SizedBox(height: 14),
               FilledButton.icon(
                 onPressed: _saving ? null : _saveRecord,
                 icon: const Icon(Icons.save_outlined),
-                label: Text(_saving ? 'جارٍ الحفظ...' : 'حفظ السجل على الجهاز'),
+                label: Text(_saving ? 'جارٍ الحفظ...' : (_editingIndex == null ? 'حفظ السجل على الجهاز' : 'حفظ التعديلات')),
                 style: FilledButton.styleFrom(
                   backgroundColor: _teal,
                   foregroundColor: Colors.white,
@@ -444,19 +466,64 @@ class _LocalOperationsLogScreenState extends State<LocalOperationsLogScreen> {
                 padding: const EdgeInsets.only(bottom: 3),
                 child: Text(line, style: const TextStyle(fontSize: 13)),
               ),
-            Align(
-              alignment: Alignment.centerLeft,
-              child: TextButton.icon(
+            Wrap(
+              alignment: WrapAlignment.start,
+              spacing: 8,
+              children: [
+                TextButton.icon(
+                  onPressed: _saving ? null : () => _editRecord(index),
+                  icon: const Icon(Icons.edit_outlined, size: 18),
+                  label: const Text('تعديل السجل'),
+                ),
+                TextButton.icon(
                 onPressed: _saving ? null : () => _deleteRecord(index),
                 icon: const Icon(Icons.delete_outline_rounded, size: 18),
                 label: const Text('حذف السجل'),
                 style: TextButton.styleFrom(foregroundColor: Colors.red.shade700),
               ),
+              ],
             ),
           ],
         ),
       ),
     );
+  }
+
+
+  void _editRecord(int index) {
+    final record = _records[index];
+    setState(() {
+      _editingIndex = index;
+      _patientName.text = (record['patientName'] ?? '').toString();
+      _age.text = (record['age'] ?? '').toString();
+      _department.text = (record['department'] ?? '').toString();
+      _room.text = (record['room'] ?? '').toString();
+      _notes.text = (record['notes'] ?? '').toString();
+      _material.text = (record['material'] ?? '').toString();
+      _quantity.text = (record['quantity'] ?? '').toString();
+      _site.text = (record['site'] ?? '').toString();
+      _responsiblePerson.text = (record['responsiblePerson'] ?? '').toString();
+      _outcome = (record['outcome'] ?? 'نجح الإنعاش ولم تحدث وفاة').toString();
+      _movementType = (record['movementType'] ?? 'ملاحظة يومية').toString();
+    });
+    _showMessage('تم تحميل السجل للتعديل. احفظ التغييرات من النموذج أعلى الشاشة.');
+  }
+
+  void _cancelEditing() {
+    setState(() {
+      _editingIndex = null;
+      _patientName.clear();
+      _age.clear();
+      _department.clear();
+      _room.clear();
+      _notes.clear();
+      _material.clear();
+      _quantity.clear();
+      _site.clear();
+      _responsiblePerson.clear();
+      _outcome = 'نجح الإنعاش ولم تحدث وفاة';
+      _movementType = 'ملاحظة يومية';
+    });
   }
 
   Future<void> _deleteRecord(int index) async {
