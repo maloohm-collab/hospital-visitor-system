@@ -287,6 +287,7 @@ class _LocalOperationsLogScreenState extends State<LocalOperationsLogScreen> {
     String label,
     IconData icon, {
     bool requiredField = false,
+    bool positiveInteger = false,
     TextInputType? keyboardType,
     String? hint,
   }) {
@@ -294,11 +295,15 @@ class _LocalOperationsLogScreenState extends State<LocalOperationsLogScreen> {
       controller: controller,
       keyboardType: keyboardType,
       decoration: _decoration(label, icon, hint: hint),
-      validator: requiredField
-          ? (value) => value == null || value.trim().isEmpty
-              ? 'هذا الحقل مطلوب'
-              : null
-          : null,
+      validator: (value) {
+        final text = value?.trim() ?? '';
+        if (requiredField && text.isEmpty) return 'هذا الحقل مطلوب';
+        if (positiveInteger) {
+          final number = int.tryParse(text);
+          if (number == null || number < 0) return 'أدخل عمرًا صحيحًا';
+        }
+        return null;
+      },
     );
   }
 
@@ -317,7 +322,7 @@ class _LocalOperationsLogScreenState extends State<LocalOperationsLogScreen> {
               if (_isCpr) ...[
                 _textField(_patientName, 'اسم المريض', Icons.person_outline, requiredField: true),
                 const SizedBox(height: 12),
-                _textField(_age, 'العمر', Icons.cake_outlined, requiredField: true, keyboardType: TextInputType.number),
+                _textField(_age, 'العمر', Icons.cake_outlined, requiredField: true, positiveInteger: true, keyboardType: TextInputType.number),
                 const SizedBox(height: 12),
                 _textField(_department, 'القسم', Icons.local_hospital_outlined, requiredField: true),
                 const SizedBox(height: 12),
