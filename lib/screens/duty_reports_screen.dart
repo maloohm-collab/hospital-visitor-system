@@ -250,10 +250,16 @@ class _DutyReportsScreenState extends State<DutyReportsScreen> {
   }
 
   Future<List<File>> _readLocalReports() async {
-    final dir = await _localReportDirectory();
-    final entities = await dir.list().toList();
-    final files = entities.whereType<File>()
-      .where((file) => file.path.toLowerCase().endsWith('.pdf')).toList();
+    final dutyDir = await _localReportDirectory();
+    final appDir = await getApplicationDocumentsDirectory();
+    final caseDir = Directory('${appDir.path}/تقارير_الحالات_المحلية');
+    final files = <File>[];
+    for (final dir in [dutyDir, caseDir]) {
+      if (!await dir.exists()) continue;
+      final entities = await dir.list().toList();
+      files.addAll(entities.whereType<File>()
+        .where((file) => file.path.toLowerCase().endsWith('.pdf')));
+    }
     files.sort((a, b) => b.lastModifiedSync().compareTo(a.lastModifiedSync()));
     return files;
   }
