@@ -383,6 +383,9 @@ class VisitorReportsScreen extends StatelessWidget {
                         if ((record['material'] ?? '').toString().trim().isNotEmpty)
                           pw.Text(_shapeArabic('المادة: ${record['material']} | الكمية: ${record['quantity'] ?? 'غير محددة'}'),
                               style: pw.TextStyle(font: arabicFont, fontSize: 10)),
+                        if ((record['responsiblePerson'] ?? '').toString().trim().isNotEmpty)
+                          pw.Text(_shapeArabic('المسؤول عن التسليم / الاستلام: ${record['responsiblePerson']}'),
+                              style: pw.TextStyle(font: arabicFont, fontSize: 10)),
                         if ((record['notes'] ?? '').toString().trim().isNotEmpty)
                           pw.Text(_shapeArabic('ملاحظات: ${record['notes']}'),
                               style: pw.TextStyle(font: arabicFont, fontSize: 10)),
