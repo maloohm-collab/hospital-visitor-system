@@ -77,9 +77,9 @@ class VisitorReportsScreen extends StatelessWidget {
             Container(
               padding: const EdgeInsets.fromLTRB(18, 18, 18, 20),
               decoration: BoxDecoration(
-                color: const Color(0xFFF3F7FA),
+                color: const Color(0xFFF4F7FB),
                 borderRadius: BorderRadius.circular(21),
-                border: Border.all(color: const Color(0xFFDDE7EF)),
+                border: Border.all(color: const Color(0xFFDCE5ED)),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -305,7 +305,7 @@ class VisitorReportsScreen extends StatelessWidget {
                   margin: const pw.EdgeInsets.only(bottom: 9),
                   padding: const pw.EdgeInsets.all(10),
                   decoration: pw.BoxDecoration(
-                    border: pw.Border.all(color: const PdfColor.fromInt(0xFFE1E8EF)),
+                    border: pw.Border.all(color: const PdfColor.fromInt(0xFFDCE5ED)),
                     borderRadius: pw.BorderRadius.circular(6),
                   ),
                   child: pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.stretch, children: [
@@ -330,7 +330,7 @@ class VisitorReportsScreen extends StatelessWidget {
                     margin: const pw.EdgeInsets.only(bottom: 8),
                     padding: const pw.EdgeInsets.all(9),
                     decoration: pw.BoxDecoration(
-                      border: pw.Border.all(color: const PdfColor.fromInt(0xFFE1E8EF)),
+                      border: pw.Border.all(color: const PdfColor.fromInt(0xFFDCE5ED)),
                       borderRadius: pw.BorderRadius.circular(6),
                     ),
                     child: pw.Column(
@@ -365,7 +365,7 @@ class VisitorReportsScreen extends StatelessWidget {
                     margin: const pw.EdgeInsets.only(bottom: 8),
                     padding: const pw.EdgeInsets.all(9),
                     decoration: pw.BoxDecoration(
-                      border: pw.Border.all(color: const PdfColor.fromInt(0xFFE1E8EF)),
+                      border: pw.Border.all(color: const PdfColor.fromInt(0xFFDCE5ED)),
                       borderRadius: pw.BorderRadius.circular(6),
                     ),
                     child: pw.Column(
@@ -449,11 +449,11 @@ class _ReportMetric extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.all(15),
-    decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(17), border: Border.all(color: const Color(0xFFE1E8EF))),
+    decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(17), border: Border.all(color: const Color(0xFFDCE5ED))),
     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Icon(icon, color: color, size: 24), const SizedBox(height: 12),
       Text(value, style: const TextStyle(fontSize: 25, fontWeight: FontWeight.w800, color: Color(0xFF082B55))),
-      const SizedBox(height: 3), Text(title, style: const TextStyle(fontSize: 12, color: Color(0xFF637487))),
+      const SizedBox(height: 3), Text(title, style: const TextStyle(fontSize: 12, color: Color(0xFF526579))),
     ]),
   );
 }
@@ -466,7 +466,7 @@ class _BreakdownTile extends StatelessWidget {
     final ratio = total == 0 ? 0.0 : count / total;
     return Container(
       margin: const EdgeInsets.only(bottom: 8), padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(14), border: Border.all(color: const Color(0xFFE1E8EF))),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(14), border: Border.all(color: const Color(0xFFDCE5ED))),
       child: Column(children: [
         Row(children: [
           Expanded(child: Text(title, style: const TextStyle(fontWeight: FontWeight.w700, color: Color(0xFF082B55)))),
@@ -485,8 +485,8 @@ class _ReportEmpty extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Container(
     width: double.infinity, padding: const EdgeInsets.all(18),
-    decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(14), border: Border.all(color: const Color(0xFFE1E8EF))),
-    child: Text(message, textAlign: TextAlign.center, style: const TextStyle(color: Color(0xFF637487))),
+    decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(14), border: Border.all(color: const Color(0xFFDCE5ED))),
+    child: Text(message, textAlign: TextAlign.center, style: const TextStyle(color: Color(0xFF526579))),
   );
 
 }
