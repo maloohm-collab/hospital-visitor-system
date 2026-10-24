@@ -22,7 +22,7 @@ class HospitalVisitorApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'نظام زوار المستشفى',
+      title: 'نظام زوار مستشفى الزرقاء الحكومي — Rock',
       locale: const Locale('ar'),
       theme: ThemeData(
         useMaterial3: true,
@@ -31,6 +31,7 @@ class HospitalVisitorApp extends StatelessWidget {
           primary: navy,
           secondary: teal,
           surface: const Color(0xFFF4F7FB),
+          error: const Color(0xFFB42318),
         ),
         scaffoldBackgroundColor: const Color(0xFFF4F7FB),
         cardTheme: CardThemeData(
@@ -39,14 +40,16 @@ class HospitalVisitorApp extends StatelessWidget {
           shadowColor: const Color(0x16082B55),
           margin: const EdgeInsets.symmetric(vertical: 6),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(18),
-            side: const BorderSide(color: Color(0xFFE1EAF1)),
+            borderRadius: BorderRadius.circular(16),
+            side: const BorderSide(color: Color(0xFFDCE5ED)),
           ),
         ),
         dividerTheme: const DividerThemeData(
-          color: Color(0xFFDCE7EF),
+          color: Color(0xFFDCE5ED),
           thickness: 1,
-          space: 20,
+          space: 18,
+          indent: 0,
+          endIndent: 0,
         ),
         navigationBarTheme: NavigationBarThemeData(
           backgroundColor: Colors.white,
@@ -75,26 +78,32 @@ class HospitalVisitorApp extends StatelessWidget {
           ),
         ),
         textTheme: const TextTheme(
-          headlineMedium: TextStyle(fontSize: 26, fontWeight: FontWeight.w800, color: navy),
-          titleLarge: TextStyle(fontSize: 19, fontWeight: FontWeight.w800, color: navy),
-          titleMedium: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: navy),
+          headlineLarge: TextStyle(fontSize: 28, height: 1.25, fontWeight: FontWeight.w900, color: navy),
+          headlineMedium: TextStyle(fontSize: 24, height: 1.3, fontWeight: FontWeight.w800, color: navy),
+          titleLarge: TextStyle(fontSize: 19, height: 1.35, fontWeight: FontWeight.w800, color: navy),
+          titleMedium: TextStyle(fontSize: 16, height: 1.4, fontWeight: FontWeight.w700, color: navy),
+          titleSmall: TextStyle(fontSize: 14, height: 1.4, fontWeight: FontWeight.w700, color: navy),
           bodyLarge: TextStyle(fontSize: 15, height: 1.65, color: Color(0xFF33485C)),
           bodyMedium: TextStyle(fontSize: 14, height: 1.6, color: Color(0xFF526579)),
-          labelLarge: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+          bodySmall: TextStyle(fontSize: 12, height: 1.55, color: Color(0xFF65788A)),
+          labelLarge: TextStyle(fontSize: 14, fontWeight: FontWeight.w800),
+          labelMedium: TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
         ),
         filledButtonTheme: FilledButtonThemeData(
           style: FilledButton.styleFrom(
             minimumSize: const Size.fromHeight(52),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
             textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800),
           ),
         ),
         inputDecorationTheme: InputDecorationTheme(
           filled: true,
           fillColor: Colors.white,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 15, vertical: 16),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 15, vertical: 15),
+          labelStyle: const TextStyle(color: Color(0xFF526579), fontWeight: FontWeight.w600),
+          hintStyle: const TextStyle(color: Color(0xFF8796A5), fontSize: 13),
           border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(13),
             borderSide: const BorderSide(color: Color(0xFFDCE5ED)),
           ),
           enabledBorder: OutlineInputBorder(
@@ -102,8 +111,8 @@ class HospitalVisitorApp extends StatelessWidget {
             borderSide: const BorderSide(color: Color(0xFFDCE5ED)),
           ),
           focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(14),
-            borderSide: const BorderSide(color: teal, width: 1.6),
+            borderRadius: BorderRadius.circular(13),
+            borderSide: const BorderSide(color: teal, width: 1.8),
           ),
         ),
       ),
