@@ -17,7 +17,7 @@ class VisitorLogsScreen extends StatefulWidget {
 class _VisitorLogsScreenState extends State<VisitorLogsScreen> {
   static const _navy = Color(0xFF082B55);
   static const _teal = Color(0xFF12B8B0);
-  static const _muted = Color(0xFF637487);
+  static const _muted = Color(0xFF526579);
 
   static const Map<String, Map<String, dynamic>> _floors = {
     'floor_5': {
@@ -455,7 +455,7 @@ class _VisitorLogsScreenState extends State<VisitorLogsScreen> {
             style: OutlinedButton.styleFrom(
               foregroundColor: _navy,
               minimumSize: const Size.fromHeight(48),
-              side: const BorderSide(color: Color(0xFFDDE7EF)),
+              side: const BorderSide(color: Color(0xFFDCE5ED)),
               textStyle: const TextStyle(fontWeight: FontWeight.w800),
             ),
           ),
@@ -476,9 +476,9 @@ class _VisitorLogsScreenState extends State<VisitorLogsScreen> {
         Container(
           padding: const EdgeInsets.fromLTRB(18, 18, 18, 20),
           decoration: BoxDecoration(
-            color: const Color(0xFFF3F7FA),
+            color: const Color(0xFFF4F7FB),
             borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: const Color(0xFFDDE7EF)),
+            border: Border.all(color: const Color(0xFFDCE5ED)),
           ),
           child: const Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -514,7 +514,7 @@ class _VisitorLogsScreenState extends State<VisitorLogsScreen> {
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
       decoration: const BoxDecoration(
         color: Colors.white,
-        border: Border(bottom: BorderSide(color: Color(0xFFE1E8EF))),
+        border: Border(bottom: BorderSide(color: Color(0xFFDCE5ED))),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -553,10 +553,10 @@ class _VisitorLogsScreenState extends State<VisitorLogsScreen> {
               fillColor: const Color(0xFFF7F9FB),
               border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(13),
-                  borderSide: const BorderSide(color: Color(0xFFE1E8EF))),
+                  borderSide: const BorderSide(color: Color(0xFFDCE5ED))),
               enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(13),
-                  borderSide: const BorderSide(color: Color(0xFFE1E8EF))),
+                  borderSide: const BorderSide(color: Color(0xFFDCE5ED))),
             ),
             items: [
               const DropdownMenuItem<String>(
@@ -590,10 +590,10 @@ class _VisitorLogsScreenState extends State<VisitorLogsScreen> {
               fillColor: const Color(0xFFF7F9FB),
               border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(13),
-                  borderSide: const BorderSide(color: Color(0xFFE1E8EF))),
+                  borderSide: const BorderSide(color: Color(0xFFDCE5ED))),
               enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(13),
-                  borderSide: const BorderSide(color: Color(0xFFE1E8EF))),
+                  borderSide: const BorderSide(color: Color(0xFFDCE5ED))),
             ),
           ),
         ],
@@ -618,7 +618,7 @@ class _VisitorLogsScreenState extends State<VisitorLogsScreen> {
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: const Color(0xFFE1E8EF)),
+            border: Border.all(color: const Color(0xFFDCE5ED)),
           ),
           child: Row(
             children: [
@@ -698,7 +698,7 @@ class _VisitorLogsScreenState extends State<VisitorLogsScreen> {
         border: Border.all(
             color: isInside
                 ? const Color(0xFFF5C56B)
-                : const Color(0xFFE1E8EF)),
+                : const Color(0xFFDCE5ED)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -818,7 +818,7 @@ class _FloorChoice extends StatelessWidget {
           padding: const EdgeInsets.all(15),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: const Color(0xFFE1E8EF)),
+            border: Border.all(color: const Color(0xFFDCE5ED)),
           ),
           child: Row(
             children: [
@@ -844,12 +844,12 @@ class _FloorChoice extends StatelessWidget {
                     const SizedBox(height: 4),
                     Text(subtitle,
                         style: const TextStyle(
-                            color: Color(0xFF637487), fontSize: 12)),
+                            color: Color(0xFF526579), fontSize: 12)),
                   ],
                 ),
               ),
               const Icon(Icons.chevron_left_rounded,
-                  color: Color(0xFF637487)),
+                  color: Color(0xFF526579)),
             ],
           ),
         ),
@@ -874,7 +874,7 @@ class _LogDetail extends StatelessWidget {
           SizedBox(
               width: 95,
               child: Text(label,
-                  style: const TextStyle(color: Color(0xFF637487)))),
+                  style: const TextStyle(color: Color(0xFF526579)))),
           Expanded(
             child: Text(value,
                 style: const TextStyle(
@@ -914,7 +914,7 @@ class _LogsMessage extends StatelessWidget {
             Text(message,
                 textAlign: TextAlign.center,
                 style: const TextStyle(
-                    color: Color(0xFF637487), height: 1.6)),
+                    color: Color(0xFF526579), height: 1.6)),
           ],
         ),
       ),
