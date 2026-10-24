@@ -392,7 +392,7 @@ class _LocalOperationsLogScreenState extends State<LocalOperationsLogScreen> {
                   onPressed: () {
                     final current = _notes.text.trim();
                     setState(() {
-                      _notes.text = current.isEmpty ? template : '$current\\n$template';
+                      _notes.text = current.isEmpty ? template : '$current\n$template';
                       _notes.selection = TextSelection.collapsed(offset: _notes.text.length);
                     });
                   },
