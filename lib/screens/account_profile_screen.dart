@@ -310,7 +310,7 @@ class _AccountProfileScreenState extends State<AccountProfileScreen> {
                       gradient: const LinearGradient(
                         begin: Alignment.topRight,
                         end: Alignment.bottomLeft,
-                        colors: [_navy, Color(0xFF245878)],
+                        colors: [_navy, Color(0xFF14558A)],
                       ),
                       borderRadius: BorderRadius.circular(22),
                     ),
@@ -395,7 +395,7 @@ class _AccountProfileScreenState extends State<AccountProfileScreen> {
                         const Text(
                           'يمكنك تعديل الاسم ورقم الهاتف مباشرة، ثم حفظ جميع التغييرات من زر «حفظ بيانات الحساب».',
                           textAlign: TextAlign.center,
-                          style: TextStyle(fontSize: 12, height: 1.5, color: Color(0xFF637487)),
+                          style: TextStyle(fontSize: 12, height: 1.5, color: Color(0xFF526579)),
                         ),
                       ],
                     ),
@@ -404,9 +404,9 @@ class _AccountProfileScreenState extends State<AccountProfileScreen> {
                   Container(
                     padding: const EdgeInsets.all(18),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFF3F7FA),
+                      color: const Color(0xFFF4F7FB),
                       borderRadius: BorderRadius.circular(18),
-                      border: Border.all(color: const Color(0xFFDDE7EF)),
+                      border: Border.all(color: const Color(0xFFDCE5ED)),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -482,7 +482,7 @@ class _AccountProfileScreenState extends State<AccountProfileScreen> {
                           'الرمز محفوظ بأمان على هذا الهاتف فقط، ولا يحل محل كلمة المرور بعد تسجيل الخروج الكامل.',
                           textAlign: TextAlign.center,
                           style: TextStyle(
-                            color: Color(0xFF637487),
+                            color: Color(0xFF526579),
                             fontSize: 11,
                             height: 1.5,
                           ),
@@ -503,7 +503,7 @@ class _AccountProfileScreenState extends State<AccountProfileScreen> {
                   const Text(
                     'لا يمكن تعديل الدور أو حالة الحساب من هذه الشاشة؛ هذه الصلاحيات للإدارة فقط.',
                     textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 12, height: 1.6, color: Color(0xFF637487)),
+                    style: TextStyle(fontSize: 12, height: 1.6, color: Color(0xFF526579)),
                   ),
                 ],
               ),
