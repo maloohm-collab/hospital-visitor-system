@@ -276,7 +276,7 @@ class _VisitorFormScreenState extends State<VisitorFormScreen> {
                                   setState(() {
                                     _notesController.text = current.isEmpty
                                         ? template
-                                        : '$current\\n$template';
+                                        : '$current\n$template';
                                     _notesController.selection = TextSelection.collapsed(
                                       offset: _notesController.text.length,
                                     );
@@ -835,7 +835,7 @@ class _VisitorFormScreenState extends State<VisitorFormScreen> {
                   label: Text(template, style: const TextStyle(fontSize: 10)),
                   onPressed: () {
                     final current = notes.text.trim();
-                    notes.text = current.isEmpty ? template : '$current\\n$template';
+                    notes.text = current.isEmpty ? template : '$current\n$template';
                     notes.selection = TextSelection.collapsed(offset: notes.text.length);
                   },
                 )).toList(),
