@@ -211,7 +211,7 @@ class _DirectContactScreenState extends State<DirectContactScreen> {
                       decoration: BoxDecoration(
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(17),
-                        border: Border.all(color: const Color(0xFFE1E8EF)),
+                        border: Border.all(color: const Color(0xFFDCE5ED)),
                         boxShadow: const [
                           BoxShadow(
                             color: Color(0x08000000),
