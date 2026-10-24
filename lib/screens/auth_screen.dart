@@ -219,10 +219,10 @@ class _AuthScreenState extends State<AuthScreen> {
   @override
   Widget build(BuildContext context) {
     const gold = Color(0xFFD9AC55);
-    const ink = Color(0xFF10263F);
-    const muted = Color(0xFF66788A);
+    const ink = Color(0xFF082B55);
+    const muted = Color(0xFF526579);
     return Scaffold(
-      backgroundColor: const Color(0xFFF2F5F8),
+      backgroundColor: const Color(0xFFF4F7FB),
       body: SafeArea(
         child: LayoutBuilder(
           builder: (context, constraints) => SingleChildScrollView(
@@ -236,7 +236,7 @@ class _AuthScreenState extends State<AuthScreen> {
                     gradient: LinearGradient(
                       begin: Alignment.topRight,
                       end: Alignment.bottomLeft,
-                      colors: [Color(0xFF173F62), Color(0xFF08213D), Color(0xFF07172B)],
+                      colors: [Color(0xFF14558A), Color(0xFF082B55), Color(0xFF061A33)],
                     ),
                     borderRadius: BorderRadius.only(
                       bottomLeft: Radius.circular(30),
@@ -264,8 +264,15 @@ class _AuthScreenState extends State<AuthScreen> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 const Text(
-                                  'الأمن والحماية',
-                                  style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w900, height: 1.2),
+                                  'الصخرة للخدمات والاستشارات الأمنية',
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(color: Colors.white, fontSize: 15, height: 1.35, fontWeight: FontWeight.w900),
+                                ),
+                                const SizedBox(height: 2),
+                                const Text(
+                                  'Rock',
+                                  style: TextStyle(color: gold, fontSize: 12, letterSpacing: 1.1, fontWeight: FontWeight.w900),
                                 ),
                                 const SizedBox(height: 5),
                                 Text(
@@ -325,8 +332,8 @@ class _AuthScreenState extends State<AuthScreen> {
                           padding: const EdgeInsets.fromLTRB(18, 22, 18, 20),
                           decoration: BoxDecoration(
                             color: Colors.white,
-                            borderRadius: BorderRadius.circular(24),
-                            border: Border.all(color: const Color(0xFFE0E7ED)),
+                            borderRadius: BorderRadius.circular(18),
+                            border: Border.all(color: const Color(0xFFDCE5ED)),
                             boxShadow: const [
                               BoxShadow(color: Color(0x120C2945), blurRadius: 24, offset: Offset(0, 9)),
                             ],
