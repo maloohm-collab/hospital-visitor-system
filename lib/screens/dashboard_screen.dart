@@ -181,9 +181,9 @@ class DashboardScreen extends StatelessWidget {
           Container(
             padding: const EdgeInsets.fromLTRB(18, 18, 18, 20),
             decoration: BoxDecoration(
-              color: const Color(0xFFF3F7FA),
+              color: const Color(0xFFF4F7FB),
               borderRadius: BorderRadius.circular(22),
-              border: Border.all(color: const Color(0xFFDDE7EF)),
+              border: Border.all(color: const Color(0xFFDCE5ED)),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
