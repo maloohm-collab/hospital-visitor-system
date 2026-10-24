@@ -27,6 +27,14 @@ class _LocalOperationsLogScreenState extends State<LocalOperationsLogScreen> {
   static const _navy = Color(0xFF082B55);
   static const _teal = Color(0xFF12B8B0);
   static const _muted = Color(0xFF64748B);
+  static const _noteTemplates = <String>[
+    'تم التحقق من المعلومات وتوثيقها.',
+    'تم إبلاغ المسؤول المعني.',
+    'تمت مراجعة الحالة ومتابعتها.',
+    'تم التحقق من المواد والكميات.',
+    'لم تُسجل ملاحظات إضافية.',
+  ];
+
 
   final _formKey = GlobalKey<FormState>();
   final _patientName = TextEditingController();
@@ -356,6 +364,29 @@ class _LocalOperationsLogScreenState extends State<LocalOperationsLogScreen> {
                 minLines: 2,
                 maxLines: 4,
                 decoration: _decoration('ملاحظات إضافية', Icons.notes_rounded),
+              ),
+              const SizedBox(height: 8),
+              const Align(
+                alignment: Alignment.centerRight,
+                child: Text('قوالب ملاحظات جاهزة',
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: _navy)),
+              ),
+              const SizedBox(height: 6),
+              Wrap(
+                spacing: 7,
+                runSpacing: 7,
+                children: _noteTemplates.map((template) => ActionChip(
+                  label: Text(template, style: const TextStyle(fontSize: 11)),
+                  backgroundColor: const Color(0xFFEAF7F6),
+                  side: const BorderSide(color: Color(0xFFB8DCDC)),
+                  onPressed: () {
+                    final current = _notes.text.trim();
+                    setState(() {
+                      _notes.text = current.isEmpty ? template : '$current\\n$template';
+                      _notes.selection = TextSelection.collapsed(offset: _notes.text.length);
+                    });
+                  },
+                )).toList(),
               ),
               const SizedBox(height: 14),
               FilledButton.icon(
