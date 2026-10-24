@@ -65,7 +65,7 @@ class _VisitorSearchScreenState extends State<VisitorSearchScreen> {
             if (docs.isEmpty) return Center(child: Padding(
               padding: const EdgeInsets.all(24),
               child: Text(_term.isEmpty ? 'لا توجد زيارات مسجلة بعد.' : 'لا توجد نتائج مطابقة للبحث.',
-                textAlign: TextAlign.center, style: const TextStyle(color: Color(0xFF637487))),
+                textAlign: TextAlign.center, style: const TextStyle(color: Color(0xFF526579))),
             ));
             return ListView.separated(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
@@ -77,7 +77,7 @@ class _VisitorSearchScreenState extends State<VisitorSearchScreen> {
                 String fmt(dynamic v) => v is Timestamp ? DateFormat('yyyy/MM/dd HH:mm', 'en').format(v.toDate()) : '—';
                 return Container(
                   padding: const EdgeInsets.all(15),
-                  decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(17), border: Border.all(color: const Color(0xFFE1E8EF))),
+                  decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(17), border: Border.all(color: const Color(0xFFDCE5ED))),
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     Row(children: [
                       const Icon(Icons.local_hospital_outlined, color: Color(0xFF12B8B0)),
@@ -112,7 +112,7 @@ class _SearchDetail extends StatelessWidget {
   Widget build(BuildContext context) => Padding(
     padding: const EdgeInsets.only(bottom: 6),
     child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      SizedBox(width: 88, child: Text(label, style: const TextStyle(color: Color(0xFF637487), fontSize: 12))),
+      SizedBox(width: 88, child: Text(label, style: const TextStyle(color: Color(0xFF526579), fontSize: 12))),
       Expanded(child: Text(value, style: const TextStyle(color: Color(0xFF263C50), fontSize: 12, fontWeight: FontWeight.w600))),
     ]),
   );
