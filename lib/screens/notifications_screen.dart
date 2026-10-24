@@ -122,7 +122,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           final doc = docs[i]; final d = doc.data(); final read = d['read'] == true;
           final created = d['createdAt'] is Timestamp ? (d['createdAt'] as Timestamp).toDate() : null;
           return Card(elevation: 0, margin: const EdgeInsets.only(bottom: 10),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: BorderSide(color: read ? const Color(0xFFE1E8EF) : teal.withOpacity(.55))),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: BorderSide(color: read ? const Color(0xFFDCE5ED) : teal.withOpacity(.55))),
             child: InkWell(borderRadius: BorderRadius.circular(16), onTap: () => markRead(doc),
               child: Padding(padding: const EdgeInsets.all(15), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Row(children: [Icon(d['priority'] == 'urgent' ? Icons.priority_high_rounded : Icons.notifications_active_outlined, color: d['priority'] == 'urgent' ? Colors.red : teal),
