@@ -47,6 +47,7 @@ class _LocalOperationsLogScreenState extends State<LocalOperationsLogScreen> {
   final _material = TextEditingController();
   final _quantity = TextEditingController();
   final _site = TextEditingController();
+  final _responsiblePerson = TextEditingController();
 
   bool _loading = true;
   bool _saving = false;
@@ -75,6 +76,7 @@ class _LocalOperationsLogScreenState extends State<LocalOperationsLogScreen> {
     _material.dispose();
     _quantity.dispose();
     _site.dispose();
+    _responsiblePerson.dispose();
     super.dispose();
   }
 
@@ -117,6 +119,7 @@ class _LocalOperationsLogScreenState extends State<LocalOperationsLogScreen> {
       } else ...{
         'site': _site.text.trim(),
         'movementType': _movementType,
+        'responsiblePerson': _responsiblePerson.text.trim(),
         'material': _material.text.trim(),
         'quantity': _quantity.text.trim(),
         'department': _department.text.trim(),
@@ -141,6 +144,7 @@ class _LocalOperationsLogScreenState extends State<LocalOperationsLogScreen> {
         _material.clear();
         _quantity.clear();
         _site.clear();
+        _responsiblePerson.clear();
         _outcome = 'نجح الإنعاش ولم تحدث وفاة';
         _movementType = 'ملاحظة يومية';
       });
@@ -256,6 +260,8 @@ class _LocalOperationsLogScreenState extends State<LocalOperationsLogScreen> {
         'المادة: ${record['material']}',
       if ((record['quantity'] ?? '').toString().trim().isNotEmpty)
         'الكمية: ${record['quantity']}',
+      if ((record['responsiblePerson'] ?? '').toString().trim().isNotEmpty)
+        'المسؤول عن التسليم / الاستلام: ${record['responsiblePerson']}',
       if ((record['notes'] ?? '').toString().trim().isNotEmpty)
         'الملاحظات: ${record['notes']}',
     ];
@@ -355,6 +361,8 @@ class _LocalOperationsLogScreenState extends State<LocalOperationsLogScreen> {
                   _textField(_quantity, 'الكمية', Icons.numbers_outlined, requiredField: true),
                   const SizedBox(height: 12),
                 ],
+                _textField(_responsiblePerson, 'اسم المسؤول عن التسليم / الاستلام (اختياري)', Icons.badge_outlined),
+                const SizedBox(height: 12),
               ],
               TextFormField(
                 controller: _notes,
