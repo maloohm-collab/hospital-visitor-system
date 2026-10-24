@@ -822,6 +822,24 @@ class _VisitorFormScreenState extends State<VisitorFormScreen> {
                   alignLabelWithHint: true,
                 ),
               ),
+              const SizedBox(height: 9),
+              const Text(
+                'ملاحظات جاهزة',
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800),
+              ),
+              const SizedBox(height: 6),
+              Wrap(
+                spacing: 6,
+                runSpacing: 5,
+                children: _noteTemplates.map((template) => ActionChip(
+                  label: Text(template, style: const TextStyle(fontSize: 10)),
+                  onPressed: () {
+                    final current = notes.text.trim();
+                    notes.text = current.isEmpty ? template : '$current\\n$template';
+                    notes.selection = TextSelection.collapsed(offset: notes.text.length);
+                  },
+                )).toList(),
+              ),
             ],
           ),
         ),
