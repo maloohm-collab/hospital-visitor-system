@@ -1,5 +1,8 @@
+import 'dart:convert';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter/material.dart';
 import 'dart:io';
 
@@ -161,13 +164,35 @@ class VisitorReportsScreen extends StatelessWidget {
     DateTime now,
     User user,
   ) async {
-    if (visits.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('لا توجد زيارات مسجلة اليوم لإنشاء التقرير.')),
-      );
-      return;
-    }
     try {
+      final storedCpr = await const FlutterSecureStorage()
+          .read(key: 'cpr_cases_${user.uid}');
+      final cprRecords = <Map<String, dynamic>>[];
+      if (storedCpr != null && storedCpr.isNotEmpty) {
+        final decoded = jsonDecode(storedCpr);
+        if (decoded is List) {
+          final dayStart = DateTime(now.year, now.month, now.day);
+          final nextDay = dayStart.add(const Duration(days: 1));
+          for (final item in decoded.whereType<Map>()) {
+            final record = Map<String, dynamic>.from(item);
+            final createdAt = DateTime.tryParse(
+              record['createdAt']?.toString() ?? '',
+            );
+            if (createdAt != null &&
+                !createdAt.isBefore(dayStart) &&
+                createdAt.isBefore(nextDay)) {
+              cprRecords.add(record);
+            }
+          }
+        }
+      }
+      if (visits.isEmpty && cprRecords.isEmpty) {
+        if (!context.mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('لا توجد زيارات أو حالات CPR مسجلة اليوم لإنشاء التقرير.')),
+        );
+        return;
+      }
       final arabicFont = await PdfGoogleFonts.cairoRegular();
       final boldFont = await PdfGoogleFonts.cairoBold();
       final dateKey = DateFormat('yyyyMMdd', 'en').format(now);
@@ -272,9 +297,44 @@ class VisitorReportsScreen extends StatelessWidget {
                         style: pw.TextStyle(font: arabicFont, fontSize: 9)),
                   ]),
                 ),
+              if (cprRecords.isNotEmpty) ...[
+                pw.SizedBox(height: 14),
+                pw.Text(
+                  _shapeArabic('حالات الإنعاش CPR المسجلة اليوم'),
+                  style: pw.TextStyle(font: boldFont, fontSize: 14),
+                ),
+                pw.SizedBox(height: 7),
+                for (final record in cprRecords)
+                  pw.Container(
+                    margin: const pw.EdgeInsets.only(bottom: 8),
+                    padding: const pw.EdgeInsets.all(9),
+                    decoration: pw.BoxDecoration(
+                      border: pw.Border.all(color: const PdfColor.fromInt(0xFFE1E8EF)),
+                      borderRadius: pw.BorderRadius.circular(6),
+                    ),
+                    child: pw.Column(
+                      crossAxisAlignment: pw.CrossAxisAlignment.stretch,
+                      children: [
+                        pw.Text(
+                          _shapeArabic('وقت الحالة: ${DateFormat('yyyy/MM/dd HH:mm', 'en').format(DateTime.parse(record['createdAt'].toString()))}'),
+                          style: pw.TextStyle(font: boldFont, fontSize: 10),
+                        ),
+                        pw.Text(_shapeArabic('اسم المريض: ${record['patientName'] ?? 'غير محدد'} | العمر: ${record['age'] ?? 'غير محدد'}'),
+                            style: pw.TextStyle(font: arabicFont, fontSize: 10)),
+                        pw.Text(_shapeArabic('القسم: ${record['department'] ?? 'غير محدد'} | الغرفة: ${record['room'] ?? 'غير محددة'}'),
+                            style: pw.TextStyle(font: arabicFont, fontSize: 10)),
+                        pw.Text(_shapeArabic('نتيجة الحالة: ${record['outcome'] ?? 'غير محددة'}'),
+                            style: pw.TextStyle(font: boldFont, fontSize: 10)),
+                        if ((record['notes'] ?? '').toString().trim().isNotEmpty)
+                          pw.Text(_shapeArabic('ملاحظات: ${record['notes']}'),
+                              style: pw.TextStyle(font: arabicFont, fontSize: 10)),
+                      ],
+                    ),
+                  ),
+              ],
               pw.SizedBox(height: 10),
               pw.Divider(color: PdfColors.grey600),
-              pw.Text(_shapeArabic('تم إعداد التقرير من سجلات قاعدة بيانات المستشفى.'),
+              pw.Text(_shapeArabic('أُعد التقرير من سجلات الزيارات، وحالات CPR المحلية المتاحة لهذا الحساب.'),
                 textAlign: pw.TextAlign.right,
                 style: pw.TextStyle(font: arabicFont, fontSize: 9, color: PdfColors.black)),
               pw.SizedBox(height: 20),
