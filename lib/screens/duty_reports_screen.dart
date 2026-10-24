@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../widgets/official_hospital_header.dart';
@@ -107,6 +108,11 @@ class _DutyReportsScreenState extends State<DutyReportsScreen> {
                 Expanded(child: Text(file.uri.pathSegments.isEmpty ? file.path : file.uri.pathSegments.last,
                   maxLines: 2, overflow: TextOverflow.ellipsis,
                   style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600))),
+                if (file.path.startsWith((Directory('${(await getApplicationDocumentsDirectory()).path}/تقارير_المناوبة')).path) &&
+                    await File('${file.path}.json').exists())
+                  IconButton(tooltip: 'تعديل بيانات التقرير وإعادة إنشاء PDF',
+                    onPressed: () => _editSavedReport(file),
+                    icon: const Icon(Icons.edit_outlined)),
                 IconButton(tooltip: 'عرض PDF', onPressed: () => _previewPdf(file),
                   icon: const Icon(Icons.visibility_outlined)),
                 IconButton(
@@ -153,11 +159,95 @@ class _DutyReportsScreenState extends State<DutyReportsScreen> {
     if (yes != true) return;
     try {
       if (await file.exists()) await file.delete();
+      final metadata = File('${file.path}.json');
+      if (await metadata.exists()) await metadata.delete();
       if (!mounted) return;
       setState(() {});
       _message('تم حذف نسخة التقرير من هذا الهاتف فقط.');
     } catch (_) {
       _message('تعذر حذف الملف. تحقق من صلاحيات الوصول إلى مساحة التطبيق.');
+    }
+  }
+
+
+  Future<void> _editSavedReport(File file) async {
+    final metadataFile = File('${file.path}.json');
+    if (!await metadataFile.exists()) {
+      _message('هذا PDF وارد أو قديم ولا توجد بياناته الأصلية القابلة للتعديل. يمكنك مشاركته أو حذفه محليًا.');
+      return;
+    }
+    try {
+      final data = jsonDecode(await metadataFile.readAsString()) as Map<String, dynamic>;
+      final title = TextEditingController(text: (data['title'] ?? '').toString());
+      final body = TextEditingController(text: (data['body'] ?? '').toString());
+      final employee = TextEditingController(text: (data['employee'] ?? '').toString());
+      final formKey = GlobalKey<FormState>();
+      final shouldSave = await showDialog<bool>(
+        context: context,
+        barrierDismissible: false,
+        builder: (dialogContext) => AlertDialog(
+          title: const Text('تعديل بيانات التقرير'),
+          content: SizedBox(
+            width: 520,
+            child: Form(
+              key: formKey,
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextFormField(controller: title, decoration: const InputDecoration(labelText: 'عنوان التقرير'),
+                      validator: (v) => v == null || v.trim().length < 4 ? 'أدخل عنوانًا واضحًا' : null),
+                    const SizedBox(height: 12),
+                    TextFormField(controller: employee, decoration: const InputDecoration(labelText: 'الموظف المعني (اختياري)')),
+                    const SizedBox(height: 12),
+                    TextFormField(controller: body, minLines: 4, maxLines: 9,
+                      decoration: const InputDecoration(labelText: 'تفاصيل التقرير'),
+                      validator: (v) => v == null || v.trim().length < 10 ? 'أضف تفاصيل كافية' : null),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('إلغاء')),
+            FilledButton(onPressed: () {
+              if (formKey.currentState!.validate()) Navigator.pop(dialogContext, true);
+            }, child: const Text('حفظ وإعادة إنشاء PDF')),
+          ],
+        ),
+      );
+      if (shouldSave != true) {
+        title.dispose(); body.dispose(); employee.dispose();
+        return;
+      }
+      final createdAt = DateTime.tryParse((data['createdAt'] ?? '').toString()) ?? DateTime.now();
+      final role = (data['role'] ?? 'officer').toString();
+      final originalSupervisor = supervisor;
+      final bytes = await _makePdf(
+        title: title.text.trim(),
+        body: body.text.trim(),
+        employee: employee.text.trim(),
+        creatorName: (data['creatorName'] ?? 'غير مسجل').toString(),
+        creatorPhone: (data['creatorPhone'] ?? 'غير مسجل').toString(),
+        type: (data['type'] ?? 'security_incident').toString(),
+        priority: (data['priority'] ?? 'normal').toString(),
+        destination: (data['destination'] ?? 'internal').toString(),
+        createdAt: createdAt,
+        id: (data['id'] ?? '').toString(),
+      );
+      await file.writeAsBytes(bytes, flush: true);
+      data['title'] = title.text.trim();
+      data['body'] = body.text.trim();
+      data['employee'] = employee.text.trim();
+      data['updatedAt'] = DateTime.now().toIso8601String();
+      await metadataFile.writeAsString(jsonEncode(data), flush: true);
+      title.dispose(); body.dispose(); employee.dispose();
+      if (mounted) {
+        setState(() {});
+        _message('تم تحديث بيانات التقرير وإعادة إنشاء ملف PDF محليًا.');
+      }
+    } catch (_) {
+      _message('تعذر تعديل التقرير. لم يتم تغيير أي بيانات في السحابة.');
     }
   }
 
@@ -276,6 +366,19 @@ class _DutyReportsScreenState extends State<DutyReportsScreen> {
                   if (!await dir.exists()) await dir.create(recursive: true);
                   final file = File('${dir.path}/duty_report_$id.pdf');
                   await file.writeAsBytes(bytes, flush: true);
+                  await File('${file.path}.json').writeAsString(jsonEncode({
+                    'title': title.text.trim(),
+                    'body': body.text.trim(),
+                    'employee': employee.text.trim(),
+                    'creatorName': creatorName,
+                    'creatorPhone': creatorPhone,
+                    'type': type,
+                    'priority': priority,
+                    'destination': destination,
+                    'createdAt': now.toIso8601String(),
+                    'id': id,
+                    'role': supervisor ? 'supervisor' : 'officer',
+                  }), flush: true);
                   if (!mounted) return;
                   Navigator.of(sheetContext).pop();
                   _showSaved(file: file, title: title.text.trim(), type: type,
