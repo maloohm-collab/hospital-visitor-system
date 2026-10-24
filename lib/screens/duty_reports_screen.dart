@@ -108,11 +108,9 @@ class _DutyReportsScreenState extends State<DutyReportsScreen> {
                 Expanded(child: Text(file.uri.pathSegments.isEmpty ? file.path : file.uri.pathSegments.last,
                   maxLines: 2, overflow: TextOverflow.ellipsis,
                   style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600))),
-                if (file.path.startsWith((Directory('${(await getApplicationDocumentsDirectory()).path}/تقارير_المناوبة')).path) &&
-                    await File('${file.path}.json').exists())
-                  IconButton(tooltip: 'تعديل بيانات التقرير وإعادة إنشاء PDF',
-                    onPressed: () => _editSavedReport(file),
-                    icon: const Icon(Icons.edit_outlined)),
+                IconButton(tooltip: 'تعديل بيانات التقرير وإعادة إنشاء PDF',
+                  onPressed: () => _editSavedReport(file),
+                  icon: const Icon(Icons.edit_outlined)),
                 IconButton(tooltip: 'عرض PDF', onPressed: () => _previewPdf(file),
                   icon: const Icon(Icons.visibility_outlined)),
                 IconButton(
@@ -222,7 +220,6 @@ class _DutyReportsScreenState extends State<DutyReportsScreen> {
       }
       final createdAt = DateTime.tryParse((data['createdAt'] ?? '').toString()) ?? DateTime.now();
       final role = (data['role'] ?? 'officer').toString();
-      final originalSupervisor = supervisor;
       final bytes = await _makePdf(
         title: title.text.trim(),
         body: body.text.trim(),
@@ -234,6 +231,7 @@ class _DutyReportsScreenState extends State<DutyReportsScreen> {
         destination: (data['destination'] ?? 'internal').toString(),
         createdAt: createdAt,
         id: (data['id'] ?? '').toString(),
+        reportWasSupervisor: role == 'supervisor',
       );
       await file.writeAsBytes(bytes, flush: true);
       data['title'] = title.text.trim();
@@ -403,6 +401,7 @@ class _DutyReportsScreenState extends State<DutyReportsScreen> {
     required String creatorName, required String creatorPhone,
     required String type, required String priority, required String destination,
     required DateTime createdAt, required String id,
+    bool? reportWasSupervisor,
   }) async {
     final regular = await PdfGoogleFonts.cairoRegular();
     final bold = await PdfGoogleFonts.cairoBold();
@@ -412,7 +411,7 @@ class _DutyReportsScreenState extends State<DutyReportsScreen> {
       build: (_) => [pw.Directionality(textDirection: pw.TextDirection.rtl, child: pw.Column(
         crossAxisAlignment: pw.CrossAxisAlignment.stretch, children: [
           pw.Text('منظومة زوار المستشفى', style: pw.TextStyle(font: bold, fontSize: 20)),
-          pw.Text(supervisor ? 'تقرير مشرف المناوبة' : 'تقرير ضابط الأمن',
+          pw.Text((reportWasSupervisor ?? supervisor) ? 'تقرير مشرف المناوبة' : 'تقرير ضابط الأمن',
             style: pw.TextStyle(font: bold, fontSize: 15)),
           pw.Divider(),
           pw.SizedBox(height: 8),
