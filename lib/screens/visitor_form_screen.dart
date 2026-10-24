@@ -14,8 +14,8 @@ class VisitorFormScreen extends StatefulWidget {
 class _VisitorFormScreenState extends State<VisitorFormScreen> {
   static const _navy = Color(0xFF082B55);
   static const _teal = Color(0xFF12B8B0);
-  static const _muted = Color(0xFF637487);
-  static const _line = Color(0xFFE1E8EF);
+  static const _muted = Color(0xFF526579);
+  static const _line = Color(0xFFDCE5ED);
 
   final _formKey = GlobalKey<FormState>();
   final _roomController = TextEditingController();
@@ -423,9 +423,9 @@ class _VisitorFormScreenState extends State<VisitorFormScreen> {
     return Container(
       padding: const EdgeInsets.fromLTRB(18, 18, 18, 20),
       decoration: BoxDecoration(
-        color: const Color(0xFFF3F7FA),
+        color: const Color(0xFFF4F7FB),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFFDDE7EF)),
+        border: Border.all(color: const Color(0xFFDCE5ED)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
