@@ -10,8 +10,8 @@ class AdminApprovalScreen extends StatefulWidget {
 }
 
 class _AdminApprovalScreenState extends State<AdminApprovalScreen> {
-  static const _navy = Color(0xFF16324F);
-  static const _teal = Color(0xFF168C8C);
+  static const _navy = Color(0xFF082B55);
+  static const _teal = Color(0xFF12B8B0);
 
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   late Future<List<Map<String, dynamic>>> _requests;
@@ -233,7 +233,7 @@ class _AdminApprovalScreenState extends State<AdminApprovalScreen> {
                     padding: const EdgeInsets.all(18),
                     decoration: BoxDecoration(
                       gradient: const LinearGradient(
-                        colors: [_navy, Color(0xFF245878)],
+                        colors: [_navy, Color(0xFF14558A)],
                         begin: Alignment.topRight,
                         end: Alignment.bottomLeft,
                       ),
@@ -302,7 +302,7 @@ class _RequestCard extends StatelessWidget {
               children: [
                 const CircleAvatar(
                   backgroundColor: Color(0xFFE4F3F3),
-                  child: Icon(Icons.person_outline, color: Color(0xFF168C8C)),
+                  child: Icon(Icons.person_outline, color: Color(0xFF12B8B0)),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -344,7 +344,7 @@ class _RequestCard extends StatelessWidget {
                     onPressed: onApprove,
                     icon: const Icon(Icons.check_rounded),
                     label: const Text('اعتماد'),
-                    style: FilledButton.styleFrom(backgroundColor: const Color(0xFF168C8C)),
+                    style: FilledButton.styleFrom(backgroundColor: const Color(0xFF12B8B0)),
                   ),
                 ),
               ],
@@ -380,11 +380,11 @@ class _StatusPanel extends StatelessWidget {
             CircleAvatar(
               radius: 34,
               backgroundColor: const Color(0xFFE4F3F3),
-              child: Icon(icon, size: 34, color: const Color(0xFF168C8C)),
+              child: Icon(icon, size: 34, color: const Color(0xFF12B8B0)),
             ),
             const SizedBox(height: 16),
             Text(title, textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF16324F))),
+                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF082B55))),
             const SizedBox(height: 8),
             Text(message, textAlign: TextAlign.center,
                 style: const TextStyle(color: Color(0xFF64748B), height: 1.6)),
