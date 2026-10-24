@@ -452,7 +452,7 @@ class _ReportCenterScreenState extends State<ReportCenterScreen> {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: const Color(0xFFDDE7EF)),
+          border: Border.all(color: const Color(0xFFDCE5ED)),
           boxShadow: const [
             BoxShadow(color: Color(0x080D1F35), blurRadius: 12, offset: Offset(0, 4)),
           ],
@@ -525,7 +525,7 @@ class _ReportCenterScreenState extends State<ReportCenterScreen> {
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(18),
                   side: BorderSide(
-                    color: urgent ? const Color(0xFFE7B2AE) : const Color(0xFFDDE7EF),
+                    color: urgent ? const Color(0xFFE7B2AE) : const Color(0xFFDCE5ED),
                   ),
                 ),
                 child: Padding(
