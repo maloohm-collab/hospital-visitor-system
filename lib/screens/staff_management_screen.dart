@@ -161,7 +161,7 @@ class _StaffCard extends StatelessWidget {
               Text(name, maxLines: 2, overflow: TextOverflow.ellipsis,
                 style: const TextStyle(fontSize: 16, height: 1.3, fontWeight: FontWeight.w900, color: Color(0xFF082B55))),
               const SizedBox(height: 3),
-              Text(role, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF637487))),
+              Text(role, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF526579))),
             ])),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
@@ -181,10 +181,10 @@ class _StaffCard extends StatelessWidget {
           if (email.isNotEmpty) Padding(
             padding: const EdgeInsets.only(top: 6),
             child: Row(children: [
-              const Icon(Icons.email_outlined, size: 17, color: Color(0xFF637487)),
+              const Icon(Icons.email_outlined, size: 17, color: Color(0xFF526579)),
               const SizedBox(width: 8),
               Expanded(child: Text(email, maxLines: 2, overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontSize: 12, color: Color(0xFF637487)))),
+                style: const TextStyle(fontSize: 12, color: Color(0xFF526579)))),
             ]),
           ),
           if (roleValue != 'admin') ...[
