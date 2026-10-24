@@ -1,3 +1,5 @@
+import 'dart:ui' show FontFeature;
+
 import 'package:flutter/material.dart';
 
 /// A dependency-light Arabic digital clock shared by every role dashboard.
