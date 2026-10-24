@@ -11,6 +11,7 @@ import 'duty_reports_screen.dart';
 import 'visitor_form_screen.dart';
 import 'visitor_logs_screen.dart';
 import 'visitor_reports_screen.dart';
+import 'local_operations_log_screen.dart';
 import 'admin_approval_screen.dart';
 import 'report_center_screen.dart';
 import 'notifications_screen.dart';
@@ -271,6 +272,10 @@ class DashboardScreen extends StatelessWidget {
           const SizedBox(height: 12),
           if (userRole == 'security_officer') ...[
             _ActionTile(icon: Icons.person_add_alt_1_rounded, title: 'تسجيل زائر جديد', subtitle: 'إضافة بيانات الزيارة وتوثيق الدخول والخروج', color: teal, onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const VisitorFormScreen()))),
+            const SizedBox(height: 10),
+            _ActionTile(icon: Icons.health_and_safety_outlined, title: 'توثيق حالات الإنعاش CPR', subtitle: 'تسجيل بيانات الحالة ونتيجتها وتاريخها ووقتها وتصدير تقرير PDF محلي', color: const Color(0xFFB42318), onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const LocalOperationsLogScreen(kind: LocalOperationsLogKind.cpr)))),
+            const SizedBox(height: 10),
+            _ActionTile(icon: Icons.inventory_2_outlined, title: 'سجل أمن الطوارئ', subtitle: 'الملاحظات اليومية وحركة دخول وخروج المواد', color: const Color(0xFFD28A25), onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const LocalOperationsLogScreen(kind: LocalOperationsLogKind.emergency)))),
             const SizedBox(height: 10),
             _ActionTile(icon: Icons.assignment_outlined, title: 'سجل زياراتي', subtitle: 'عرض سجلاتي حسب الطابق والقسم', color: const Color(0xFF27865B), onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => VisitorLogsScreen(userRole: userRole)))),
             const SizedBox(height: 10),
