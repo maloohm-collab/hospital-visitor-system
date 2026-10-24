@@ -21,6 +21,15 @@ class _VisitorFormScreenState extends State<VisitorFormScreen> {
   final _roomController = TextEditingController();
   final _visitorCountController = TextEditingController();
   final _notesController = TextEditingController();
+  static const List<String> _noteTemplates = [
+    'تم التحقق من بيانات الزائر.',
+    'تم إبلاغ القسم المعني بدخول الزائر.',
+    'تم توجيه الزائر للالتزام بتعليمات المستشفى.',
+    'تم التواصل مع مسؤول القسم.',
+    'تمت متابعة الزيارة حتى تسجيل الخروج.',
+    'لم تُسجل ملاحظات إضافية.',
+  ];
+
   DateTime _recordDate = DateTime.now();
 
   // المسميات المعتمدة للمستشفى. CCU مستوى مستقل وليس تابعًا لطابق مرقّم.
@@ -235,6 +244,46 @@ class _VisitorFormScreenState extends State<VisitorFormScreen> {
                         hint: 'اكتب الملاحظات هنا إن وجدت...',
                         icon: Icons.notes_rounded,
                       ).copyWith(alignLabelWithHint: true),
+                    ),
+                    const SizedBox(height: 10),
+                    const Align(
+                      alignment: Alignment.centerRight,
+                      child: Text(
+                        'ملاحظات جاهزة',
+                        style: TextStyle(
+                          color: _navy,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Wrap(
+                      spacing: 7,
+                      runSpacing: 7,
+                      children: _noteTemplates.map((template) {
+                        return ActionChip(
+                          label: Text(
+                            template,
+                            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+                          ),
+                          backgroundColor: const Color(0xFFEAF7F6),
+                          side: const BorderSide(color: Color(0xFFB8DCDC)),
+                          onPressed: _savedVisitId == null || _isSavingVisit
+                              ? null
+                              : () {
+                                  final current = _notesController.text.trim();
+                                  setState(() {
+                                    _notesController.text = current.isEmpty
+                                        ? template
+                                        : '$current\\n$template';
+                                    _notesController.selection = TextSelection.collapsed(
+                                      offset: _notesController.text.length,
+                                    );
+                                  });
+                                },
+                        );
+                      }).toList(),
                     ),
                     const SizedBox(height: 12),
                     Row(
