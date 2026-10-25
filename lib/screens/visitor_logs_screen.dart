@@ -550,7 +550,7 @@ class _VisitorLogsScreenState extends State<VisitorLogsScreen> {
               labelText: 'تصفية حسب القسم',
               prefixIcon: const Icon(Icons.local_hospital_outlined),
               filled: true,
-              fillColor: const Color(0xFFF7F9FB),
+              fillColor: const Color(0xFFF4F7FB),
               border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(13),
                   borderSide: const BorderSide(color: Color(0xFFDCE5ED))),
@@ -587,7 +587,7 @@ class _VisitorLogsScreenState extends State<VisitorLogsScreen> {
                       icon: const Icon(Icons.close_rounded),
                     ),
               filled: true,
-              fillColor: const Color(0xFFF7F9FB),
+              fillColor: const Color(0xFFF4F7FB),
               border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(13),
                   borderSide: const BorderSide(color: Color(0xFFDCE5ED))),
@@ -763,7 +763,7 @@ class _VisitorLogsScreenState extends State<VisitorLogsScreen> {
           if ((data['notes'] as String? ?? '').trim().isNotEmpty) ...[
             const SizedBox(height: 7),
             Text('ملاحظات: ${data['notes']}',
-                style: const TextStyle(color: Color(0xFF263C50), height: 1.5)),
+                style: const TextStyle(color: Color(0xFF33485C), height: 1.5)),
           ],
           if (data['status'] == 'completed') ...[
             const SizedBox(height: 12),
@@ -878,7 +878,7 @@ class _LogDetail extends StatelessWidget {
           Expanded(
             child: Text(value,
                 style: const TextStyle(
-                    color: Color(0xFF263C50), fontWeight: FontWeight.w600)),
+                    color: Color(0xFF33485C), fontWeight: FontWeight.w600)),
           ),
         ],
       ),
