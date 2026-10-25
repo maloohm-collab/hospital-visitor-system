@@ -261,7 +261,8 @@ class _ReportCenterScreenState extends State<ReportCenterScreen> {
             crossAxisAlignment: pw.CrossAxisAlignment.stretch,
             children: [
               pw.Text(
-                _shapeArabic('منظومة زوار المستشفى'),
+                _shapeArabic('مستشفى الزرقاء الحكومي'),
+                _shapeArabic('الصخرة للخدمات والاستشارات الأمنية — Rock'),
                 textAlign: pw.TextAlign.right,
                 style: pw.TextStyle(
                   font: bold, fontSize: 20, color: PdfColors.black,
