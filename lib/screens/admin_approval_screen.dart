@@ -291,7 +291,7 @@ class _RequestCard extends StatelessWidget {
       elevation: 0,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(18),
-        side: const BorderSide(color: Color(0xFFE4EAF0)),
+        side: const BorderSide(color: Color(0xFFDCE5ED)),
       ),
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -311,9 +311,9 @@ class _RequestCard extends StatelessWidget {
                     children: [
                       Text(name, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                       const SizedBox(height: 4),
-                      Text(email, style: const TextStyle(color: Color(0xFF64748B))),
+                      Text(email, style: const TextStyle(color: Color(0xFF526579))),
                       if ((request['phone'] as String? ?? '').trim().isNotEmpty)
-                        Text('الهاتف: ${request['phone']}', style: const TextStyle(color: Color(0xFF64748B))),
+                        Text('الهاتف: ${request['phone']}', style: const TextStyle(color: Color(0xFF526579))),
                     ],
                   ),
                 ),
@@ -387,7 +387,7 @@ class _StatusPanel extends StatelessWidget {
                 style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF082B55))),
             const SizedBox(height: 8),
             Text(message, textAlign: TextAlign.center,
-                style: const TextStyle(color: Color(0xFF64748B), height: 1.6)),
+                style: const TextStyle(color: Color(0xFF526579), height: 1.6)),
             if (action != null) ...[
               const SizedBox(height: 16),
               action!,
