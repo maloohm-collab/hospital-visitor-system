@@ -113,7 +113,7 @@ class _SearchDetail extends StatelessWidget {
     padding: const EdgeInsets.only(bottom: 6),
     child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
       SizedBox(width: 88, child: Text(label, style: const TextStyle(color: Color(0xFF526579), fontSize: 12))),
-      Expanded(child: Text(value, style: const TextStyle(color: Color(0xFF263C50), fontSize: 12, fontWeight: FontWeight.w600))),
+      Expanded(child: Text(value, style: const TextStyle(color: Color(0xFF33485C), fontSize: 12, fontWeight: FontWeight.w600))),
     ]),
   );
 }
