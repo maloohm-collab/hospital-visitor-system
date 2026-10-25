@@ -117,7 +117,7 @@ class _DutyReportsScreenState extends State<DutyReportsScreen> {
                   tooltip: 'مشاركة الملف',
                   onPressed: () => Share.shareXFiles(
                     [XFile(file.path, mimeType: 'application/pdf')],
-                    text: 'تقرير منظومة زوار مستشفى الزرقاء الحكومي',
+                    text: 'تقرير نظام زوار مستشفى الزرقاء الحكومي',
                   ),
                   icon: const Icon(Icons.share_outlined),
                 ),
