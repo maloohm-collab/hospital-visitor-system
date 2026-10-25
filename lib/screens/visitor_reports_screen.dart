@@ -263,7 +263,8 @@ class VisitorReportsScreen extends StatelessWidget {
               crossAxisAlignment: pw.CrossAxisAlignment.stretch,
               children: [
                 pw.Text(
-                  _shapeArabic('منظومة زوار المستشفى'),
+                  _shapeArabic('مستشفى الزرقاء الحكومي'),
+                  _shapeArabic('الصخرة للخدمات والاستشارات الأمنية — Rock'),
                   textAlign: pw.TextAlign.right,
                   style: pw.TextStyle(
                     font: boldFont, fontSize: 20, color: PdfColors.black,
