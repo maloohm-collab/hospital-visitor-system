@@ -276,7 +276,7 @@ class _AuthScreenState extends State<AuthScreen> {
                                 ),
                                 const SizedBox(height: 5),
                                 Text(
-                                  'منظومة زوار المستشفى',
+                                  'نظام زوار مستشفى الزرقاء الحكومي',
                                   style: TextStyle(color: Colors.white.withValues(alpha: 0.78), fontSize: 13, fontWeight: FontWeight.w600),
                                 ),
                               ],
