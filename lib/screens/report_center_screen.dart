@@ -260,13 +260,25 @@ class _ReportCenterScreenState extends State<ReportCenterScreen> {
           child: pw.Column(
             crossAxisAlignment: pw.CrossAxisAlignment.stretch,
             children: [
-              pw.Text(
-                _shapeArabic('مستشفى الزرقاء الحكومي'),
-                _shapeArabic('الصخرة للخدمات والاستشارات الأمنية — Rock'),
-                textAlign: pw.TextAlign.right,
-                style: pw.TextStyle(
-                  font: bold, fontSize: 20, color: PdfColors.black,
-                ),
+              pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.stretch,
+                children: [
+                  pw.Text(
+                    _shapeArabic('مستشفى الزرقاء الحكومي'),
+                    textAlign: pw.TextAlign.right,
+                    style: pw.TextStyle(
+                      font: bold, fontSize: 20, color: PdfColors.black,
+                    ),
+                  ),
+                  pw.SizedBox(height: 3),
+                  pw.Text(
+                    _shapeArabic('الصخرة للخدمات والاستشارات الأمنية — Rock'),
+                    textAlign: pw.TextAlign.right,
+                    style: pw.TextStyle(
+                      font: bold, fontSize: 11, color: PdfColors.grey700,
+                    ),
+                  ),
+                ],
               ),
               pw.SizedBox(height: 7),
               pw.Container(height: 1.3, color: PdfColors.black),
