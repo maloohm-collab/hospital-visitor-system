@@ -474,7 +474,7 @@ class _BreakdownTile extends StatelessWidget {
           Text('${count} زيارة', style: const TextStyle(fontWeight: FontWeight.w800, color: Color(0xFF12B8B0))),
         ]),
         const SizedBox(height: 9),
-        ClipRRect(borderRadius: BorderRadius.circular(8), child: LinearProgressIndicator(value: ratio, minHeight: 6, backgroundColor: const Color(0xFFEAF0F5), color: const Color(0xFF12B8B0))),
+        ClipRRect(borderRadius: BorderRadius.circular(8), child: LinearProgressIndicator(value: ratio, minHeight: 6, backgroundColor: const Color(0xFFF4F7FB), color: const Color(0xFF12B8B0))),
       ]),
     );
   }
