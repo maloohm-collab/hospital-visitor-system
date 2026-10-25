@@ -345,16 +345,16 @@ class _ActionTile extends StatelessWidget {
       borderRadius: BorderRadius.circular(16), onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 14),
-        decoration: BoxDecoration(borderRadius: BorderRadius.circular(16), border: Border.all(color: const Color(0xFFE4EAF0))),
+        decoration: BoxDecoration(borderRadius: BorderRadius.circular(16), border: Border.all(color: const Color(0xFFDCE5ED))),
         child: Row(children: [
           Container(width: 46, height: 46, decoration: BoxDecoration(color: color.withOpacity(0.10), borderRadius: BorderRadius.circular(14)), child: Icon(icon, color: color)),
           const SizedBox(width: 13),
           Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text(title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: DashboardScreen.navy)),
             const SizedBox(height: 4),
-            Text(subtitle, style: const TextStyle(fontSize: 12, color: Color(0xFF64748B))),
+            Text(subtitle, style: const TextStyle(fontSize: 12, color: Color(0xFF526579))),
           ])),
-          const Icon(Icons.chevron_left_rounded, color: Color(0xFF94A3B8)),
+          const Icon(Icons.chevron_left_rounded, color: Color(0xFF8796A5)),
         ]),
       ),
     ),
