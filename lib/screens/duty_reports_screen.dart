@@ -117,7 +117,7 @@ class _DutyReportsScreenState extends State<DutyReportsScreen> {
                   tooltip: 'مشاركة الملف',
                   onPressed: () => Share.shareXFiles(
                     [XFile(file.path, mimeType: 'application/pdf')],
-                    text: 'تقرير منظومة زوار المستشفى',
+                    text: 'تقرير منظومة زوار مستشفى الزرقاء الحكومي',
                   ),
                   icon: const Icon(Icons.share_outlined),
                 ),
@@ -416,7 +416,8 @@ class _DutyReportsScreenState extends State<DutyReportsScreen> {
       theme: pw.ThemeData.withFont(base: regular, bold: bold), pageFormat: PdfPageFormat.a4,
       build: (_) => [pw.Directionality(textDirection: pw.TextDirection.rtl, child: pw.Column(
         crossAxisAlignment: pw.CrossAxisAlignment.stretch, children: [
-          pw.Text('منظومة زوار المستشفى', style: pw.TextStyle(font: bold, fontSize: 20)),
+          pw.Text('مستشفى الزرقاء الحكومي', style: pw.TextStyle(font: bold, fontSize: 20)),
+          pw.Text('الصخرة للخدمات والاستشارات الأمنية — Rock', style: pw.TextStyle(font: bold, fontSize: 12)),
           pw.Text((reportWasSupervisor ?? supervisor) ? 'تقرير مشرف المناوبة' : 'تقرير ضابط الأمن',
             style: pw.TextStyle(font: bold, fontSize: 15)),
           pw.Divider(),
@@ -457,7 +458,7 @@ class _DutyReportsScreenState extends State<DutyReportsScreen> {
           onPressed: () async {
             Navigator.pop(dialogContext);
             await Share.shareXFiles([XFile(file.path, mimeType: 'application/pdf')],
-              text: 'تقرير منظومة زوار المستشفى: $title');
+              text: 'تقرير منظومة زوار مستشفى الزرقاء الحكومي: $title');
           },
           icon: const Icon(Icons.share_rounded), label: const Text('مشاركة ملف PDF')),
       ],
