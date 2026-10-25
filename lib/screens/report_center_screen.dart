@@ -561,13 +561,13 @@ class _ReportCenterScreenState extends State<ReportCenterScreen> {
                         senderName.isNotEmpty ? senderName : (d['createdByEmail'] as String? ?? 'اسم المرسل غير متاح'),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF42576A)),
+                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF526579)),
                       ),
                       if (senderPhone.isNotEmpty)
-                        Text('هاتف: $senderPhone', style: const TextStyle(fontSize: 12, color: Color(0xFF64748B))),
+                        Text('هاتف: $senderPhone', style: const TextStyle(fontSize: 12, color: Color(0xFF526579))),
                       if (created != null)
                         Text(DateFormat('yyyy/MM/dd  HH:mm').format(created),
-                          style: const TextStyle(fontSize: 12, color: Color(0xFF64748B))),
+                          style: const TextStyle(fontSize: 12, color: Color(0xFF526579))),
                     ])),
                     Chip(label: Text(urgent ? 'عاجل' : d['priority'] == 'important' ? 'مهم' : 'عادي')),
                   ]),
