@@ -116,7 +116,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           return 0;
         });
         if (docs.isEmpty) return const Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Icon(Icons.notifications_none_rounded, size: 56, color: Color(0xFF94A3B8)), SizedBox(height: 12),
+          Icon(Icons.notifications_none_rounded, size: 56, color: Color(0xFF8796A5)), SizedBox(height: 12),
           Text('لا توجد إشعارات جديدة', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: navy))]));
         return ListView.builder(padding: const EdgeInsets.fromLTRB(16, 14, 16, 90), itemCount: docs.length, itemBuilder: (context, i) {
           final doc = docs[i]; final d = doc.data(); final read = d['read'] == true;
@@ -130,8 +130,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                   if (!read) const CircleAvatar(radius: 4, backgroundColor: teal)]),
                 const SizedBox(height: 8), Text(d['body'] as String? ?? '', style: const TextStyle(fontSize: 14, height: 1.6, color: Color(0xFF33485C))),
                 const SizedBox(height: 8), Row(children: [
-                  Expanded(child: Text('من: ${d['senderEmail'] ?? 'الإدارة'}', style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)))),
-                  if (created != null) Text(DateFormat('yyyy/MM/dd HH:mm').format(created), style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)))]),
+                  Expanded(child: Text('من: ${d['senderEmail'] ?? 'الإدارة'}', style: const TextStyle(fontSize: 11, color: Color(0xFF526579)))),
+                  if (created != null) Text(DateFormat('yyyy/MM/dd HH:mm').format(created), style: const TextStyle(fontSize: 11, color: Color(0xFF526579)))]),
                 if (!read) Align(alignment: Alignment.centerLeft, child: TextButton.icon(onPressed: () => markRead(doc), icon: const Icon(Icons.done_rounded), label: const Text('تحديد كمقروء'))),
               ]))));
         });
