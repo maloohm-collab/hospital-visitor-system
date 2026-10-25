@@ -174,14 +174,14 @@ class _DirectContactScreenState extends State<DirectContactScreen> {
                             },
                           ),
                     filled: true,
-                    fillColor: const Color(0xFFF6F8FA),
+                    fillColor: const Color(0xFFF4F7FB),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(14),
-                      borderSide: const BorderSide(color: Color(0xFFD9E3EA)),
+                      borderSide: const BorderSide(color: Color(0xFFDCE5ED)),
                     ),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(14),
-                      borderSide: const BorderSide(color: Color(0xFFD9E3EA)),
+                      borderSide: const BorderSide(color: Color(0xFFDCE5ED)),
                     ),
                   ),
                 ),
@@ -277,7 +277,7 @@ class _DirectContactScreenState extends State<DirectContactScreen> {
                                     Text(
                                       _roleLabel(role),
                                       style: const TextStyle(
-                                        color: Color(0xFF64748B),
+                                        color: Color(0xFF526579),
                                         fontSize: 12,
                                       ),
                                     ),
@@ -294,7 +294,7 @@ class _DirectContactScreenState extends State<DirectContactScreen> {
                               vertical: 10,
                             ),
                             decoration: BoxDecoration(
-                              color: const Color(0xFFF6F8FA),
+                              color: const Color(0xFFF4F7FB),
                               borderRadius: BorderRadius.circular(10),
                             ),
                             child: Row(
@@ -358,7 +358,7 @@ class _DirectContactScreenState extends State<DirectContactScreen> {
                 const Text(
                   'لإضافة رقمك أو تحديثه، افتح «حسابي» واحفظ رقم هاتف صحيحًا.',
                   textAlign: TextAlign.center,
-                  style: TextStyle(color: Color(0xFF64748B), fontSize: 12),
+                  style: TextStyle(color: Color(0xFF526579), fontSize: 12),
                 ),
               ],
             );
