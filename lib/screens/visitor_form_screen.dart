@@ -180,7 +180,7 @@ class _VisitorFormScreenState extends State<VisitorFormScreen> {
                         label: Text(_isSavingVisit && _entryTime == null ? 'جارٍ حفظ الدخول...' : _entryTime == null ? 'تسجيل وقت الدخول' : 'تم تسجيل الدخول'),
                         style: FilledButton.styleFrom(
                           backgroundColor: _navy,
-                          disabledBackgroundColor: const Color(0xFFE8EDF2),
+                          disabledBackgroundColor: const Color(0xFFDCE5ED),
                           disabledForegroundColor: _navy,
                           minimumSize: const Size.fromHeight(48),
                           textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
