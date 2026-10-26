@@ -30,35 +30,45 @@ jobs:
       - name: Generate missing Android project files
         run: flutter create --platforms=android .
 
-      - name: Apply hospital and security launcher icon
+      - name: Apply ROCK SECURITY launcher icon and app name
         run: |
-          mkdir -p android/app/src/main/res/drawable
-          cat > android/app/src/main/res/drawable/ic_launcher_custom.xml <<'XML'
-          <vector xmlns:android="http://schemas.android.com/apk/res/android"
-              android:width="108dp"
-              android:height="108dp"
-              android:viewportWidth="108"
-              android:viewportHeight="108">
-              <path android:fillColor="#082B55" android:pathData="M0,0h108v108h-108z" />
-              <path android:fillColor="#14558A" android:pathData="M54,10 L86,22 L84,53 C82,73 69,88 54,98 C39,88 26,73 24,53 L22,22 Z" />
-              <path android:fillColor="#D9AC55" android:fillType="evenOdd" android:pathData="M54,6 L91,20 L89,53 C87,77 72,93 54,103 C36,93 21,77 19,53 L17,20 Z M54,14 L25,25 L27,52 C29,72 41,84 54,92 C67,84 79,72 81,52 L83,25 Z" />
-              <path android:fillColor="#FFFFFF" android:pathData="M49,26h10v13h13v10h-13v13h-10v-13h-13v-10h13z" />
-              <path android:fillColor="#62E0D6" android:pathData="M34,70c0,-6 5,-11 11,-11s11,5 11,11v7h-22z M59,70c0,-6 5,-11 11,-11s11,5 11,11v7h-22z M47,65c0,-5 3,-8 7,-8s7,3 7,8v12h-14z" />
-          </vector>
-          XML
           python3 - <<'PY'
           from pathlib import Path
           import re
+          from PIL import Image
+
+          source = Path("assets/images/ROCK_SECURITY_icon.png")
+          if not source.exists():
+              raise SystemExit(f"Launcher icon not found: {source}")
+
+          image = Image.open(source).convert("RGBA")
+          side = min(image.width, image.height)
+          left = (image.width - side) // 2
+          top = (image.height - side) // 2
+          image = image.crop((left, top, left + side, top + side))
+
+          sizes = {
+              "mdpi": 48,
+              "hdpi": 72,
+              "xhdpi": 96,
+              "xxhdpi": 144,
+              "xxxhdpi": 192,
+          }
+          for density, size in sizes.items():
+              output_dir = Path(f"android/app/src/main/res/mipmap-{density}")
+              output_dir.mkdir(parents=True, exist_ok=True)
+              image.resize((size, size), Image.Resampling.LANCZOS).save(output_dir / "ic_launcher.png", optimize=True)
+
           manifest = Path("android/app/src/main/AndroidManifest.xml")
           content = manifest.read_text()
-          content, icon_count = re.subn(r'android:icon="[^"]+"', 'android:icon="@drawable/ic_launcher_custom"', content, count=1)
+          content, icon_count = re.subn(r'android:icon="[^"]+"', 'android:icon="@mipmap/ic_launcher"', content, count=1)
           content, label_count = re.subn(r'android:label="[^"]+"', 'android:label="ROCK SECURITY"', content, count=1)
           if icon_count != 1:
               raise SystemExit("Could not locate Android app icon setting in generated manifest")
           if label_count != 1:
               raise SystemExit("Could not locate Android app label setting in generated manifest")
           manifest.write_text(content)
-          print("Applied custom shield medical/security launcher icon and Arabic app label.")
+          print("Applied ROCK SECURITY PNG launcher icons and app display name.")
           PY
 
       - name: Set Android compile SDK to 36
