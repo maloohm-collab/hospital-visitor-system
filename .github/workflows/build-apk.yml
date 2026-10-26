@@ -52,7 +52,7 @@ jobs:
           manifest = Path("android/app/src/main/AndroidManifest.xml")
           content = manifest.read_text()
           content, icon_count = re.subn(r'android:icon="[^"]+"', 'android:icon="@drawable/ic_launcher_custom"', content, count=1)
-          content, label_count = re.subn(r'android:label="[^"]+"', 'android:label="نظام زوار المستشفى"', content, count=1)
+          content, label_count = re.subn(r'android:label="[^"]+"', 'android:label="ROCK SECURITY"', content, count=1)
           if icon_count != 1:
               raise SystemExit("Could not locate Android app icon setting in generated manifest")
           if label_count != 1:
