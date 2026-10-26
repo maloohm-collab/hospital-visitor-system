@@ -32,6 +32,7 @@ jobs:
 
       - name: Apply ROCK SECURITY launcher icon and app name
         run: |
+          python3 -m pip install --user pillow
           python3 - <<'PY'
           from pathlib import Path
           import re
