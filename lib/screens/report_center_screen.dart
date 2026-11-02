@@ -521,12 +521,16 @@ class _ReportCenterScreenState extends State<ReportCenterScreen> {
           .get();
       final reviewerProfile = reviewerSnapshot.data() ?? const <String, dynamic>{};
       final reviewerName =
-          (reviewerProfile['displayName'] as String? ?? user?.displayName ?? '').trim();
+          (reviewerProfile['displayName'] as String? ?? '').trim();
+      if (reviewerName.isEmpty) {
+        _message('تعذر اعتماد التقرير: اسم المشرف غير مسجل في ملف الحساب.');
+        return;
+      }
       await doc.reference.update({
         'status': forward ? 'forwarded' : 'saved',
         'destination': forward ? 'admin' : 'supervisor',
         'reviewedBy': reviewerUid,
-        'reviewedByName': reviewerName.isEmpty ? 'مشرف غير مسجل الاسم' : reviewerName,
+        'reviewedByName': reviewerName,
         'reviewedAt': FieldValue.serverTimestamp(),
         'updatedAt': FieldValue.serverTimestamp(),
       });
