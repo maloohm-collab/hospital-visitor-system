@@ -177,7 +177,6 @@ class DashboardScreen extends StatelessWidget {
       body: SafeArea(child: ListView(
         padding: const EdgeInsets.fromLTRB(18, 18, 18, 28),
         children: [
-          const EmergencyDutyAutoClaim(),
           const OfficialHospitalHeader(),
           const DigitalClockCard(),
           Container(
