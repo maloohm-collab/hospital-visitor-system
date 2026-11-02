@@ -476,9 +476,13 @@ class _EmergencyDutyScreenState extends State<EmergencyDutyScreen> {
                 ),
                 if (manager) ...[
                   const SizedBox(height: 18),
-                  section('تكليف مسؤول الطوارئ'),
-                  const Text('اختر أي موظف أمن نشط. لا يحتاج الموظف إلى طلب موافقة منفصل أو تغيير دوره الوظيفي.',
-                    style: TextStyle(fontSize: 12, color: Colors.blueGrey, height: 1.5)),
+                  section(profile['role'] == 'supervisor' ? 'تكليف مسؤول الطوارئ' : 'متابعة مسؤول الطوارئ'),
+                  Text(
+                    profile['role'] == 'supervisor'
+                        ? 'اختر موظف أمن نشطًا لتكليفه. لا يحتاج الموظف إلى طلب موافقة منفصل أو تغيير دوره الوظيفي.'
+                        : 'الإدارة تتابع التكليف الحالي، ويمكنها إنهاؤه عند الحاجة. إسناد المسؤولية يتم من المشرف.',
+                    style: const TextStyle(fontSize: 12, color: Colors.blueGrey, height: 1.5),
+                  ),
                   const SizedBox(height: 10),
                   StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
                     stream: db.collection('users').where('status', isEqualTo: 'active').snapshots(),
