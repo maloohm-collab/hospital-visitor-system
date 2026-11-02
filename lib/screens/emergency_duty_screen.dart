@@ -489,9 +489,6 @@ class _EmergencyDutyScreenState extends State<EmergencyDutyScreen> {
                   TextField(controller: title, decoration: const InputDecoration(labelText: 'عنوان الإشعار')),
                   const SizedBox(height: 10),
                   TextField(controller: body, minLines: 4, maxLines: 9,
-                    onChanged: (_) {
-                      if (aiAssisted) setState(() => aiAssisted = false);
-                    },
                     decoration: const InputDecoration(labelText: 'نص الإشعار', hintText: 'اكتب تفاصيل وصول الحالة الطارئة بالطريقة التي تريدها...', alignLabelWithHint: true)),
                   const SizedBox(height: 8),
                   OutlinedButton.icon(
