@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 import '../widgets/official_hospital_header.dart';
 import '../widgets/digital_clock_card.dart';
 import 'account_profile_screen.dart';
-import 'auth_screen.dart';
 import 'staff_management_screen.dart';
 import 'duty_reports_screen.dart';
 import 'visitor_form_screen.dart';
@@ -23,40 +22,6 @@ class DashboardScreen extends StatelessWidget {
   static const navy = Color(0xFF082B55);
   static const teal = Color(0xFF12B8B0);
 
-  Future<void> _signOut(BuildContext context) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('تسجيل الخروج'),
-        content: const Text('هل تريد تسجيل الخروج من حسابك والعودة إلى شاشة الدخول؟'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('إلغاء'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(dialogContext, true),
-            child: const Text('تسجيل الخروج'),
-          ),
-        ],
-      ),
-    );
-    if (confirmed != true || !context.mounted) return;
-
-    try {
-      await FirebaseAuth.instance.signOut();
-      if (!context.mounted) return;
-      Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (_) => const AuthScreen()),
-        (_) => false,
-      );
-    } catch (_) {
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('تعذر تسجيل الخروج. حاول مرة أخرى.')),
-      );
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
