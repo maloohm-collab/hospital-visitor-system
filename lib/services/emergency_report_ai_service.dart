@@ -6,7 +6,7 @@ class EmergencyReportAiService {
   EmergencyReportAiService._();
 
   static final GenerativeModel _model = FirebaseAI.googleAI().generativeModel(
-    model: 'gemini-2.5-flash',
+    model: 'gemini-3.8-flash',
     generationConfig: GenerationConfig(
       temperature: 0.15,
       maxOutputTokens: 1200,
