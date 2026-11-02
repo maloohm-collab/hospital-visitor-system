@@ -456,7 +456,7 @@ service cloud.firestore {
       // Every active employee can see who is assigned; only supervisors/admins can assign.
       allow get, list: if isActiveUser();
 
-      allow create: if (isActiveSupervisor() || isActiveAdmin())
+      allow create: if isActiveSupervisor()
         && request.resource.data.keys().hasOnly([
           'shiftId', 'shiftLabel', 'startsAt', 'endsAt', 'holderUid', 'holderName',
           'handoverHistory', 'startedAt', 'updatedAt',
@@ -485,8 +485,7 @@ service cloud.firestore {
 
       // The on-duty supervisor assigns any active security officer; admins may also
       // replace or revoke an assignment. Each change appends the previous holder.
-      allow update: if (isActiveSupervisor() || isActiveAdmin())
-        && resource.data.endsAt > request.time
+      allow update: if resource.data.endsAt > request.time
         && request.resource.data.shiftId == resource.data.shiftId
         && request.resource.data.startsAt == resource.data.startsAt
         && request.resource.data.endsAt == resource.data.endsAt
@@ -494,8 +493,9 @@ service cloud.firestore {
         && (
           request.resource.data.holderUid == ''
           ? (isActiveAdmin() && request.resource.data.holderName == '')
-          : validEmergencyHolder(request.resource.data.holderUid)
-            && request.resource.data.holderName == get(/databases/$(database)/documents/users/$(request.resource.data.holderUid)).data.displayName
+          : (isActiveSupervisor()
+            && validEmergencyHolder(request.resource.data.holderUid)
+            && request.resource.data.holderName == get(/databases/$(database)/documents/users/$(request.resource.data.holderUid)).data.displayName)
         )
         && request.resource.data.holderUid != resource.data.holderUid
         && request.resource.data.holderName is string
