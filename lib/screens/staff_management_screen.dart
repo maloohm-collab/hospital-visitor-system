@@ -31,17 +31,6 @@ class StaffManagementScreen extends StatelessWidget {
     }
   }
 
-  Future<void> _setEmergencyPermission(BuildContext context, String uid, String name, bool enabled) async {
-    try {
-      await FirebaseFirestore.instance.collection('users').doc(uid).update({'canManageEmergencyDuty': enabled});
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(enabled ? 'تم منح $name صلاحية مسؤول الطوارئ.' : 'تم إلغاء صلاحية مسؤول الطوارئ عن $name.')));
-    } on FirebaseException catch (e) {
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.code == 'permission-denied' ? 'رفضت قواعد Firestore التعديل. انشر القواعد المحدّثة.' : 'تعذر تحديث الصلاحية (' + e.code + ').')));
-    }
-  }
-
   Future<void> _delete(BuildContext context, String uid, String name) async {
     final yes = await showDialog<bool>(context: context, builder: (d) => AlertDialog(
       title: const Text('حذف ملف الموظف'),
@@ -92,8 +81,6 @@ class StaffManagementScreen extends StatelessWidget {
             for (final doc in docs) ...[
               _StaffCard(
                 data: doc.data(),
-                canManageEmergencyDuty: doc.data()['canManageEmergencyDuty'] == true,
-                onEmergencyPermission: (value) => _setEmergencyPermission(context, doc.id, doc.data()['displayName'] as String? ?? 'الموظف', value),
                 role: _role(doc.data()['role'] as String? ?? ''),
                 status: _status(doc.data()['status'] as String? ?? ''),
                 tint: _color(doc.data()['status'] as String? ?? ''),
@@ -110,10 +97,8 @@ class StaffManagementScreen extends StatelessWidget {
 }
 
 class _StaffCard extends StatelessWidget {
-  const _StaffCard({required this.data, required this.role, required this.status, required this.tint, required this.onStatus, required this.onDelete, required this.canManageEmergencyDuty, required this.onEmergencyPermission});
+  const _StaffCard({required this.data, required this.role, required this.status, required this.tint, required this.onStatus, required this.onDelete, });
   final Map<String, dynamic> data;
-  final bool canManageEmergencyDuty;
-  final ValueChanged<bool> onEmergencyPermission;
   final String role, status;
   final Color tint;
   final ValueChanged<String> onStatus;
@@ -204,14 +189,6 @@ class _StaffCard extends StatelessWidget {
           ),
           if (roleValue != 'admin') ...[
             const Divider(height: 22),
-            SwitchListTile.adaptive(
-              contentPadding: EdgeInsets.zero,
-              value: canManageEmergencyDuty,
-              onChanged: statusValue == 'active' ? onEmergencyPermission : null,
-              title: const Text('مخوّل بإدارة مناوبة الطوارئ', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: Color(0xFF082B55))),
-              subtitle: const Text('يستلم المناوبة عند دخوله الشاشة، وتنتهي صلاحيته عند نهاية الوقت المحدد.', style: TextStyle(fontSize: 11)),
-              secondary: const Icon(Icons.emergency_outlined, color: Color(0xFFB42318)),
-            ),
             const SizedBox(height: 10),
             Wrap(spacing: 7, runSpacing: 6, children: [
               if (statusValue != 'active') OutlinedButton.icon(onPressed: () => onStatus('active'), icon: const Icon(Icons.check_circle_outline), label: const Text('إعادة تفعيل')),
