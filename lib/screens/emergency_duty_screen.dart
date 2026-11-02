@@ -735,7 +735,7 @@ class _EmergencyDutyScreenState extends State<EmergencyDutyScreen> {
   String formatTime(dynamic value) {
     if (value is! Timestamp) return 'بانتظار الوقت';
     final t = value.toDate().toUtc().add(jordanOffset);
-    return dayName(t.weekday) + ' ' + two(t.day) + '/' + two(t.month) + '/' + t.year + ' ' + two(t.hour) + ':' + two(t.minute);
+    return dayName(t.weekday) + ' ' + two(t.day) + '/' + two(t.month) + '/' + t.year.toString() + ' ' + two(t.hour) + ':' + two(t.minute);
   }
 
   Widget section(String text) => Padding(
