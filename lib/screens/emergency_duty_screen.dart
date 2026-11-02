@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -21,6 +22,7 @@ class _EmergencyDutyScreenState extends State<EmergencyDutyScreen> {
   bool claimed = false;
   bool sending = false;
   String? errorText;
+  Timer? expiryTimer;
 
   User? get user => FirebaseAuth.instance.currentUser;
   DateTime get jordanNow => DateTime.now().toUtc().add(jordanOffset);
@@ -59,10 +61,18 @@ class _EmergencyDutyScreenState extends State<EmergencyDutyScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) => takeOver());
+    final expiry = (shift['endsAt'] as Timestamp).toDate();
+    final delay = expiry.difference(DateTime.now().toUtc());
+    if (!delay.isNegative) {
+      expiryTimer = Timer(delay, () {
+        if (mounted) setState(() => claimed = false);
+      });
+    }
   }
 
   @override
   void dispose() {
+    expiryTimer?.cancel();
     title.dispose();
     body.dispose();
     note.dispose();
