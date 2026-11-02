@@ -454,3 +454,98 @@ class _EmergencyDutyScreenState extends State<EmergencyDutyScreen> {
     ]),
   );
 }
+
+
+/// Runs silently when an eligible employee enters the dashboard, so an early
+/// successor automatically takes over without requiring a separate action.
+class EmergencyDutyAutoClaim extends StatefulWidget {
+  const EmergencyDutyAutoClaim({super.key});
+  @override
+  State<EmergencyDutyAutoClaim> createState() => _EmergencyDutyAutoClaimState();
+}
+
+class _EmergencyDutyAutoClaimState extends State<EmergencyDutyAutoClaim> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _claim());
+  }
+
+  Future<void> _claim() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+    final db = FirebaseFirestore.instance;
+    try {
+      final profile = await db.collection('users').doc(user.uid).get();
+      final p = profile.data() ?? {};
+      if (p['status'] != 'active' || p['canManageEmergencyDuty'] != true) return;
+
+      const offset = Duration(hours: 3);
+      final jordan = DateTime.now().toUtc().add(offset);
+      late DateTime start, end;
+      late String slot;
+      if (jordan.hour >= 8 && jordan.hour < 16) {
+        start = DateTime(jordan.year, jordan.month, jordan.day, 8);
+        end = DateTime(jordan.year, jordan.month, jordan.day, 16);
+        slot = '08';
+      } else if (jordan.hour >= 16) {
+        start = DateTime(jordan.year, jordan.month, jordan.day, 16);
+        end = DateTime(jordan.year, jordan.month, jordan.day + 1);
+        slot = '16';
+      } else {
+        start = DateTime(jordan.year, jordan.month, jordan.day);
+        end = DateTime(jordan.year, jordan.month, jordan.day, 8);
+        slot = '00';
+      }
+      String two(int n) => n.toString().padLeft(2, '0');
+      final shiftId = 'emergency_' + start.year.toString() +
+        two(start.month) + two(start.day) + '_' + slot;
+      final endUtc = DateTime.utc(end.year, end.month, end.day, end.hour).subtract(offset);
+      final startUtc = DateTime.utc(start.year, start.month, start.day, start.hour).subtract(offset);
+      final ref = db.collection('emergency_duty_shifts').doc(shiftId);
+      await db.runTransaction((tx) async {
+        final snap = await tx.get(ref);
+        if (Timestamp.fromDate(endUtc).compareTo(Timestamp.now()) <= 0) return;
+        if (!snap.exists) {
+          tx.set(ref, {
+            'shiftId': shiftId,
+            'shiftLabel': slot == '08' ? 'المناوبة الأولى (08:00–16:00)' :
+              slot == '16' ? 'المناوبة الثانية (16:00–00:00)' : 'المناوبة الثالثة (00:00–08:00)',
+            'startsAt': Timestamp.fromDate(startUtc),
+            'endsAt': Timestamp.fromDate(endUtc),
+            'holderUid': user.uid,
+            'holderName': (p['displayName'] ?? 'مسؤول الطوارئ').toString(),
+            'handoverHistory': <Map<String, dynamic>>[],
+            'startedAt': FieldValue.serverTimestamp(),
+            'updatedAt': FieldValue.serverTimestamp(),
+          });
+        } else if (snap.data()?['holderUid'] != user.uid) {
+          final old = snap.data() ?? {};
+          final history = List<Map<String, dynamic>>.from(
+            (old['handoverHistory'] as List? ?? []).whereType<Map>()
+              .map((v) => Map<String, dynamic>.from(v)),
+          );
+          final previousUid = (old['holderUid'] ?? '').toString();
+          if (previousUid.isNotEmpty) {
+            history.add({
+              'uid': previousUid,
+              'name': (old['holderName'] ?? 'مسؤول سابق').toString(),
+              'endedAt': Timestamp.now(),
+            });
+          }
+          tx.update(ref, {
+            'holderUid': user.uid,
+            'holderName': (p['displayName'] ?? 'مسؤول الطوارئ').toString(),
+            'handoverHistory': history,
+            'updatedAt': FieldValue.serverTimestamp(),
+          });
+        }
+      });
+    } catch (_) {
+      // The visible emergency-duty screen reports permission or connectivity errors.
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => const SizedBox.shrink();
+}
