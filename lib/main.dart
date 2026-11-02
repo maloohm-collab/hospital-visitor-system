@@ -33,7 +33,7 @@ class HospitalVisitorApp extends StatelessWidget {
           surface: const Color(0xFFF4F7FB),
           error: const Color(0xFFB42318),
         ),
-        scaffoldBackgroundColor: const Color(0xFFF4F7FB),
+        scaffoldBackgroundColor: Colors.transparent,
         cardTheme: CardThemeData(
           color: Colors.white,
           elevation: 2,
@@ -118,7 +118,21 @@ class HospitalVisitorApp extends StatelessWidget {
       ),
       builder: (context, child) => Directionality(
         textDirection: TextDirection.rtl,
-        child: child ?? const SizedBox.shrink(),
+        child: DecoratedBox(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topRight,
+              end: Alignment.bottomLeft,
+              colors: [
+                Color(0xFFF5FAFF),
+                Color(0xFFEDF6FF),
+                Color(0xFFE3F0FF),
+              ],
+              stops: [0.0, 0.52, 1.0],
+            ),
+          ),
+          child: child ?? const SizedBox.shrink(),
+        ),
       ),
       home: const WelcomeScreen(),
     );
