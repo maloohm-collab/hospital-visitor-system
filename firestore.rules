@@ -453,7 +453,7 @@ service cloud.firestore {
     }
 
     match /emergency_duty_shifts/{shiftId} {
-      // Every active employee can see who is assigned; only supervisors/admins can assign.
+      // Active staff can view the assignment; only active supervisors can assign.
       allow get, list: if isActiveUser();
 
       allow create: if isActiveSupervisor()
@@ -483,8 +483,8 @@ service cloud.firestore {
         && request.resource.data.startedAt == request.time
         && request.resource.data.updatedAt == request.time;
 
-      // The on-duty supervisor assigns any active security officer; admins may also
-      // replace or revoke an assignment. Each change appends the previous holder.
+      // Supervisors may replace the holder; only admins may revoke. Every change
+      // appends the previous holder to the handover history.
       allow update: if resource.data.endsAt > request.time
         && request.resource.data.shiftId == resource.data.shiftId
         && request.resource.data.startsAt == resource.data.startsAt
