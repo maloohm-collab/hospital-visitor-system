@@ -112,6 +112,9 @@ class _EmergencyDutyScreenState extends State<EmergencyDutyScreen> {
       }
       final shiftRef = db.collection('emergency_duty_shifts').doc(shiftId);
       final notificationRef = db.collection('notifications').doc();
+      final previousNotificationRef = db.collection('notifications').doc();
+      Map<String, dynamic>? previousProfile;
+      String previousHolderUid = '';
       final now = Timestamp.now();
       final end = shiftData['endsAt'] as Timestamp;
       await db.runTransaction((tx) async {
@@ -123,6 +126,11 @@ class _EmergencyDutyScreenState extends State<EmergencyDutyScreen> {
           history.addAll((old['handoverHistory'] as List? ?? [])
             .whereType<Map>().map((v) => Map<String, dynamic>.from(v)));
           final oldUid = (old['holderUid'] ?? '').toString();
+          if (oldUid.isNotEmpty && oldUid != uid) {
+            final oldProfileSnap = await tx.get(db.collection('users').doc(oldUid));
+            previousProfile = oldProfileSnap.data();
+            previousHolderUid = oldUid;
+          }
           if (oldUid.isNotEmpty) {
             history.add({
               'uid': oldUid,
@@ -171,6 +179,24 @@ class _EmergencyDutyScreenState extends State<EmergencyDutyScreen> {
           'kind': 'emergency_assignment',
           'relatedId': shiftId,
         });
+        if (previousHolderUid.isNotEmpty &&
+            previousProfile?['status'] == 'active' &&
+            ['security_officer', 'supervisor'].contains(previousProfile?['role'])) {
+          tx.set(previousNotificationRef, {
+            'notificationId': previousNotificationRef.id,
+            'recipientUid': previousHolderUid,
+            'recipientRole': previousProfile!['role'],
+            'senderUid': user!.uid,
+            'senderEmail': user!.email ?? '',
+            'title': 'انتهى تكليفك بمسؤولية الطوارئ',
+            'body': 'تم تسليم مسؤولية الطوارئ إلى موظف آخر. بقي سجل تسليمك وملاحظاتك محفوظة.',
+            'priority': 'important',
+            'read': false,
+            'createdAt': FieldValue.serverTimestamp(),
+            'kind': 'emergency_assignment_ended',
+            'relatedId': shiftId,
+          });
+        }
       });
       if (mounted) {
         setState(() => selectedEmployeeUid = null);
