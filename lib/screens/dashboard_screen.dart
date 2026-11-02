@@ -15,6 +15,7 @@ import 'local_operations_log_screen.dart';
 import 'admin_approval_screen.dart';
 import 'report_center_screen.dart';
 import 'notifications_screen.dart';
+import 'emergency_duty_screen.dart';
 
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({super.key, this.userRole = 'security_officer'});
@@ -176,6 +177,7 @@ class DashboardScreen extends StatelessWidget {
       body: SafeArea(child: ListView(
         padding: const EdgeInsets.fromLTRB(18, 18, 18, 28),
         children: [
+          const EmergencyDutyAutoClaim(),
           const OfficialHospitalHeader(),
           const DigitalClockCard(),
           Container(
@@ -270,6 +272,8 @@ class DashboardScreen extends StatelessWidget {
           const SizedBox(height: 26),
           const Text('الخدمات السريعة', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: navy)),
           const SizedBox(height: 12),
+          _ActionTile(icon: Icons.emergency_share_outlined, title: 'مسؤول الطوارئ وتسليم المناوبة', subtitle: 'إشعار وصول الحالات الطارئة وملاحظات تسليم المسؤولية', color: const Color(0xFFB42318), onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const EmergencyDutyScreen()))),
+          const SizedBox(height: 10),
           if (userRole == 'security_officer') ...[
             _ActionTile(icon: Icons.person_add_alt_1_rounded, title: 'تسجيل زائر جديد', subtitle: 'إضافة بيانات الزيارة وتوثيق الدخول والخروج', color: teal, onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const VisitorFormScreen()))),
             const SizedBox(height: 10),

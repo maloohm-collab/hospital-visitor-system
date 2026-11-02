@@ -21,6 +21,26 @@ service cloud.firestore {
         && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'supervisor';
     }
 
+    function canManageEmergencyDuty() {
+      return isActiveUser()
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.canManageEmergencyDuty == true;
+    }
+    function isEmergencyRecipient(uid) {
+      return uid is string
+        && exists(/databases/$(database)/documents/users/$(uid))
+        && get(/databases/$(database)/documents/users/$(uid)).data.status == 'active'
+        && get(/databases/$(database)/documents/users/$(uid)).data.role in ['supervisor', 'admin'];
+    }
+    function validEmergencyRecipients(data) {
+      return data.recipientUids is list
+        && data.recipientUids.size() >= 1 && data.recipientUids.size() <= 5
+        && isEmergencyRecipient(data.recipientUids[0])
+        && (data.recipientUids.size() < 2 || isEmergencyRecipient(data.recipientUids[1]))
+        && (data.recipientUids.size() < 3 || isEmergencyRecipient(data.recipientUids[2]))
+        && (data.recipientUids.size() < 4 || isEmergencyRecipient(data.recipientUids[3]))
+        && (data.recipientUids.size() < 5 || isEmergencyRecipient(data.recipientUids[4]));
+    }
+
     match /account_requests/{uid} {
       // Applicants may create only their own pending request.
       allow create: if signedIn()
@@ -146,6 +166,14 @@ service cloud.firestore {
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status'])
           && request.resource.data.status in ['active', 'suspended', 'blocked']
           && request.resource.data.role == resource.data.role
+        )
+        || (
+          isActiveAdmin()
+          && uid != request.auth.uid
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['canManageEmergencyDuty'])
+          && request.resource.data.canManageEmergencyDuty is bool
+          && request.resource.data.role == resource.data.role
+          && request.resource.data.status == resource.data.status
         )
       );
 
@@ -420,6 +448,74 @@ service cloud.firestore {
         )
       );
 
+    }
+
+    match /emergency_duty_shifts/{shiftId} {
+      allow get, list: if isActiveAdmin() || canManageEmergencyDuty();
+      allow create: if canManageEmergencyDuty()
+        && request.resource.data.keys().hasOnly(['shiftId', 'shiftLabel', 'startsAt', 'endsAt', 'holderUid', 'holderName', 'handoverHistory', 'startedAt', 'updatedAt'])
+        && request.resource.data.keys().hasAll(['shiftId', 'shiftLabel', 'startsAt', 'endsAt', 'holderUid', 'holderName', 'handoverHistory', 'startedAt', 'updatedAt'])
+        && request.resource.data.shiftId == shiftId
+        && request.resource.data.holderUid == request.auth.uid
+        && request.resource.data.startsAt is timestamp
+        && request.resource.data.endsAt is timestamp
+        && request.resource.data.startsAt <= request.time
+        && request.resource.data.endsAt > request.time
+        && request.resource.data.holderName is string
+        && request.resource.data.handoverHistory is list
+        && request.resource.data.handoverHistory.size() == 0
+        && request.resource.data.startedAt == request.time
+        && request.resource.data.updatedAt == request.time;
+      allow update: if canManageEmergencyDuty()
+        && resource.data.endsAt > request.time
+        && request.resource.data.holderUid == request.auth.uid
+        && request.resource.data.holderUid != resource.data.holderUid
+        && request.resource.data.shiftId == resource.data.shiftId
+        && request.resource.data.startsAt == resource.data.startsAt
+        && request.resource.data.endsAt == resource.data.endsAt
+        && request.resource.data.shiftLabel == resource.data.shiftLabel
+        && request.resource.data.holderName is string
+        && request.resource.data.handoverHistory is list
+        && request.resource.data.handoverHistory.size() == resource.data.handoverHistory.size() + 1
+        && request.resource.data.handoverHistory.hasAll(resource.data.handoverHistory)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['holderUid', 'holderName', 'handoverHistory', 'updatedAt'])
+        && request.resource.data.updatedAt == request.time;
+      allow delete: if false;
+    }
+
+    match /emergency_duty_notes/{noteId} {
+      allow create: if canManageEmergencyDuty()
+        && request.resource.data.keys().hasOnly(['noteId', 'shiftId', 'body', 'authorUid', 'authorName', 'createdAt'])
+        && request.resource.data.keys().hasAll(['noteId', 'shiftId', 'body', 'authorUid', 'authorName', 'createdAt'])
+        && request.resource.data.noteId == noteId
+        && request.resource.data.authorUid == request.auth.uid
+        && request.resource.data.body is string
+        && request.resource.data.body.size() >= 2
+        && request.resource.data.createdAt == request.time
+        && exists(/databases/$(database)/documents/emergency_duty_shifts/$(request.resource.data.shiftId))
+        && get(/databases/$(database)/documents/emergency_duty_shifts/$(request.resource.data.shiftId)).data.holderUid == request.auth.uid
+        && get(/databases/$(database)/documents/emergency_duty_shifts/$(request.resource.data.shiftId)).data.endsAt > request.time;
+      allow get, list: if isActiveAdmin() || canManageEmergencyDuty();
+      allow update, delete: if false;
+    }
+
+    match /emergency_arrival_reports/{reportId} {
+      allow create: if canManageEmergencyDuty()
+        && request.resource.data.keys().hasOnly(['reportId', 'shiftId', 'title', 'body', 'recipientUids', 'createdBy', 'createdByName', 'createdAt', 'priority'])
+        && request.resource.data.keys().hasAll(['reportId', 'shiftId', 'title', 'body', 'recipientUids', 'createdBy', 'createdByName', 'createdAt', 'priority'])
+        && request.resource.data.reportId == reportId
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.title is string && request.resource.data.title.size() >= 3
+        && request.resource.data.body is string && request.resource.data.body.size() >= 5
+        && request.resource.data.priority == 'urgent'
+        && request.resource.data.createdAt == request.time
+        && validEmergencyRecipients(request.resource.data)
+        && exists(/databases/$(database)/documents/emergency_duty_shifts/$(request.resource.data.shiftId))
+        && get(/databases/$(database)/documents/emergency_duty_shifts/$(request.resource.data.shiftId)).data.holderUid == request.auth.uid
+        && get(/databases/$(database)/documents/emergency_duty_shifts/$(request.resource.data.shiftId)).data.endsAt > request.time;
+      allow get, list: if isActiveUser()
+        && (resource.data.createdBy == request.auth.uid || request.auth.uid in resource.data.recipientUids);
+      allow update, delete: if false;
     }
 
     match /notifications/{notificationId} {
