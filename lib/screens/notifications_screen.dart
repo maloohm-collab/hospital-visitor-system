@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'emergency_duty_screen.dart';
 
 class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key, required this.userRole});
@@ -100,6 +101,17 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     catch (_) { message('تعذر تحديث حالة الإشعار.'); }
   }
 
+  Future<void> openNotification(DocumentSnapshot<Map<String, dynamic>> doc) async {
+    await markRead(doc);
+    if (!mounted) return;
+    final kind = (doc.data()?['kind'] ?? '').toString();
+    if (kind.startsWith('emergency_')) {
+      await Navigator.push(context, MaterialPageRoute(
+        builder: (_) => const EmergencyDutyScreen(),
+      ));
+    }
+  }
+
   @override
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(title: Text(admin ? 'الإشعارات والملحوظات الإدارية' : 'الإشعارات')),
@@ -123,7 +135,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           final created = d['createdAt'] is Timestamp ? (d['createdAt'] as Timestamp).toDate() : null;
           return Card(elevation: 0, margin: const EdgeInsets.only(bottom: 10),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: BorderSide(color: read ? const Color(0xFFDCE5ED) : teal.withOpacity(.55))),
-            child: InkWell(borderRadius: BorderRadius.circular(16), onTap: () => markRead(doc),
+            child: InkWell(borderRadius: BorderRadius.circular(16), onTap: () => openNotification(doc),
               child: Padding(padding: const EdgeInsets.all(15), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Row(children: [Icon(d['priority'] == 'urgent' ? Icons.priority_high_rounded : Icons.notifications_active_outlined, color: d['priority'] == 'urgent' ? Colors.red : teal),
                   const SizedBox(width: 9), Expanded(child: Text(d['title'] as String? ?? 'ملحوظة إدارية', style: TextStyle(fontSize: 16, fontWeight: read ? FontWeight.w600 : FontWeight.w800, color: navy))),
