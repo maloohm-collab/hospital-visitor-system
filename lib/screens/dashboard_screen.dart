@@ -284,9 +284,11 @@ class DashboardScreen extends StatelessWidget {
 
 
   Widget _buildAdminDashboard(BuildContext context, String? currentUid) {
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(18, 18, 18, 28),
-      children: [
+    return DecoratedBox(
+      decoration: const BoxDecoration(color: Color(0xFFF2F5F9)),
+      child: ListView(
+        padding: const EdgeInsets.fromLTRB(18, 18, 18, 28),
+        children: [
         const OfficialHospitalHeader(),
         const DigitalClockCard(),
         Container(
@@ -420,7 +422,8 @@ class DashboardScreen extends StatelessWidget {
             style: TextStyle(color: Color(0xFF65788A), fontSize: 11, fontWeight: FontWeight.w500),
           ),
         ),
-      ],
+        ],
+      ),
     );
   }
 
@@ -508,7 +511,7 @@ class _AdminActionCard extends StatelessWidget {
                     width: 48,
                     height: 48,
                     decoration: BoxDecoration(
-                      color: action.color.withValues(alpha: 0.10),
+                      color: Color.fromRGBO(action.color.red, action.color.green, action.color.blue, 0.10),
                       borderRadius: BorderRadius.circular(15),
                     ),
                     child: Icon(action.icon, color: action.color, size: 26),
