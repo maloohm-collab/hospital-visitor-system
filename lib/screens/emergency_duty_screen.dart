@@ -22,7 +22,7 @@ class _EmergencyDutyScreenState extends State<EmergencyDutyScreen> {
   final title = TextEditingController(text: 'إشعار وصول حالة طارئة');
   final body = TextEditingController();
   final note = TextEditingController();
-  final adminReply = TextEditingController();
+  final Map<String, TextEditingController> adminReplies = {};
   final selectedRecipients = <String>{};
   String? selectedEmployeeUid;
   bool sending = false;
@@ -81,7 +81,7 @@ class _EmergencyDutyScreenState extends State<EmergencyDutyScreen> {
     title.dispose();
     body.dispose();
     note.dispose();
-    adminReply.dispose();
+    for (final controller in adminReplies.values) { controller.dispose(); }
     super.dispose();
   }
 
@@ -361,40 +361,42 @@ class _EmergencyDutyScreenState extends State<EmergencyDutyScreen> {
   }
 
 
-  String reportShareText(Map<String, dynamic> report) => [
+  TextEditingController adminReplyFor(String id) =>
+      adminReplies.putIfAbsent(id, TextEditingController.new);
+
+  String reportShareText(Map<String, dynamic> r) => [
     'مستشفى الزرقاء الحكومي', 'إدارة الأمن والحماية — ROCK SECURITY',
-    (report['title'] ?? 'إشعار وصول حالة طارئة').toString(), '',
-    (report['body'] ?? '').toString(), '',
-    'كاتب التقرير: ${report['createdByName'] ?? 'غير معروف'}',
-    'تاريخ البلاغ: ${formatTime(report['createdAt'])}',
-    'الرقم المرجعي: ${report['reportId'] ?? ''}',
+    (r['title'] ?? 'إشعار وصول حالة طارئة').toString(), '',
+    (r['body'] ?? '').toString(), '',
+    'كاتب التقرير: ${r['createdByName'] ?? 'غير معروف'}',
+    'تاريخ البلاغ: ${formatTime(r['createdAt'])}',
+    'الرقم المرجعي: ${r['reportId'] ?? ''}',
   ].join('\\n');
 
-  Future<void> copyReport(Map<String, dynamic> report) async {
-    await Clipboard.setData(ClipboardData(text: reportShareText(report)));
+  Future<void> copyReport(Map<String, dynamic> r) async {
+    await Clipboard.setData(ClipboardData(text: reportShareText(r)));
     message('تم نسخ نص التقرير كاملًا.');
   }
 
-  Future<void> shareReport(Map<String, dynamic> report) async {
-    await Share.share(reportShareText(report), subject: (report['title'] ?? 'تقرير طوارئ').toString());
+  Future<void> shareReport(Map<String, dynamic> r) async {
+    await Share.share(reportShareText(r), subject: (r['title'] ?? 'تقرير طوارئ').toString());
   }
 
-  Future<void> sendAdminComment(String reportId, Map<String, dynamic> report) async {
-    final value = adminReply.text.trim();
+  Future<void> sendAdminComment(String id, Map<String, dynamic> r) async {
+    final controller = adminReplyFor(id), value = controller.text.trim();
     if (value.length < 2 || user == null) { message('اكتب الملاحظة قبل الإرسال.'); return; }
     try {
-      final authorUid = (report['createdBy'] ?? '').toString();
+      final authorUid = (r['createdBy'] ?? '').toString();
       if (authorUid.isEmpty) throw StateError('تعذر تحديد كاتب التقرير.');
       final authorSnap = await db.collection('users').doc(authorUid).get();
       final author = authorSnap.data() ?? {};
       if (!authorSnap.exists || author['status'] != 'active') throw StateError('حساب كاتب التقرير غير نشط.');
-      final authorName = await currentName();
-      final commentRef = db.collection('emergency_arrival_reports').doc(reportId).collection('comments').doc();
+      final commentRef = db.collection('emergency_arrival_reports').doc(id).collection('comments').doc();
       final notificationRef = db.collection('notifications').doc();
       final batch = db.batch();
       batch.set(commentRef, {
-        'commentId': commentRef.id, 'reportId': reportId, 'body': value,
-        'authorUid': user!.uid, 'authorName': authorName, 'authorRole': 'admin',
+        'commentId': commentRef.id, 'reportId': id, 'body': value,
+        'authorUid': user!.uid, 'authorName': await currentName(), 'authorRole': 'admin',
         'createdAt': FieldValue.serverTimestamp(),
       });
       batch.set(notificationRef, {
@@ -403,10 +405,10 @@ class _EmergencyDutyScreenState extends State<EmergencyDutyScreen> {
         'senderUid': user!.uid, 'senderEmail': user!.email ?? '',
         'title': 'رد الإدارة على تقرير الطوارئ', 'body': value,
         'priority': 'important', 'read': false, 'createdAt': FieldValue.serverTimestamp(),
-        'kind': 'emergency_report_comment', 'relatedId': reportId,
+        'kind': 'emergency_report_comment', 'relatedId': id,
       });
       await batch.commit();
-      adminReply.clear();
+      controller.clear();
       message('تم إرسال ملاحظة الإدارة إلى كاتب التقرير وحفظها ضمن سجل الردود.');
     } on FirebaseException catch (e) {
       message(e.code == 'permission-denied' ? 'رفضت قواعد Firestore حفظ الرد. يلزم نشر القواعد المحدّثة.' : 'تعذر إرسال الرد (${e.code}).');
@@ -414,7 +416,7 @@ class _EmergencyDutyScreenState extends State<EmergencyDutyScreen> {
   }
 
   Widget emergencyReportPaper(QueryDocumentSnapshot<Map<String, dynamic>> doc, bool admin) {
-    final report = doc.data();
+    final r = doc.data();
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       Container(
         constraints: const BoxConstraints(minHeight: 500),
@@ -430,7 +432,7 @@ class _EmergencyDutyScreenState extends State<EmergencyDutyScreen> {
             style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF222222))),
           const Padding(padding: EdgeInsets.symmetric(vertical: 16),
             child: Divider(color: Color(0xFF222222), thickness: 1.2)),
-          Text((report['title'] ?? 'إشعار وصول حالة طارئة').toString(), textAlign: TextAlign.center,
+          Text((r['title'] ?? 'إشعار وصول حالة طارئة').toString(), textAlign: TextAlign.center,
             style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Color(0xFF111111))),
           const SizedBox(height: 8),
           const Text('تقرير طوارئ رسمي', textAlign: TextAlign.center,
@@ -438,21 +440,21 @@ class _EmergencyDutyScreenState extends State<EmergencyDutyScreen> {
           const SizedBox(height: 22),
           const Text('تفاصيل البلاغ', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: Color(0xFF111111))),
           const SizedBox(height: 10),
-          SelectableText((report['body'] ?? '').toString(),
+          SelectableText((r['body'] ?? '').toString(),
             style: const TextStyle(fontSize: 15, height: 2, color: Color(0xFF111111))),
           const SizedBox(height: 28),
           const Divider(color: Color(0xFF777777)),
-          Text('كاتب التقرير: ${report['createdByName'] ?? 'غير معروف'}', style: const TextStyle(fontSize: 11, color: Color(0xFF222222))),
+          Text('كاتب التقرير: ${r['createdByName'] ?? 'غير معروف'}', style: const TextStyle(fontSize: 11, color: Color(0xFF222222))),
           const SizedBox(height: 5),
-          Text('تاريخ ووقت الاستلام: ${formatTime(report['createdAt'])}', style: const TextStyle(fontSize: 11, color: Color(0xFF222222))),
+          Text('تاريخ ووقت الاستلام: ${formatTime(r['createdAt'])}', style: const TextStyle(fontSize: 11, color: Color(0xFF222222))),
           const SizedBox(height: 5),
-          Text('الرقم المرجعي: ${report['reportId'] ?? doc.id}', style: const TextStyle(fontSize: 10, color: Color(0xFF333333))),
+          Text('الرقم المرجعي: ${r['reportId'] ?? doc.id}', style: const TextStyle(fontSize: 10, color: Color(0xFF333333))),
         ]),
       ),
       const SizedBox(height: 8),
       Wrap(alignment: WrapAlignment.end, spacing: 8, children: [
-        OutlinedButton.icon(onPressed: () => copyReport(report), icon: const Icon(Icons.copy_all_outlined), label: const Text('نسخ التقرير')),
-        OutlinedButton.icon(onPressed: () => shareReport(report), icon: const Icon(Icons.share_outlined), label: const Text('مشاركة التقرير')),
+        OutlinedButton.icon(onPressed: () => copyReport(r), icon: const Icon(Icons.copy_all_outlined), label: const Text('نسخ التقرير')),
+        OutlinedButton.icon(onPressed: () => shareReport(r), icon: const Icon(Icons.share_outlined), label: const Text('مشاركة التقرير')),
       ]),
       if (admin) ...[
         const SizedBox(height: 8),
@@ -460,30 +462,31 @@ class _EmergencyDutyScreenState extends State<EmergencyDutyScreen> {
         const SizedBox(height: 6),
         StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
           stream: doc.reference.collection('comments').orderBy('createdAt').snapshots(),
-          builder: (context, commentsSnap) {
-            if (commentsSnap.hasError) return const Text('تعذر تحميل ردود التقرير.');
-            final comments = commentsSnap.data?.docs ?? [];
+          builder: (context, snap) {
+            if (snap.hasError) return const Text('تعذر تحميل ردود التقرير.');
+            final comments = snap.data?.docs ?? [];
             return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-              for (final comment in comments)
+              for (final item in comments)
                 Container(margin: const EdgeInsets.only(bottom: 7), padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(color: const Color(0xFFF4F6F8), borderRadius: BorderRadius.circular(10),
                     border: Border.all(color: const Color(0xFFDCE2E8))),
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text((comment.data()['authorName'] ?? 'الإدارة').toString(),
+                    Text((item.data()['authorName'] ?? 'الإدارة').toString(),
                       style: const TextStyle(fontWeight: FontWeight.w800, color: Color(0xFF111111))),
                     const SizedBox(height: 4),
-                    SelectableText((comment.data()['body'] ?? '').toString(),
+                    SelectableText((item.data()['body'] ?? '').toString(),
                       style: const TextStyle(color: Color(0xFF111111), height: 1.6)),
                     const SizedBox(height: 4),
-                    Text(formatTime(comment.data()['createdAt']), style: const TextStyle(fontSize: 10, color: Color(0xFF555555))),
+                    Text(formatTime(item.data()['createdAt']), style: const TextStyle(fontSize: 10, color: Color(0xFF555555))),
                   ]),
                 ),
-              TextField(controller: adminReply, minLines: 2, maxLines: 4, style: const TextStyle(color: Color(0xFF111111)),
+              TextField(controller: adminReplyFor(doc.id), minLines: 2, maxLines: 4,
+                style: const TextStyle(color: Color(0xFF111111)),
                 decoration: const InputDecoration(labelText: 'اكتب رد الإدارة أو الملاحظة',
                   labelStyle: TextStyle(color: Color(0xFF333333)), border: OutlineInputBorder())),
               const SizedBox(height: 7),
               Align(alignment: Alignment.centerLeft,
-                child: FilledButton.icon(onPressed: () => sendAdminComment(doc.id, report),
+                child: FilledButton.icon(onPressed: () => sendAdminComment(doc.id, r),
                   icon: const Icon(Icons.reply_rounded), label: const Text('إرسال إلى كاتب التقرير'))),
             ]);
           },
@@ -671,7 +674,40 @@ admin revoke block
                       return (bt?.millisecondsSinceEpoch ?? 0).compareTo(at?.millisecondsSinceEpoch ?? 0);
                     });
                     if (docs.isEmpty) return panel(Icons.sticky_note_2_outlined, 'لا توجد ملاحظات بعد', 'ستظهر هنا الملاحظات التي يتركها مسؤول المناوبة.');
-                    return Column(
+                    return Column(children: docs.map((doc) {
+                      final v = doc.data();
+                      return Card(child: ListTile(
+                        leading: const Icon(Icons.notes, color: teal),
+                        title: Text((v['body'] ?? '').toString()),
+                        subtitle: Text((v['authorName'] ?? 'مسؤول سابق').toString() + ' • ' + formatTime(v['createdAt'])),
+                      ));
+                    }).toList());
+                  },
+                ),
+                const SizedBox(height: 20),
+                ],
+                section('صندوق إشعارات الطوارئ'),
+                inbox(uid, admin: admin),
+              ]);
+            },
+          );
+        },
+      ),
+    );
+  }
+
+  Widget inbox(String uid, {required bool admin}) => StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+    stream: db.collection('emergency_arrival_reports').where('recipientUids', arrayContains: uid).snapshots(),
+    builder: (context, snap) {
+      if (snap.hasError) return panel(Icons.cloud_off_outlined, 'تعذر تحميل الإشعارات', 'تحقق من قواعد Firestore والاتصال.');
+      if (snap.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
+      final docs = snap.data!.docs.toList()..sort((a, b) {
+        final at = a.data()['createdAt'] as Timestamp?;
+        final bt = b.data()['createdAt'] as Timestamp?;
+        return (bt?.millisecondsSinceEpoch ?? 0).compareTo(at?.millisecondsSinceEpoch ?? 0);
+      });
+      if (docs.isEmpty) return panel(Icons.notifications_none, 'لا توجد إشعارات طوارئ', 'ستظهر هنا الإشعارات التي يختارك مسؤول الطوارئ لاستلامها.');
+      return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: docs.map((doc) => emergencyReportPaper(doc, admin)).toList(),
       );
