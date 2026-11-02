@@ -586,7 +586,7 @@ service cloud.firestore {
             isActiveSupervisor()
             && request.resource.data.kind == 'emergency_assignment'
             && request.resource.data.relatedId is string
-            && exists(/databases/$(database)/documents/emergency_duty_shifts/$(request.resource.data.relatedId))
+            && existsAfter(/databases/$(database)/documents/emergency_duty_shifts/$(request.resource.data.relatedId))
             && getAfter(/databases/$(database)/documents/emergency_duty_shifts/$(request.resource.data.relatedId)).data.holderUid == request.resource.data.recipientUid
             && getAfter(/databases/$(database)/documents/emergency_duty_shifts/$(request.resource.data.relatedId)).data.assignedByUid == request.auth.uid
           )
