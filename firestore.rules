@@ -450,13 +450,37 @@ service cloud.firestore {
 
     }
 
+    function validEmergencyHolder(uid) {
+      return uid is string
+        && exists(/databases/$(database)/documents/users/$(uid))
+        && get(/databases/$(database)/documents/users/$(uid)).data.status == 'active'
+        && get(/databases/$(database)/documents/users/$(uid)).data.role in ['security_officer', 'supervisor'];
+    }
+
+    function isCurrentEmergencyHolder(shiftId) {
+      return isActiveUser()
+        && exists(/databases/$(database)/documents/emergency_duty_shifts/$(shiftId))
+        && get(/databases/$(database)/documents/emergency_duty_shifts/$(shiftId)).data.holderUid == request.auth.uid
+        && get(/databases/$(database)/documents/emergency_duty_shifts/$(shiftId)).data.endsAt > request.time;
+    }
+
     match /emergency_duty_shifts/{shiftId} {
-      allow get, list: if isActiveAdmin() || canManageEmergencyDuty();
-      allow create: if canManageEmergencyDuty()
-        && request.resource.data.keys().hasOnly(['shiftId', 'shiftLabel', 'startsAt', 'endsAt', 'holderUid', 'holderName', 'handoverHistory', 'startedAt', 'updatedAt'])
-        && request.resource.data.keys().hasAll(['shiftId', 'shiftLabel', 'startsAt', 'endsAt', 'holderUid', 'holderName', 'handoverHistory', 'startedAt', 'updatedAt'])
+      // Every active employee can see who is assigned; only supervisors/admins can assign.
+      allow get, list: if isActiveUser();
+
+      allow create: if (isActiveSupervisor() || isActiveAdmin())
+        && request.resource.data.keys().hasOnly([
+          'shiftId', 'shiftLabel', 'startsAt', 'endsAt', 'holderUid', 'holderName',
+          'handoverHistory', 'startedAt', 'updatedAt',
+          'assignedByUid', 'assignedByName', 'assignedAt'
+        ])
+        && request.resource.data.keys().hasAll([
+          'shiftId', 'shiftLabel', 'startsAt', 'endsAt', 'holderUid', 'holderName',
+          'handoverHistory', 'startedAt', 'updatedAt',
+          'assignedByUid', 'assignedByName', 'assignedAt'
+        ])
         && request.resource.data.shiftId == shiftId
-        && request.resource.data.holderUid == request.auth.uid
+        && validEmergencyHolder(request.resource.data.holderUid)
         && request.resource.data.startsAt is timestamp
         && request.resource.data.endsAt is timestamp
         && request.resource.data.startsAt <= request.time
@@ -464,27 +488,44 @@ service cloud.firestore {
         && request.resource.data.holderName is string
         && request.resource.data.handoverHistory is list
         && request.resource.data.handoverHistory.size() == 0
+        && request.resource.data.assignedByUid == request.auth.uid
+        && request.resource.data.assignedByName is string
+        && request.resource.data.assignedAt == request.time
         && request.resource.data.startedAt == request.time
         && request.resource.data.updatedAt == request.time;
-      allow update: if canManageEmergencyDuty()
+
+      // The on-duty supervisor assigns any active security officer; admins may also
+      // replace or revoke an assignment. Each change appends the previous holder.
+      allow update: if (isActiveSupervisor() || isActiveAdmin())
         && resource.data.endsAt > request.time
-        && request.resource.data.holderUid == request.auth.uid
-        && request.resource.data.holderUid != resource.data.holderUid
         && request.resource.data.shiftId == resource.data.shiftId
         && request.resource.data.startsAt == resource.data.startsAt
         && request.resource.data.endsAt == resource.data.endsAt
         && request.resource.data.shiftLabel == resource.data.shiftLabel
+        && (
+          request.resource.data.holderUid == ''
+          ? (isActiveAdmin() && request.resource.data.holderName == '')
+          : validEmergencyHolder(request.resource.data.holderUid)
+        )
+        && request.resource.data.holderUid != resource.data.holderUid
         && request.resource.data.holderName is string
         && request.resource.data.handoverHistory is list
         && request.resource.data.handoverHistory.size() == resource.data.handoverHistory.size() + 1
         && request.resource.data.handoverHistory.hasAll(resource.data.handoverHistory)
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['holderUid', 'holderName', 'handoverHistory', 'updatedAt'])
+        && request.resource.data.assignedByUid == request.auth.uid
+        && request.resource.data.assignedByName is string
+        && request.resource.data.assignedAt == request.time
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'holderUid', 'holderName', 'handoverHistory', 'updatedAt',
+          'assignedByUid', 'assignedByName', 'assignedAt'
+        ])
         && request.resource.data.updatedAt == request.time;
+
       allow delete: if false;
     }
 
     match /emergency_duty_notes/{noteId} {
-      allow create: if canManageEmergencyDuty()
+      allow create: if isActiveUser()
         && request.resource.data.keys().hasOnly(['noteId', 'shiftId', 'body', 'authorUid', 'authorName', 'createdAt'])
         && request.resource.data.keys().hasAll(['noteId', 'shiftId', 'body', 'authorUid', 'authorName', 'createdAt'])
         && request.resource.data.noteId == noteId
@@ -492,15 +533,14 @@ service cloud.firestore {
         && request.resource.data.body is string
         && request.resource.data.body.size() >= 2
         && request.resource.data.createdAt == request.time
-        && exists(/databases/$(database)/documents/emergency_duty_shifts/$(request.resource.data.shiftId))
-        && get(/databases/$(database)/documents/emergency_duty_shifts/$(request.resource.data.shiftId)).data.holderUid == request.auth.uid
-        && get(/databases/$(database)/documents/emergency_duty_shifts/$(request.resource.data.shiftId)).data.endsAt > request.time;
-      allow get, list: if isActiveAdmin() || canManageEmergencyDuty();
+        && isCurrentEmergencyHolder(request.resource.data.shiftId);
+      // Notes remain visible to active staff for continuity between shifts.
+      allow get, list: if isActiveUser();
       allow update, delete: if false;
     }
 
     match /emergency_arrival_reports/{reportId} {
-      allow create: if canManageEmergencyDuty()
+      allow create: if isActiveUser()
         && request.resource.data.keys().hasOnly(['reportId', 'shiftId', 'title', 'body', 'recipientUids', 'createdBy', 'createdByName', 'createdAt', 'priority'])
         && request.resource.data.keys().hasAll(['reportId', 'shiftId', 'title', 'body', 'recipientUids', 'createdBy', 'createdByName', 'createdAt', 'priority'])
         && request.resource.data.reportId == reportId
@@ -510,9 +550,7 @@ service cloud.firestore {
         && request.resource.data.priority == 'urgent'
         && request.resource.data.createdAt == request.time
         && validEmergencyRecipients(request.resource.data)
-        && exists(/databases/$(database)/documents/emergency_duty_shifts/$(request.resource.data.shiftId))
-        && get(/databases/$(database)/documents/emergency_duty_shifts/$(request.resource.data.shiftId)).data.holderUid == request.auth.uid
-        && get(/databases/$(database)/documents/emergency_duty_shifts/$(request.resource.data.shiftId)).data.endsAt > request.time;
+        && isCurrentEmergencyHolder(request.resource.data.shiftId);
       allow get, list: if isActiveUser()
         && (resource.data.createdBy == request.auth.uid || request.auth.uid in resource.data.recipientUids);
       allow update, delete: if false;
