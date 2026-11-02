@@ -1,11 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_app_check/firebase_app_check.dart';
+import 'package:flutter/foundation.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'screens/auth_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
+  try {
+    await FirebaseAppCheck.instance.activate(
+      androidProvider: kReleaseMode ? AndroidProvider.playIntegrity : AndroidProvider.debug,
+    );
+  } catch (_) {
+    // The rest of the app remains available if App Check is not configured yet.
+    // Firebase AI requests require App Check to be configured in Firebase Console.
+  }
   await initializeDateFormatting('en');
   runApp(const HospitalVisitorApp());
 }
