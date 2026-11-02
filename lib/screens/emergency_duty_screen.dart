@@ -423,6 +423,8 @@ class _EmergencyDutyScreenState extends State<EmergencyDutyScreen> {
       message(e.code == 'permission-denied'
         ? 'لا يمكن الإرسال إلا لمسؤول الطوارئ المكلف حاليًا، وتأكد من صلاحية المستلمين.'
         : 'تعذر إرسال الإشعار (${e.code}).');
+    } catch (e) {
+      message(e.toString().replaceFirst('Bad state: ', ''));
     } finally {
       if (mounted) setState(() => sending = false);
     }
