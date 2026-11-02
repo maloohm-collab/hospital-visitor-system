@@ -67,7 +67,7 @@ class DigitalClockCard extends StatelessWidget {
                   color: adminStyle ? const Color(0xFFEAF5FF) : Colors.white.withOpacity(0.12),
                   borderRadius: BorderRadius.circular(14),
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.schedule_rounded,
                   color: adminStyle ? const Color(0xFF174A78) : Colors.white,
                   size: 27,
@@ -80,7 +80,7 @@ class DigitalClockCard extends StatelessWidget {
                   children: [
                     Text(
                       _date(now),
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: adminStyle ? const Color(0xFF315675) : Colors.white,
                         fontSize: 13,
                         fontWeight: FontWeight.w700,
