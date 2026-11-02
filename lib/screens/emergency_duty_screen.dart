@@ -285,7 +285,7 @@ class _EmergencyDutyScreenState extends State<EmergencyDutyScreen> {
                     )),
                   const SizedBox(height: 14),
                   section('اختيار المستلمين'),
-                  const Text('اختر مشرفًا واحدًا أو عدة مشرفين. أفراد S.W.A.T يظهرون ضمن قائمة المشرفين بأسمائهم المسجلة. ويمكن اختيار الإدارة بشكل منفصل.',
+                  const Text('اختر مشرفًا واحدًا أو عدة مشرفين. أفراد S.W.A.T يظهرون ضمن قائمة المشرفين بأسمائهم المسجلة، ويمكن اختيار الإدارة بشكل منفصل. الحد الأقصى خمسة مستلمين للإشعار.',
                     style: TextStyle(fontSize: 12, color: Colors.blueGrey, height: 1.5)),
                   const SizedBox(height: 8),
                   StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
@@ -316,7 +316,7 @@ class _EmergencyDutyScreenState extends State<EmergencyDutyScreen> {
                         );
                       return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
                         if (supervisors.isNotEmpty) ...[
-                          const Text('المشرفون — ويشمل ذلك أفراد S.W.A.T المسجلين كمشرفين',
+                          const Text('المشرفون — ويشمل ذلك S.W.A.T — فريق الرد السريع',
                             style: TextStyle(fontWeight: FontWeight.w800, color: navy)),
                           for (final person in supervisors) recipientTile(person),
                         ],
