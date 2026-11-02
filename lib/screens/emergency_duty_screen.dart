@@ -349,25 +349,30 @@ class _EmergencyDutyScreenState extends State<EmergencyDutyScreen> {
                         ..sort((a, b) => (a.data()['displayName'] ?? '').toString().compareTo((b.data()['displayName'] ?? '').toString()));
                       final selectedExists = people.any((p) => p.id == selectedEmployeeUid);
                       return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                        DropdownButtonFormField<String>(
-                          value: selectedExists ? selectedEmployeeUid : null,
-                          isExpanded: true,
-                          decoration: const InputDecoration(labelText: 'الموظف المكلّف بمسؤولية الطوارئ'),
-                          items: people.map((p) => DropdownMenuItem<String>(
-                            value: p.id,
-                            child: Text((p.data()['displayName'] ?? 'بدون اسم').toString(), overflow: TextOverflow.ellipsis),
-                          )).toList(),
-                          onChanged: assigning ? null : (v) => setState(() => selectedEmployeeUid = v),
-                        ),
-                        const SizedBox(height: 10),
-                        FilledButton.icon(
-                          onPressed: assigning || selectedEmployeeUid == null ? null : () {
-                            final person = people.firstWhere((p) => p.id == selectedEmployeeUid);
-                            assignEmployee(person.id, (person.data()['displayName'] ?? 'الموظف').toString(), sid, s);
-                          },
-                          icon: assigning ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : const Icon(Icons.person_add_alt_1),
-                          label: Text(assigning ? 'جارٍ تنفيذ التكليف...' : activeHolder ? 'تعيين وتسليم المسؤولية' : 'تعيين مسؤول الطوارئ'),
-                        ),
+                        if (profile['role'] == 'supervisor') ...[
+                          DropdownButtonFormField<String>(
+                            value: selectedExists ? selectedEmployeeUid : null,
+                            isExpanded: true,
+                            decoration: const InputDecoration(labelText: 'الموظف المكلّف بمسؤولية الطوارئ'),
+                            items: people.map((p) => DropdownMenuItem<String>(
+                              value: p.id,
+                              child: Text((p.data()['displayName'] ?? 'بدون اسم').toString(), overflow: TextOverflow.ellipsis),
+                            )).toList(),
+                            onChanged: assigning ? null : (v) => setState(() => selectedEmployeeUid = v),
+                          ),
+                          const SizedBox(height: 10),
+                          FilledButton.icon(
+                            onPressed: assigning || selectedEmployeeUid == null ? null : () {
+                              final person = people.firstWhere((p) => p.id == selectedEmployeeUid);
+                              assignEmployee(person.id, (person.data()['displayName'] ?? 'الموظف').toString(), sid, s);
+                            },
+                            icon: assigning ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : const Icon(Icons.person_add_alt_1),
+                            label: Text(assigning ? 'جارٍ تنفيذ التكليف...' : activeHolder ? 'تعيين وتسليم المسؤولية' : 'تعيين مسؤول الطوارئ'),
+                          ),
+                        ],
+                        if (admin) ...[
+                          const Text('صلاحية الإدارة: متابعة التكليف الحالي وإنهاؤه عند الحاجة. يتم إسناد المسؤولية من المشرف.', style: TextStyle(fontSize: 12, color: Colors.blueGrey, height: 1.5)),
+                        ],
                         if (admin && activeHolder) ...[
                           const SizedBox(height: 8),
                           OutlinedButton.icon(
