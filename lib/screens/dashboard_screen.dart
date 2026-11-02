@@ -278,8 +278,6 @@ class DashboardScreen extends StatelessWidget {
             const SizedBox(height: 10),
             _ActionTile(icon: Icons.health_and_safety_outlined, title: 'توثيق حالات الإنعاش CPR', subtitle: 'تسجيل بيانات الحالة ونتيجتها وتاريخها ووقتها وتصدير تقرير PDF محلي', color: const Color(0xFFB42318), onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const LocalOperationsLogScreen(kind: LocalOperationsLogKind.cpr)))),
             const SizedBox(height: 10),
-            _ActionTile(icon: Icons.inventory_2_outlined, title: 'سجل أمن الطوارئ', subtitle: 'الملاحظات اليومية وحركة دخول وخروج المواد', color: const Color(0xFFD28A25), onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const LocalOperationsLogScreen(kind: LocalOperationsLogKind.emergency)))),
-            const SizedBox(height: 10),
             _ActionTile(icon: Icons.assignment_outlined, title: 'سجل زياراتي', subtitle: 'عرض سجلاتي حسب الطابق والقسم', color: const Color(0xFF27865B), onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => VisitorLogsScreen(userRole: userRole)))),
             const SizedBox(height: 10),
             _ActionTile(icon: Icons.post_add_rounded, title: 'تقاريري', subtitle: 'إنشاء التقارير ومراجعتها وإدارتها', color: const Color(0xFF8757A5), onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ReportCenterScreen(userRole: userRole)))),
