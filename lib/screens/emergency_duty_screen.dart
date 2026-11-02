@@ -45,7 +45,6 @@ class _EmergencyDutyScreenState extends State<EmergencyDutyScreen> {
       label = 'المناوبة الثانية (16:00–00:00)';
       slot = '16';
     } else {
-      start = DateTime(now.year, now.month, now.month == 0 ? 1 : now.day);
       start = DateTime(now.year, now.month, now.day);
       end = DateTime(now.year, now.month, now.day, 8);
       label = 'المناوبة الثالثة (00:00–08:00)';
@@ -126,7 +125,7 @@ class _EmergencyDutyScreenState extends State<EmergencyDutyScreen> {
             'handoverHistory': history,
             'assignedByUid': user!.uid,
             'assignedByName': actorName,
-            'assignedAt': now,
+            'assignedAt': FieldValue.serverTimestamp(),
             'updatedAt': FieldValue.serverTimestamp(),
           });
         } else {
