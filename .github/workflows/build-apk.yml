@@ -100,6 +100,9 @@ jobs:
       - name: Resolve dependencies
         run: flutter pub get
 
+      - name: Analyze Dart and Flutter code
+        run: flutter analyze
+
       - name: Run Flutter tests
         run: flutter test --reporter expanded
 
