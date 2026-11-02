@@ -229,6 +229,7 @@ class _EmergencyDutyScreenState extends State<EmergencyDutyScreen> {
     if (yes != true || !mounted) return;
     try {
       final actorName = await currentName();
+      final notificationRef = db.collection('notifications').doc();
       await db.runTransaction((tx) async {
         final ref = db.collection('emergency_duty_shifts').doc(shiftId);
         final snap = await tx.get(ref);
@@ -238,6 +239,10 @@ class _EmergencyDutyScreenState extends State<EmergencyDutyScreen> {
         history.addAll((old['handoverHistory'] as List? ?? [])
           .whereType<Map>().map((v) => Map<String, dynamic>.from(v)));
         final oldUid = (old['holderUid'] ?? '').toString();
+        final oldProfileSnap = oldUid.isEmpty
+            ? null
+            : await tx.get(db.collection('users').doc(oldUid));
+        final oldProfile = oldProfileSnap?.data() ?? {};
         if (oldUid.isNotEmpty) {
           history.add({
             'uid': oldUid,
@@ -257,6 +262,22 @@ class _EmergencyDutyScreenState extends State<EmergencyDutyScreen> {
           'assignedAt': FieldValue.serverTimestamp(),
           'updatedAt': FieldValue.serverTimestamp(),
         });
+        if (oldUid.isNotEmpty && oldProfile['status'] == 'active') {
+          tx.set(notificationRef, {
+            'notificationId': notificationRef.id,
+            'recipientUid': oldUid,
+            'recipientRole': oldProfile['role'],
+            'senderUid': user!.uid,
+            'senderEmail': user!.email ?? '',
+            'title': 'تم إنهاء تكليفك بمسؤولية الطوارئ',
+            'body': 'أنهت الإدارة تكليفك بمسؤولية الطوارئ. تبقى جميع ملاحظاتك وسجلات تسليمك محفوظة.',
+            'priority': 'important',
+            'read': false,
+            'createdAt': FieldValue.serverTimestamp(),
+            'kind': 'emergency_assignment_ended',
+            'relatedId': shiftId,
+          });
+        }
       });
       message('تم إنهاء التكليف. السجلات السابقة محفوظة.');
     } on FirebaseException catch (e) {
