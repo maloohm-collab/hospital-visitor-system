@@ -591,6 +591,15 @@ service cloud.firestore {
             && getAfter(/databases/$(database)/documents/emergency_duty_shifts/$(request.resource.data.relatedId)).data.assignedByUid == request.auth.uid
           )
           || (
+            isActiveSupervisor()
+            && request.resource.data.kind == 'emergency_assignment_ended'
+            && request.resource.data.relatedId is string
+            && exists(/databases/$(database)/documents/emergency_duty_shifts/$(request.resource.data.relatedId))
+            && get(/databases/$(database)/documents/emergency_duty_shifts/$(request.resource.data.relatedId)).data.holderUid == request.resource.data.recipientUid
+            && getAfter(/databases/$(database)/documents/emergency_duty_shifts/$(request.resource.data.relatedId)).data.holderUid != request.resource.data.recipientUid
+            && getAfter(/databases/$(database)/documents/emergency_duty_shifts/$(request.resource.data.relatedId)).data.assignedByUid == request.auth.uid
+          )
+          || (
             request.resource.data.kind == 'emergency_arrival'
             && request.resource.data.relatedId is string
             && existsAfter(/databases/$(database)/documents/emergency_arrival_reports/$(request.resource.data.relatedId))
