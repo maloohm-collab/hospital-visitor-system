@@ -280,7 +280,7 @@ class _ReportCenterScreenState extends State<ReportCenterScreen> {
     final supervisorStamp = supervisorName.isEmpty
         ? ''
         : d['createdByRole'] == 'supervisor'
-            ? 'اعتماد المشرف المُعدّ للتقرير: $supervisorName'
+            ? 'توقيع المشرف كاتب التقرير: $supervisorName'
             : 'رُفع إلى الإدارة واعتمده المشرف: $supervisorName';
     pdf.addPage(pw.MultiPage(
       pageFormat: PdfPageFormat.a4,
@@ -539,7 +539,7 @@ class _ReportCenterScreenState extends State<ReportCenterScreen> {
     final authorName = (data['createdByName'] as String? ?? '').trim();
     if (data['createdByRole'] == 'supervisor' && authorName.isNotEmpty) {
       return Text(
-        'اعتماد المشرف المُعدّ للتقرير: $authorName',
+        'كاتب التقرير (مشرف): $authorName',
         maxLines: 2,
         overflow: TextOverflow.ellipsis,
         style: const TextStyle(
