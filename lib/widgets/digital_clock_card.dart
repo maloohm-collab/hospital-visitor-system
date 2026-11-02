@@ -123,7 +123,7 @@ class DigitalClockCard extends StatelessWidget {
                   ],
                 ),
               ),
-              const Text(
+              Text(
                 'الوقت الحالي',
                 style: TextStyle(
                   color: adminStyle ? const Color(0xFF315675) : const Color(0xFFB8F3EF),
