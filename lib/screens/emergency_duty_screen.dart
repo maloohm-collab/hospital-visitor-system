@@ -48,7 +48,7 @@ class _EmergencyDutyScreenState extends State<EmergencyDutyScreen> {
       slot = '00';
     }
     return {
-      'id': 'emergency_\${start.year}\${two(start.month)}\${two(start.day)}_$slot',
+      'id': 'emergency_${start.year}${two(start.month)}${two(start.day)}_$slot',
       'label': label,
       'startsAt': Timestamp.fromDate(utc(start)),
       'endsAt': Timestamp.fromDate(utc(end)),
