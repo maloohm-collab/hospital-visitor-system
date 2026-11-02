@@ -103,7 +103,15 @@ class _EmergencyDutyScreenState extends State<EmergencyDutyScreen> {
     setState(() { assigning = true; errorText = null; });
     try {
       final actorName = await currentName();
+      final recipientSnap = await db.collection('users').doc(uid).get();
+      final recipientProfile = recipientSnap.data() ?? {};
+      final recipientRole = (recipientProfile['role'] ?? '').toString();
+      if (recipientProfile['status'] != 'active' ||
+          !['security_officer', 'supervisor'].contains(recipientRole)) {
+        throw StateError('الموظف المحدد غير نشط أو غير مؤهل للتكليف.');
+      }
       final shiftRef = db.collection('emergency_duty_shifts').doc(shiftId);
+      final notificationRef = db.collection('notifications').doc();
       final now = Timestamp.now();
       final end = shiftData['endsAt'] as Timestamp;
       await db.runTransaction((tx) async {
@@ -149,6 +157,20 @@ class _EmergencyDutyScreenState extends State<EmergencyDutyScreen> {
             'assignedAt': FieldValue.serverTimestamp(),
           });
         }
+        tx.set(notificationRef, {
+          'notificationId': notificationRef.id,
+          'recipientUid': uid,
+          'recipientRole': recipientRole,
+          'senderUid': user!.uid,
+          'senderEmail': user!.email ?? '',
+          'title': 'تم تكليفك بمسؤولية الطوارئ',
+          'body': 'تم تكليفك مسؤولًا للطوارئ في ${shiftData['label']}. يرجى مراجعة شاشة الطوارئ وتسليم المناوبة.',
+          'priority': 'important',
+          'read': false,
+          'createdAt': FieldValue.serverTimestamp(),
+          'kind': 'emergency_assignment',
+          'relatedId': shiftId,
+        });
       });
       if (mounted) {
         setState(() => selectedEmployeeUid = null);
@@ -303,7 +325,10 @@ class _EmergencyDutyScreenState extends State<EmergencyDutyScreen> {
     setState(() => sending = true);
     try {
       final ref = db.collection('emergency_arrival_reports').doc();
-      await ref.set({
+      final senderName = await currentName();
+      final recipients = await Future.wait(selectedRecipients.map((id) => db.collection('users').doc(id).get()));
+      final batch = db.batch();
+      batch.set(ref, {
         'reportId': ref.id, 'shiftId': shiftId,
         'title': title.text.trim(), 'body': body.text.trim(),
         'originalBody': originalBody ?? body.text.trim(),
@@ -311,9 +336,33 @@ class _EmergencyDutyScreenState extends State<EmergencyDutyScreen> {
         'reviewConfirmedBy': user!.uid,
         'reviewConfirmedAt': FieldValue.serverTimestamp(),
         'recipientUids': selectedRecipients.toList(),
-        'createdBy': user!.uid, 'createdByName': await currentName(),
+        'createdBy': user!.uid, 'createdByName': senderName,
         'createdAt': FieldValue.serverTimestamp(), 'priority': 'urgent',
       });
+      for (final recipient in recipients) {
+        final profile = recipient.data() ?? {};
+        final role = (profile['role'] ?? '').toString();
+        if (!recipient.exists || profile['status'] != 'active' ||
+            !['supervisor', 'admin'].contains(role)) {
+          throw StateError('أحد المستلمين لم يعد نشطًا أو غير مؤهل لاستلام البلاغ.');
+        }
+        final notificationRef = db.collection('notifications').doc();
+        batch.set(notificationRef, {
+          'notificationId': notificationRef.id,
+          'recipientUid': recipient.id,
+          'recipientRole': role,
+          'senderUid': user!.uid,
+          'senderEmail': user!.email ?? '',
+          'title': title.text.trim(),
+          'body': 'أرسل $senderName بلاغ وصول حالة طارئة. افتح شاشة الطوارئ لعرض التفاصيل.',
+          'priority': 'urgent',
+          'read': false,
+          'createdAt': FieldValue.serverTimestamp(),
+          'kind': 'emergency_arrival',
+          'relatedId': ref.id,
+        });
+      }
+      await batch.commit();
       title.text = 'إشعار وصول حالة طارئة';
       body.clear();
       originalBody = null;
