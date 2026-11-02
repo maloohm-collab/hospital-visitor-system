@@ -300,20 +300,41 @@ class _EmergencyDutyScreenState extends State<EmergencyDutyScreen> {
                       }).toList()
                         ..sort((x, y) => (x.data()['displayName'] ?? '').toString()
                           .compareTo((y.data()['displayName'] ?? '').toString()));
-                      return Column(children: [
-                        for (final person in people)
-                          CheckboxListTile(
-                            value: selected.contains(person.id),
-                            onChanged: (v) => setState(() {
-                              if (v == true) { selected.add(person.id); }
-                              else { selected.remove(person.id); }
-                            }),
-                            controlAffinity: ListTileControlAffinity.leading,
-                            title: Text((person.data()['displayName'] ?? 'بدون اسم').toString()),
-                            subtitle: Text(person.data()['role'] == 'admin' ? 'الإدارة' : 'مشرف'),
-                            secondary: Icon(person.data()['role'] == 'admin'
-                              ? Icons.admin_panel_settings_outlined : Icons.shield_outlined, color: teal),
-                          ),
+                      final supervisors = people.where((p) => p.data()['role'] == 'supervisor').toList();
+                      final admins = people.where((p) => p.data()['role'] == 'admin').toList();
+                      Widget recipientTile(QueryDocumentSnapshot<Map<String, dynamic>> person) =>
+                        CheckboxListTile(
+                          value: selected.contains(person.id),
+                          onChanged: (v) => setState(() {
+                            if (v == true) { selected.add(person.id); }
+                            else { selected.remove(person.id); }
+                          }),
+                          controlAffinity: ListTileControlAffinity.leading,
+                          title: Text((person.data()['displayName'] ?? 'بدون اسم').toString()),
+                          secondary: const Icon(Icons.shield_outlined, color: teal),
+                        );
+                      return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                        if (supervisors.isNotEmpty) ...[
+                          const Text('المشرفون — ويشمل ذلك أفراد S.W.A.T المسجلين كمشرفين',
+                            style: TextStyle(fontWeight: FontWeight.w800, color: navy)),
+                          for (final person in supervisors) recipientTile(person),
+                        ],
+                        if (admins.isNotEmpty) ...[
+                          const Divider(height: 22),
+                          const Text('الإدارة (اختيار منفصل)',
+                            style: TextStyle(fontWeight: FontWeight.w800, color: navy)),
+                          for (final person in admins)
+                            CheckboxListTile(
+                              value: selected.contains(person.id),
+                              onChanged: (v) => setState(() {
+                                if (v == true) { selected.add(person.id); }
+                                else { selected.remove(person.id); }
+                              }),
+                              controlAffinity: ListTileControlAffinity.leading,
+                              title: Text((person.data()['displayName'] ?? 'الإدارة').toString()),
+                              secondary: const Icon(Icons.admin_panel_settings_outlined, color: teal),
+                            ),
+                        ],
                         if (people.isEmpty) const Text('لا يوجد مستلمون نشطون.'),
                       ]);
                     },
