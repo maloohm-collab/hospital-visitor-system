@@ -28,15 +28,15 @@ class OfficialHospitalHeader extends StatelessWidget {
           child: FittedBox(
             fit: BoxFit.scaleDown,
             child: Text(
-              'مستشفى الزرقاء الحكومي/ شركة الصخرة للخدمات والاستشارات الأمنية Rock',
+              'شركة الصخرة للخدمات والاستشارات الأمنية Rock',
               maxLines: 1,
               softWrap: false,
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: _navy,
-                fontSize: 14,
+                fontSize: 18,
                 height: 1.2,
-                fontWeight: FontWeight.w800,
+                fontWeight: FontWeight.w900,
               ),
             ),
           ),
