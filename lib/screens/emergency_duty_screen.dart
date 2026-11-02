@@ -531,7 +531,7 @@ class _EmergencyDutyScreenState extends State<EmergencyDutyScreen> {
               final holder = (data['holderUid'] ?? '').toString();
               final end = data['endsAt'] as Timestamp?;
               final expired = end != null && !end.toDate().isAfter(DateTime.now().toUtc());
-              final mine = holder == uid && !expired;
+              final mine = holder == uid && !expired && !admin;
               final activeHolder = holder.isNotEmpty && !expired;
               return ListView(padding: const EdgeInsets.all(16), children: [
                 shiftCard(s['label'] as String, data, mine, expired),
