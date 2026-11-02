@@ -13,7 +13,7 @@ class NotificationsScreen extends StatefulWidget {
 class _NotificationsScreenState extends State<NotificationsScreen> {
   static const navy = Color(0xFF082B55), teal = Color(0xFF12B8B0);
   final title = TextEditingController(), body = TextEditingController();
-  String audience = 'supervisors', priority = 'normal';
+  String audience = 'all_staff', priority = 'normal';
   String? recipientUid;
   bool sending = false;
   bool get admin => widget.userRole == 'admin';
@@ -23,7 +23,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   void message(String s) { if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(s))); }
 
   Future<void> compose() async {
-    title.clear(); body.clear(); audience = 'supervisors'; priority = 'normal'; recipientUid = null;
+    title.clear(); body.clear(); audience = 'all_staff'; priority = 'normal'; recipientUid = null;
     final key = GlobalKey<FormState>();
     await showModalBottomSheet<void>(context: context, isScrollControlled: true, useSafeArea: true,
       builder: (sheet) => StatefulBuilder(builder: (ctx, refresh) => Padding(
@@ -49,10 +49,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
               }),
           ],
           const SizedBox(height: 12),
-          TextFormField(controller: title, decoration: const InputDecoration(labelText: 'عنوان الملحوظة'),
+          TextFormField(controller: title, decoration: const InputDecoration(labelText: 'عنوان الإشعار / الوظيفة'),
             validator: (v) => v == null || v.trim().length < 3 ? 'أدخل عنوانًا واضحًا' : null),
           const SizedBox(height: 12),
-          TextFormField(controller: body, minLines: 3, maxLines: 7, decoration: const InputDecoration(labelText: 'نص الملحوظة والتعليمات'),
+          TextFormField(controller: body, minLines: 3, maxLines: 7, decoration: const InputDecoration(labelText: 'نص الإشعار والتعليمات'),
             validator: (v) => v == null || v.trim().length < 5 ? 'اكتب نص الملحوظة' : null),
           const SizedBox(height: 12),
           DropdownButtonFormField<String>(value: priority, decoration: const InputDecoration(labelText: 'الأولوية'),
@@ -91,7 +91,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
               }
               await batch.commit();
               if (ctx.mounted) Navigator.pop(sheet);
-              message('تم إرسال الملحوظة داخل التطبيق إلى ${targets.length} مستلم.');
+              message('تم إرسال الإشعار داخل التطبيق إلى ${targets.length} مستلم.');
             } on FirebaseException catch (e) {
               refresh(() => sending = false);
               message(e.code == 'permission-denied' ? 'قواعد Firestore تمنع الإرسال؛ انشر القواعد المحدّثة.' : 'تعذر إرسال الملحوظة (${e.code}).');
