@@ -563,6 +563,8 @@ service cloud.firestore {
           && request.resource.data.reportId == reportId
           && request.resource.data.body is string
           && request.resource.data.body.size() >= 2
+          && exists(/databases/$(database)/documents/emergency_arrival_reports/$(reportId))
+          && request.auth.uid in get(/databases/$(database)/documents/emergency_arrival_reports/$(reportId)).data.recipientUids
           && request.resource.data.authorUid == request.auth.uid
           && request.resource.data.authorRole == 'admin'
           && request.resource.data.authorName is string
