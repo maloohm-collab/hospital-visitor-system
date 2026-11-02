@@ -11,8 +11,7 @@ class AdminApprovalScreen extends StatefulWidget {
 
 class _AdminApprovalScreenState extends State<AdminApprovalScreen> {
   static const _navy = Color(0xFF082B55);
-  static const _teal = Color(0xFF12B8B0);
-
+  
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   late Future<List<Map<String, dynamic>>> _requests;
 
