@@ -33,14 +33,12 @@ service cloud.firestore {
     }
     function validEmergencyRecipients(data) {
       return data.recipientUids is list
-        && data.recipientUids.size() >= 1 && data.recipientUids.size() <= 8
+        && data.recipientUids.size() >= 1 && data.recipientUids.size() <= 5
         && isEmergencyRecipient(data.recipientUids[0])
         && (data.recipientUids.size() < 2 || isEmergencyRecipient(data.recipientUids[1]))
         && (data.recipientUids.size() < 3 || isEmergencyRecipient(data.recipientUids[2]))
         && (data.recipientUids.size() < 4 || isEmergencyRecipient(data.recipientUids[3]))
         && (data.recipientUids.size() < 5 || isEmergencyRecipient(data.recipientUids[4]))
-        && (data.recipientUids.size() < 6 || isEmergencyRecipient(data.recipientUids[5]))
-        && (data.recipientUids.size() < 7 || isEmergencyRecipient(data.recipientUids[6]))
         && (data.recipientUids.size() < 8 || isEmergencyRecipient(data.recipientUids[7]));
     }
 
