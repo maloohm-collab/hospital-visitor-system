@@ -584,7 +584,7 @@ class _EmergencyDutyScreenState extends State<EmergencyDutyScreen> {
                             label: Text(assigning ? 'جارٍ تنفيذ التكليف...' : activeHolder ? 'تعيين وتسليم المسؤولية' : 'تعيين مسؤول الطوارئ'),
                           ),
                         ],
-admin revoke block
+
                       ]);
                     },
                   ),
