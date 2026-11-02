@@ -21,10 +21,6 @@ service cloud.firestore {
         && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'supervisor';
     }
 
-    function canManageEmergencyDuty() {
-      return isActiveUser()
-        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.canManageEmergencyDuty == true;
-    }
     function isEmergencyRecipient(uid) {
       return uid is string
         && exists(/databases/$(database)/documents/users/$(uid))
@@ -166,14 +162,6 @@ service cloud.firestore {
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status'])
           && request.resource.data.status in ['active', 'suspended', 'blocked']
           && request.resource.data.role == resource.data.role
-        )
-        || (
-          isActiveAdmin()
-          && uid != request.auth.uid
-          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['canManageEmergencyDuty'])
-          && request.resource.data.canManageEmergencyDuty is bool
-          && request.resource.data.role == resource.data.role
-          && request.resource.data.status == resource.data.status
         )
       );
 
@@ -481,6 +469,7 @@ service cloud.firestore {
         ])
         && request.resource.data.shiftId == shiftId
         && validEmergencyHolder(request.resource.data.holderUid)
+        && request.resource.data.holderName == get(/databases/$(database)/documents/users/$(request.resource.data.holderUid)).data.displayName
         && request.resource.data.startsAt is timestamp
         && request.resource.data.endsAt is timestamp
         && request.resource.data.startsAt <= request.time
@@ -506,6 +495,7 @@ service cloud.firestore {
           request.resource.data.holderUid == ''
           ? (isActiveAdmin() && request.resource.data.holderName == '')
           : validEmergencyHolder(request.resource.data.holderUid)
+            && request.resource.data.holderName == get(/databases/$(database)/documents/users/$(request.resource.data.holderUid)).data.displayName
         )
         && request.resource.data.holderUid != resource.data.holderUid
         && request.resource.data.holderName is string
