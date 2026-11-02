@@ -231,7 +231,7 @@ class _EmergencyDutyScreenState extends State<EmergencyDutyScreen> {
     final sid = s['id'] as String;
     if (uid == null) return const Scaffold(body: Center(child: Text('يرجى تسجيل الدخول.')));
     return Scaffold(
-      appBar: AppBar(title: const Text('مسؤول الطوارئ وتسليم المناوبة')),
+      appBar: AppBar(title: const Text('الطوارئ وتسليم المناوبة')),
       body: StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
         stream: db.collection('users').doc(uid).snapshots(),
         builder: (context, profileSnap) {
@@ -384,9 +384,7 @@ class _EmergencyDutyScreenState extends State<EmergencyDutyScreen> {
     );
   }
 
-  Widget inbox(String uid) => Scaffold(
-    appBar: AppBar(title: const Text('إشعارات وصول الحالات الطارئة')),
-    body: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+  Widget inbox(String uid) => StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
       stream: db.collection('emergency_arrival_reports')
         .where('recipientUids', arrayContains: uid).snapshots(),
       builder: (context, snap) {
@@ -426,8 +424,7 @@ class _EmergencyDutyScreenState extends State<EmergencyDutyScreen> {
             )),
         ]);
       },
-    ),
-  );
+    );
 
   Widget shiftCard(String label, String holder, Map<String, dynamic> data, bool mine, bool expired) {
     final history = data['handoverHistory'] as List? ?? [];
