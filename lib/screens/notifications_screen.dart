@@ -29,10 +29,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       builder: (sheet) => StatefulBuilder(builder: (ctx, refresh) => Padding(
         padding: EdgeInsets.fromLTRB(18, 18, 18, MediaQuery.of(ctx).viewInsets.bottom + 18),
         child: Form(key: key, child: SingleChildScrollView(child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          const Text('إرسال ملحوظة إدارية', style: TextStyle(fontSize: 21, fontWeight: FontWeight.w800, color: navy)),
+          const Text('إشعار إداري / الوظائف اليومية', style: TextStyle(fontSize: 21, fontWeight: FontWeight.w800, color: navy)),
           const SizedBox(height: 12),
           DropdownButtonFormField<String>(value: audience, decoration: const InputDecoration(labelText: 'جهة الإرسال'),
-            items: const [DropdownMenuItem(value: 'supervisors', child: Text('جميع المشرفين')), DropdownMenuItem(value: 'officers', child: Text('ضابط أمن محدد'))],
+            items: const [DropdownMenuItem(value: 'all_staff', child: Text('جميع ضباط الأمن والمشرفين')), DropdownMenuItem(value: 'supervisors', child: Text('جميع المشرفين')), DropdownMenuItem(value: 'officers', child: Text('ضابط أمن محدد'))],
             onChanged: (v) { if (v != null) refresh(() { audience = v; recipientUid = null; }); }),
           if (audience == 'officers') ...[
             const SizedBox(height: 12),
@@ -66,7 +66,15 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
               final db = FirebaseFirestore.instance;
               final sender = FirebaseAuth.instance.currentUser;
               final targets = <String, Map<String, dynamic>>{};
-              if (audience == 'supervisors') {
+              if (audience == 'all_staff') {
+                final snap = await db.collection('users').where('status', isEqualTo: 'active').get();
+                for (final d in snap.docs) {
+                  final role = (d.data()['role'] ?? '').toString();
+                  if (role == 'security_officer' || role == 'supervisor') {
+                    targets[d.id] = d.data();
+                  }
+                }
+              } else if (audience == 'supervisors') {
                 final snap = await db.collection('users').where('role', isEqualTo: 'supervisor').where('status', isEqualTo: 'active').get();
                 for (final d in snap.docs) { targets[d.id] = d.data(); }
               } else if (recipientUid != null) {
@@ -88,7 +96,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
               refresh(() => sending = false);
               message(e.code == 'permission-denied' ? 'قواعد Firestore تمنع الإرسال؛ انشر القواعد المحدّثة.' : 'تعذر إرسال الملحوظة (${e.code}).');
             } catch (_) { refresh(() => sending = false); message('تعذر الإرسال. تحقق من الاتصال.'); }
-          }, icon: const Icon(Icons.send_rounded), label: Text(sending ? 'جارٍ الإرسال...' : 'إرسال الملحوظة'),
+          }, icon: const Icon(Icons.send_rounded), label: Text(sending ? 'جارٍ الإرسال...' : 'إرسال الإشعار'),
             style: FilledButton.styleFrom(backgroundColor: teal, foregroundColor: Colors.white)),
         ]))),
       )),
@@ -116,7 +124,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(title: Text(admin ? 'الإشعارات والملحوظات الإدارية' : 'الإشعارات')),
     floatingActionButton: admin ? FloatingActionButton.extended(onPressed: compose, icon: const Icon(Icons.send_rounded),
-      label: const Text('إرسال ملحوظة'), backgroundColor: teal, foregroundColor: Colors.white) : null,
+      label: const Text('إشعار الوظائف اليومية'), backgroundColor: teal, foregroundColor: Colors.white) : null,
     body: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
       stream: FirebaseFirestore.instance.collection('notifications').where('recipientUid', isEqualTo: uid).snapshots(),
       builder: (context, snap) {
