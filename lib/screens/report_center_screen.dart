@@ -530,6 +530,55 @@ class _ReportCenterScreenState extends State<ReportCenterScreen> {
     } on FirebaseException catch (e) { _message('تعذر تحديث التقرير (${e.code}).'); }
   }
 
+
+  Widget _reviewerIdentity(Map<String, dynamic> data) {
+    final authorName = (data['createdByName'] as String? ?? '').trim();
+    if (data['createdByRole'] == 'supervisor' && authorName.isNotEmpty) {
+      return Text(
+        'اعتماد المشرف المُعدّ للتقرير: $authorName',
+        maxLines: 2,
+        overflow: TextOverflow.ellipsis,
+        style: const TextStyle(
+          fontSize: 12,
+          color: Color(0xFF315A83),
+          fontWeight: FontWeight.w800,
+        ),
+      );
+    }
+    final reviewerName = (data['reviewedByName'] as String? ?? '').trim();
+    final reviewerUid = (data['reviewedBy'] as String? ?? '').trim();
+    if (reviewerName.isNotEmpty) {
+      return Text(
+        'راجعه ورفعه المشرف: $reviewerName',
+        maxLines: 2,
+        overflow: TextOverflow.ellipsis,
+        style: const TextStyle(
+          fontSize: 12,
+          color: Color(0xFF315A83),
+          fontWeight: FontWeight.w800,
+        ),
+      );
+    }
+    if (reviewerUid.isEmpty) return const SizedBox.shrink();
+    return FutureBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+      future: FirebaseFirestore.instance.collection('users').doc(reviewerUid).get(),
+      builder: (context, snapshot) {
+        final name = (snapshot.data?.data()?['displayName'] as String? ?? '').trim();
+        if (name.isEmpty) return const SizedBox.shrink();
+        return Text(
+          'راجعه ورفعه المشرف: $name',
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(
+            fontSize: 12,
+            color: Color(0xFF315A83),
+            fontWeight: FontWeight.w800,
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(title: Text(admin ? 'التقارير المرفوعة للإدارة' : supervisor ? 'تقارير المناوبة' : 'تقاريري')),
@@ -671,13 +720,7 @@ class _ReportCenterScreenState extends State<ReportCenterScreen> {
                             style: const TextStyle(fontSize: 12, color: Color(0xFF087E78), fontWeight: FontWeight.w800),
                           ),
                         ),
-                      if (d['reviewedBy'] != null && (d['reviewedByName'] as String? ?? '').trim().isNotEmpty)
-                        Text(
-                          'راجعه ورفعه المشرف: ${d['reviewedByName']}',
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(fontSize: 12, color: Color(0xFF526579), fontWeight: FontWeight.w700),
-                        ),
+                      _reviewerIdentity(d),
                       if (senderPhone.isNotEmpty)
                         Text('هاتف الكاتب: $senderPhone', style: const TextStyle(fontSize: 11, color: Color(0xFF65788A))),
                       if (created != null)
