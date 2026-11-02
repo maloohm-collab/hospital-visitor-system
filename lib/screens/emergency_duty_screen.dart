@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'local_operations_log_screen.dart';
 
 /// إدارة تكليف مسؤول الطوارئ بواسطة المشرف المناوب، مع حفظ التسليم والملاحظات.
 class EmergencyDutyScreen extends StatefulWidget {
@@ -322,6 +323,14 @@ class _EmergencyDutyScreenState extends State<EmergencyDutyScreen> {
               final activeHolder = holder.isNotEmpty && !expired;
               return ListView(padding: const EdgeInsets.all(16), children: [
                 shiftCard(s['label'] as String, data, mine, expired),
+                const SizedBox(height: 12),
+                OutlinedButton.icon(
+                  onPressed: () => Navigator.push(context, MaterialPageRoute(
+                    builder: (_) => const LocalOperationsLogScreen(kind: LocalOperationsLogKind.emergency),
+                  )),
+                  icon: const Icon(Icons.inventory_2_outlined),
+                  label: const Text('سجل أمن الطوارئ والملاحظات اليومية'),
+                ),
                 if (manager) ...[
                   const SizedBox(height: 18),
                   section('تكليف مسؤول الطوارئ'),
