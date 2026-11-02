@@ -456,7 +456,7 @@ class _EmergencyDutyScreenState extends State<EmergencyDutyScreen> {
         OutlinedButton.icon(onPressed: () => copyReport(r), icon: const Icon(Icons.copy_all_outlined), label: const Text('نسخ التقرير')),
         OutlinedButton.icon(onPressed: () => shareReport(r), icon: const Icon(Icons.share_outlined), label: const Text('مشاركة التقرير')),
       ]),
-      if (admin) ...[
+      if (admin || r['createdBy'] == user?.uid) ...[
         const SizedBox(height: 8),
         const Text('رد الإدارة وملاحظاتها إلى كاتب التقرير', style: TextStyle(fontWeight: FontWeight.w900, color: navy)),
         const SizedBox(height: 6),
@@ -480,14 +480,16 @@ class _EmergencyDutyScreenState extends State<EmergencyDutyScreen> {
                     Text(formatTime(item.data()['createdAt']), style: const TextStyle(fontSize: 10, color: Color(0xFF555555))),
                   ]),
                 ),
-              TextField(controller: adminReplyFor(doc.id), minLines: 2, maxLines: 4,
-                style: const TextStyle(color: Color(0xFF111111)),
-                decoration: const InputDecoration(labelText: 'اكتب رد الإدارة أو الملاحظة',
-                  labelStyle: TextStyle(color: Color(0xFF333333)), border: OutlineInputBorder())),
-              const SizedBox(height: 7),
-              Align(alignment: Alignment.centerLeft,
-                child: FilledButton.icon(onPressed: () => sendAdminComment(doc.id, r),
-                  icon: const Icon(Icons.reply_rounded), label: const Text('إرسال إلى كاتب التقرير'))),
+              if (admin) ...[
+                TextField(controller: adminReplyFor(doc.id), minLines: 2, maxLines: 4,
+                  style: const TextStyle(color: Color(0xFF111111)),
+                  decoration: const InputDecoration(labelText: 'اكتب رد الإدارة أو الملاحظة',
+                    labelStyle: TextStyle(color: Color(0xFF333333)), border: OutlineInputBorder())),
+                const SizedBox(height: 7),
+                Align(alignment: Alignment.centerLeft,
+                  child: FilledButton.icon(onPressed: () => sendAdminComment(doc.id, r),
+                    icon: const Icon(Icons.reply_rounded), label: const Text('إرسال إلى كاتب التقرير'))),
+              ],
             ]);
           },
         ),
@@ -685,6 +687,28 @@ class _EmergencyDutyScreenState extends State<EmergencyDutyScreen> {
                   },
                 ),
                 const SizedBox(height: 20),
+                ],
+                if (!admin) ...[
+                  StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+                    stream: db.collection('emergency_arrival_reports')
+                        .where('createdBy', isEqualTo: uid).snapshots(),
+                    builder: (context, sentSnap) {
+                      if (sentSnap.hasError || sentSnap.connectionState == ConnectionState.waiting) {
+                        return const SizedBox.shrink();
+                      }
+                      final sent = sentSnap.data?.docs.toList() ?? [];
+                      sent.sort((a, b) {
+                        final at = a.data()['createdAt'] as Timestamp?;
+                        final bt = b.data()['createdAt'] as Timestamp?;
+                        return (bt?.millisecondsSinceEpoch ?? 0).compareTo(at?.millisecondsSinceEpoch ?? 0);
+                      });
+                      if (sent.isEmpty) return const SizedBox.shrink();
+                      return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                        section('تقاريري المرسلة وردود الإدارة'),
+                        for (final report in sent) emergencyReportPaper(report, false),
+                      ]);
+                    },
+                  ),
                 ],
                 section('صندوق إشعارات الطوارئ'),
                 inbox(uid, admin: admin),
