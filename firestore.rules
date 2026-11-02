@@ -483,20 +483,16 @@ service cloud.firestore {
         && request.resource.data.startedAt == request.time
         && request.resource.data.updatedAt == request.time;
 
-      // Supervisors may replace the holder; only admins may revoke. Every change
-      // appends the previous holder to the handover history.
-      allow update: if resource.data.endsAt > request.time
+      // Only active supervisors may assign or replace the emergency holder.
+      // Administration has read-only oversight and cannot terminate or change an assignment.
+      allow update: if isActiveSupervisor()
+        && resource.data.endsAt > request.time
         && request.resource.data.shiftId == resource.data.shiftId
         && request.resource.data.startsAt == resource.data.startsAt
         && request.resource.data.endsAt == resource.data.endsAt
         && request.resource.data.shiftLabel == resource.data.shiftLabel
-        && (
-          request.resource.data.holderUid == ''
-          ? (isActiveAdmin() && request.resource.data.holderName == '')
-          : (isActiveSupervisor()
-            && validEmergencyHolder(request.resource.data.holderUid)
-            && request.resource.data.holderName == get(/databases/$(database)/documents/users/$(request.resource.data.holderUid)).data.displayName)
-        )
+        && validEmergencyHolder(request.resource.data.holderUid)
+        && request.resource.data.holderName == get(/databases/$(database)/documents/users/$(request.resource.data.holderUid)).data.displayName
         && request.resource.data.holderUid != resource.data.holderUid
         && request.resource.data.holderName is string
         && request.resource.data.handoverHistory is list
@@ -552,6 +548,34 @@ service cloud.firestore {
       allow get, list: if isActiveUser()
         && (resource.data.createdBy == request.auth.uid || request.auth.uid in resource.data.recipientUids);
       allow update, delete: if false;
+
+      // Administration may add an immutable review comment to a report.
+      // The report author and administration can read the complete comment thread.
+      match /comments/{commentId} {
+        allow create: if isActiveAdmin()
+          && request.resource.data.keys().hasOnly([
+            'commentId', 'reportId', 'body', 'authorUid', 'authorName', 'authorRole', 'createdAt'
+          ])
+          && request.resource.data.keys().hasAll([
+            'commentId', 'reportId', 'body', 'authorUid', 'authorName', 'authorRole', 'createdAt'
+          ])
+          && request.resource.data.commentId == commentId
+          && request.resource.data.reportId == reportId
+          && request.resource.data.body is string
+          && request.resource.data.body.size() >= 2
+          && request.resource.data.authorUid == request.auth.uid
+          && request.resource.data.authorRole == 'admin'
+          && request.resource.data.authorName is string
+          && request.resource.data.createdAt == request.time;
+
+        allow get, list: if isActiveUser()
+          && (
+            isActiveAdmin()
+            || get(/databases/$(database)/documents/emergency_arrival_reports/$(reportId)).data.createdBy == request.auth.uid
+          );
+
+        allow update, delete: if false;
+      }
     }
 
     match /notifications/{notificationId} {
