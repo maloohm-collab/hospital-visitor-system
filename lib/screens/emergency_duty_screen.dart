@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'local_operations_log_screen.dart';
+import '../services/emergency_report_ai_service.dart';
 
 /// إدارة تكليف مسؤول الطوارئ بواسطة المشرف المناوب، مع حفظ التسليم والملاحظات.
 class EmergencyDutyScreen extends StatefulWidget {
@@ -22,6 +23,9 @@ class _EmergencyDutyScreenState extends State<EmergencyDutyScreen> {
   final selectedRecipients = <String>{};
   String? selectedEmployeeUid;
   bool sending = false;
+  bool organizing = false;
+  bool aiAssisted = false;
+  String? originalBody;
   bool assigning = false;
   String? errorText;
   Timer? expiryTimer;
@@ -233,6 +237,35 @@ class _EmergencyDutyScreenState extends State<EmergencyDutyScreen> {
     }
   }
 
+  Future<void> organizeReportWithAi() async {
+    final source = body.text.trim();
+    if (source.length < 5 || organizing) {
+      if (source.length < 5) message('اكتب تفاصيل البلاغ أولًا.');
+      return;
+    }
+    setState(() => organizing = true);
+    try {
+      final organized = await EmergencyReportAiService.organize(source);
+      if (!mounted) return;
+      originalBody ??= source;
+      body.value = TextEditingValue(
+        text: organized,
+        selection: TextSelection.collapsed(offset: organized.length),
+      );
+      setState(() => aiAssisted = true);
+      message('تم تنظيم النص. راجعه وعدّله قبل التأكيد والإرسال.');
+    } catch (e) {
+      if (mounted) message('تعذر تنظيم النص بالذكاء الاصطناعي. يمكنك متابعة البلاغ يدويًا.');
+    } finally {
+      if (mounted) setState(() => organizing = false);
+    }
+  }
+
+  String get reportDateTimeLabel {
+    final now = jordanNow;
+    return '${two(now.day)}/${two(now.month)}/${now.year} • ${two(now.hour)}:${two(now.minute)}';
+  }
+
   Future<void> previewAndSend(String shiftId) async {
     if (title.text.trim().length < 3 || body.text.trim().length < 5) {
       message('أدخل عنوان الإشعار ونصه قبل المعاينة.');
@@ -253,6 +286,10 @@ class _EmergencyDutyScreenState extends State<EmergencyDutyScreen> {
             const SizedBox(height: 12),
             SelectableText(body.text.trim()),
             const SizedBox(height: 12),
+            Text('تاريخ ووقت البلاغ تلقائيًا: $reportDateTimeLabel', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+            const SizedBox(height: 8),
+            const Text('بمراجعتك لهذه المعاينة وتأكيد الإرسال، فأنت تؤكد صحة النص النهائي.', style: TextStyle(fontSize: 12, color: Colors.blueGrey)),
+            const SizedBox(height: 8),
             const Text('سيصل الإشعار إلى المستلمين المحددين فقط.', style: TextStyle(fontSize: 12)),
           ],
         )),
@@ -269,13 +306,19 @@ class _EmergencyDutyScreenState extends State<EmergencyDutyScreen> {
       await ref.set({
         'reportId': ref.id, 'shiftId': shiftId,
         'title': title.text.trim(), 'body': body.text.trim(),
+        'originalBody': originalBody ?? body.text.trim(),
+        'aiAssisted': aiAssisted,
+        'reviewConfirmedBy': user!.uid,
+        'reviewConfirmedAt': FieldValue.serverTimestamp(),
         'recipientUids': selectedRecipients.toList(),
         'createdBy': user!.uid, 'createdByName': await currentName(),
         'createdAt': FieldValue.serverTimestamp(), 'priority': 'urgent',
       });
       title.text = 'إشعار وصول حالة طارئة';
       body.clear();
-      message('تم إرسال الإشعار إلى المستلمين المحددين.');
+      originalBody = null;
+      aiAssisted = false;
+      message('تم إرسال البلاغ بعد تأكيدك إلى المستلمين المحددين.');
     } on FirebaseException catch (e) {
       message(e.code == 'permission-denied'
         ? 'لا يمكن الإرسال إلا لمسؤول الطوارئ المكلف حاليًا، وتأكد من صلاحية المستلمين.'
@@ -397,7 +440,23 @@ class _EmergencyDutyScreenState extends State<EmergencyDutyScreen> {
                   TextField(controller: title, decoration: const InputDecoration(labelText: 'عنوان الإشعار')),
                   const SizedBox(height: 10),
                   TextField(controller: body, minLines: 4, maxLines: 9,
+                    onChanged: (_) {
+                      if (aiAssisted) setState(() => aiAssisted = false);
+                    },
                     decoration: const InputDecoration(labelText: 'نص الإشعار', hintText: 'اكتب تفاصيل وصول الحالة الطارئة بالطريقة التي تريدها...', alignLabelWithHint: true)),
+                  const SizedBox(height: 8),
+                  OutlinedButton.icon(
+                    onPressed: organizing || body.text.trim().length < 5 ? null : organizeReportWithAi,
+                    icon: organizing
+                        ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                        : const Icon(Icons.auto_awesome_outlined),
+                    label: Text(organizing ? 'جارٍ تنظيم البلاغ...' : 'تنظيم النص بالذكاء الاصطناعي'),
+                  ),
+                  if (aiAssisted)
+                    const Padding(
+                      padding: EdgeInsets.only(top: 4),
+                      child: Text('راجع النص المنظّم وعدّله بنفسك قبل المعاينة والتأكيد.', style: TextStyle(fontSize: 12, color: Colors.blueGrey)),
+                    ),
                   const SizedBox(height: 14),
                   section('اختيار المستلمين'),
                   const Text('اختر مشرفًا واحدًا أو عدة مشرفين، ويمكن اختيار الإدارة بشكل منفصل. الحد الأقصى خمسة مستلمين.',
