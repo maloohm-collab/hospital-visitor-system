@@ -500,7 +500,11 @@ service cloud.firestore {
         && request.resource.data.holderUid != resource.data.holderUid
         && request.resource.data.holderName is string
         && request.resource.data.handoverHistory is list
-        && request.resource.data.handoverHistory.size() == resource.data.handoverHistory.size() + 1
+        && (
+          resource.data.holderUid == ''
+          ? request.resource.data.handoverHistory.size() == resource.data.handoverHistory.size()
+          : request.resource.data.handoverHistory.size() == resource.data.handoverHistory.size() + 1
+        )
         && request.resource.data.handoverHistory.hasAll(resource.data.handoverHistory)
         && request.resource.data.assignedByUid == request.auth.uid
         && request.resource.data.assignedByName is string
