@@ -256,10 +256,11 @@ class _EmergencyDutyScreenState extends State<EmergencyDutyScreen> {
                   padding: const EdgeInsets.only(top: 8),
                   child: Text(errorText!, style: const TextStyle(color: Colors.red)),
                 ),
-                if (waiting && !mine) Padding(
+                if (!mine) Padding(
                   padding: const EdgeInsets.only(top: 10),
                   child: FilledButton.icon(onPressed: () => takeOver(force: true),
-                    icon: const Icon(Icons.login), label: const Text('استلام مسؤولية المناوبة الآن')),
+                    icon: const Icon(Icons.login),
+                    label: Text(waiting ? 'استلام مسؤولية المناوبة الآن' : 'استلام وتسليم المسؤولية الآن')),
                 ),
                 if (mine) ...[
                   const SizedBox(height: 18),
