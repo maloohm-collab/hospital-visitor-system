@@ -38,7 +38,7 @@ service cloud.firestore {
         && (data.recipientUids.size() < 2 || isEmergencyRecipient(data.recipientUids[1]))
         && (data.recipientUids.size() < 3 || isEmergencyRecipient(data.recipientUids[2]))
         && (data.recipientUids.size() < 4 || isEmergencyRecipient(data.recipientUids[3]))
-        && (data.recipientUids.size() < 5 || isEmergencyRecipient(data.recipientUids[4]))
+        && (data.recipientUids.size() < 5 || isEmergencyRecipient(data.recipientUids[4]));
     }
 
     match /account_requests/{uid} {
