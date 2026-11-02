@@ -22,7 +22,6 @@ class _AuthScreenState extends State<AuthScreen> {
   bool _obscure = true, _register = false, _loading = false, _usePinLogin = false;
   String _role = 'security_officer';
   static const _navy = Color(0xFF082B55);
-  static const _teal = Color(0xFF12B8B0);
   static const _secureStorage = FlutterSecureStorage();
 
   @override
