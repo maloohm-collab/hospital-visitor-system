@@ -535,12 +535,16 @@ service cloud.firestore {
 
     match /emergency_arrival_reports/{reportId} {
       allow create: if isActiveUser()
-        && request.resource.data.keys().hasOnly(['reportId', 'shiftId', 'title', 'body', 'recipientUids', 'createdBy', 'createdByName', 'createdAt', 'priority'])
-        && request.resource.data.keys().hasAll(['reportId', 'shiftId', 'title', 'body', 'recipientUids', 'createdBy', 'createdByName', 'createdAt', 'priority'])
+        && request.resource.data.keys().hasOnly(['reportId', 'shiftId', 'title', 'body', 'originalBody', 'aiAssisted', 'reviewConfirmedBy', 'reviewConfirmedAt', 'recipientUids', 'createdBy', 'createdByName', 'createdAt', 'priority'])
+        && request.resource.data.keys().hasAll(['reportId', 'shiftId', 'title', 'body', 'originalBody', 'aiAssisted', 'reviewConfirmedBy', 'reviewConfirmedAt', 'recipientUids', 'createdBy', 'createdByName', 'createdAt', 'priority'])
         && request.resource.data.reportId == reportId
         && request.resource.data.createdBy == request.auth.uid
         && request.resource.data.title is string && request.resource.data.title.size() >= 3
         && request.resource.data.body is string && request.resource.data.body.size() >= 5
+        && request.resource.data.originalBody is string
+        && request.resource.data.aiAssisted is bool
+        && request.resource.data.reviewConfirmedBy == request.auth.uid
+        && request.resource.data.reviewConfirmedAt == request.time
         && request.resource.data.priority == 'urgent'
         && request.resource.data.createdAt == request.time
         && validEmergencyRecipients(request.resource.data)
@@ -551,11 +555,12 @@ service cloud.firestore {
     }
 
     match /notifications/{notificationId} {
-      // Only the administration can issue notices. A recipient must be an active user.
-      allow create: if isActiveAdmin()
+      // Admin notices plus atomic emergency assignment/arrival notices.
+      allow create: if isActiveUser()
         && request.resource.data.keys().hasOnly([
           'notificationId', 'recipientUid', 'recipientRole', 'senderUid',
-          'senderEmail', 'title', 'body', 'priority', 'read', 'createdAt'
+          'senderEmail', 'title', 'body', 'priority', 'read', 'createdAt',
+          'kind', 'relatedId'
         ])
         && request.resource.data.keys().hasAll([
           'notificationId', 'recipientUid', 'recipientRole', 'senderUid',
@@ -565,7 +570,7 @@ service cloud.firestore {
         && request.resource.data.recipientUid is string
         && exists(/databases/$(database)/documents/users/$(request.resource.data.recipientUid))
         && get(/databases/$(database)/documents/users/$(request.resource.data.recipientUid)).data.status == 'active'
-        && request.resource.data.recipientRole in ['supervisor', 'security_officer']
+        && request.resource.data.recipientRole in ['supervisor', 'security_officer', 'admin']
         && get(/databases/$(database)/documents/users/$(request.resource.data.recipientUid)).data.role == request.resource.data.recipientRole
         && request.resource.data.senderUid == request.auth.uid
         && request.resource.data.title is string
@@ -574,11 +579,30 @@ service cloud.firestore {
         && request.resource.data.body.size() >= 5
         && request.resource.data.priority in ['normal', 'important', 'urgent']
         && request.resource.data.read == false
-        && request.resource.data.createdAt == request.time;
+        && request.resource.data.createdAt == request.time
+        && (
+          isActiveAdmin()
+          || (
+            isActiveSupervisor()
+            && request.resource.data.kind == 'emergency_assignment'
+            && request.resource.data.relatedId is string
+            && exists(/databases/$(database)/documents/emergency_duty_shifts/$(request.resource.data.relatedId))
+            && getAfter(/databases/$(database)/documents/emergency_duty_shifts/$(request.resource.data.relatedId)).data.holderUid == request.resource.data.recipientUid
+            && getAfter(/databases/$(database)/documents/emergency_duty_shifts/$(request.resource.data.relatedId)).data.assignedByUid == request.auth.uid
+          )
+          || (
+            request.resource.data.kind == 'emergency_arrival'
+            && request.resource.data.relatedId is string
+            && existsAfter(/databases/$(database)/documents/emergency_arrival_reports/$(request.resource.data.relatedId))
+            && getAfter(/databases/$(database)/documents/emergency_arrival_reports/$(request.resource.data.relatedId)).data.createdBy == request.auth.uid
+            && request.resource.data.recipientUid in getAfter(/databases/$(database)/documents/emergency_arrival_reports/$(request.resource.data.relatedId)).data.recipientUids
+            && isCurrentEmergencyHolder(getAfter(/databases/$(database)/documents/emergency_arrival_reports/$(request.resource.data.relatedId)).data.shiftId)
+          )
+        );
 
       allow get, list: if isActiveUser()
         && (resource.data.recipientUid == request.auth.uid
-          || (isActiveAdmin() && resource.data.senderUid == request.auth.uid));
+          || resource.data.senderUid == request.auth.uid);
 
       // Recipients may mark their own notice read, but cannot edit its content or recipient.
       allow update: if isActiveUser()
