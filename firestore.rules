@@ -338,6 +338,8 @@ service cloud.firestore {
         && request.resource.data.reviewedBy == request.auth.uid
         && request.resource.data.reviewedByName is string
         && request.resource.data.reviewedByName.size() > 0
+        && request.resource.data.reviewedByName
+          == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.displayName
         && request.resource.data.reviewedAt == request.time
         && request.resource.data.updatedAt == request.time
       ) || (
