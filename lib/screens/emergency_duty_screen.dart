@@ -371,7 +371,7 @@ class _EmergencyDutyScreenState extends State<EmergencyDutyScreen> {
     'كاتب التقرير: ${r['createdByName'] ?? 'غير معروف'}',
     'تاريخ البلاغ: ${formatTime(r['createdAt'])}',
     'الرقم المرجعي: ${r['reportId'] ?? ''}',
-  ].join('\\n');
+  ].join('\n');
 
   Future<void> copyReport(Map<String, dynamic> r) async {
     await Clipboard.setData(ClipboardData(text: reportShareText(r)));
