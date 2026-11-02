@@ -222,7 +222,6 @@ class _AuthScreenState extends State<AuthScreen> {
     const ink = Color(0xFF082B55);
     const muted = Color(0xFF526579);
     return Scaffold(
-      backgroundColor: const Color(0xFFF4F7FB),
       body: SafeArea(
         child: LayoutBuilder(
           builder: (context, constraints) => SingleChildScrollView(
