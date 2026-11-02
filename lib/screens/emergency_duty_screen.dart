@@ -283,9 +283,13 @@ class _EmergencyDutyScreenState extends State<EmergencyDutyScreen> {
     }
   }
 
+  String dayName(int weekday) => const [
+    'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت', 'الأحد',
+  ][weekday - 1];
+
   String get reportDateTimeLabel {
     final now = jordanNow;
-    return '${two(now.day)}/${two(now.month)}/${now.year} • ${two(now.hour)}:${two(now.minute)}';
+    return '${dayName(now.weekday)} • ${two(now.day)}/${two(now.month)}/${now.year} • ${two(now.hour)}:${two(now.minute)}';
   }
 
   Future<void> previewAndSend(String shiftId) async {
@@ -652,7 +656,7 @@ class _EmergencyDutyScreenState extends State<EmergencyDutyScreen> {
   String formatTime(dynamic value) {
     if (value is! Timestamp) return 'بانتظار الوقت';
     final t = value.toDate().toUtc().add(jordanOffset);
-    return two(t.day) + '/' + two(t.month) + ' ' + two(t.hour) + ':' + two(t.minute);
+    return dayName(t.weekday) + ' ' + two(t.day) + '/' + two(t.month) + '/' + t.year + ' ' + two(t.hour) + ':' + two(t.minute);
   }
 
   Widget section(String text) => Padding(
