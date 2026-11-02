@@ -15,6 +15,7 @@ import 'admin_approval_screen.dart';
 import 'report_center_screen.dart';
 import 'notifications_screen.dart';
 import 'emergency_duty_screen.dart';
+import 'auth_screen.dart';
 
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({super.key, this.userRole = 'security_officer'});
@@ -30,7 +31,7 @@ class DashboardScreen extends StatelessWidget {
       appBar: AppBar(
         centerTitle: true,
         title: Text(
-          userRole == 'admin' ? 'الإدارة' : 'إدارة الزوار',
+          userRole == 'admin' ? 'شاشة الإدارة الرئيسية' : 'إدارة الزوار',
           textAlign: TextAlign.center,
           style: const TextStyle(fontWeight: FontWeight.w900),
         ),
@@ -82,6 +83,36 @@ class DashboardScreen extends StatelessWidget {
                 ),
               );
             },
+          ),
+          IconButton(
+            tooltip: 'تسجيل الخروج',
+            onPressed: () async {
+              final shouldSignOut = await showDialog<bool>(
+                context: context,
+                builder: (dialogContext) => AlertDialog(
+                  title: const Text('تسجيل الخروج'),
+                  content: const Text('هل أنت متأكد أنك تريد تسجيل الخروج؟'),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(dialogContext, false),
+                      child: const Text('إلغاء'),
+                    ),
+                    FilledButton(
+                      onPressed: () => Navigator.pop(dialogContext, true),
+                      child: const Text('تسجيل الخروج'),
+                    ),
+                  ],
+                ),
+              );
+              if (shouldSignOut != true || !context.mounted) return;
+              await FirebaseAuth.instance.signOut();
+              if (!context.mounted) return;
+              Navigator.of(context).pushAndRemoveUntil(
+                MaterialPageRoute(builder: (_) => const AuthScreen()),
+                (_) => false,
+              );
+            },
+            icon: const Icon(Icons.logout_rounded),
           ),
         ],
       ),
@@ -282,7 +313,7 @@ class DashboardScreen extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const Text(
-                          'المسؤول: الإدارة',
+                          'المسؤول الإداري',
                           style: TextStyle(
                             color: Color(0xFF087E78),
                             fontSize: 13,
