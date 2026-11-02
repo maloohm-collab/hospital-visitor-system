@@ -686,12 +686,38 @@ class _EmergencyDutyScreenState extends State<EmergencyDutyScreen> {
         const SizedBox(height: 10),
         Text(label, style: const TextStyle(fontWeight: FontWeight.w800, color: navy)),
         const SizedBox(height: 8),
-        Text(mine ? 'أنت مسؤول الطوارئ المكلف حاليًا.' : expired
-          ? 'انتهت المناوبة تلقائيًا. بانتظار تكليف مسؤول المناوبة التالية.'
-          : holder.isNotEmpty ? 'المسؤول الحالي: ' + (data['holderName'] ?? '').toString()
-          : 'لم يتم تكليف مسؤول الطوارئ لهذه المناوبة بعد.'),
+        if (!expired && holder.isNotEmpty) ...[
+          Container(
+            margin: const EdgeInsets.only(top: 4),
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: const Color(0xFFEAF7F5),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: teal.withOpacity(0.35)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const Text(
+                  'ضابط الأمن المسؤول عن الطوارئ في هذه الفترة',
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: navy),
+                ),
+                const SizedBox(height: 5),
+                Text(
+                  (data['holderName'] ?? 'الاسم غير متوفر').toString(),
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: navy),
+                ),
+                if (mine)
+                  const Text('أنت المسؤول المكلّف حاليًا.', style: TextStyle(fontSize: 12, color: Colors.blueGrey)),
+              ],
+            ),
+          ),
+        ] else
+          Text(expired
+            ? 'انتهت هذه الفترة تلقائيًا. بانتظار تكليف مسؤول الفترة التالية.'
+            : 'لم يتم تكليف مسؤول الطوارئ لهذه الفترة بعد.'),
         if ((data['assignedByName'] ?? '').toString().isNotEmpty)
-          Text('تم التكليف بواسطة: ${data['assignedByName']} • ${formatTime(data['assignedAt'])}',
+          Text('تم تحديث المسؤول بواسطة المشرف: ${data['assignedByName']} • ${formatTime(data['assignedAt'])}',
             style: const TextStyle(fontSize: 12, color: Colors.blueGrey)),
         if (history.isNotEmpty) ...[
           const Divider(height: 22),
