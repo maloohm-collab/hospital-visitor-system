@@ -29,20 +29,10 @@ class DashboardScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         centerTitle: true,
-        title: const Column(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Text(
-              'إدارة الزوار',
-              textAlign: TextAlign.center,
-              style: TextStyle(fontWeight: FontWeight.w900),
-            ),
-            Text(
-              'منظومة زوار المستشفى',
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
-            ),
-          ],
+        title: Text(
+          userRole == 'admin' ? 'الإدارة' : 'إدارة الزوار',
+          textAlign: TextAlign.center,
+          style: const TextStyle(fontWeight: FontWeight.w900),
         ),
         actions: [
           StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
@@ -254,8 +244,8 @@ class DashboardScreen extends StatelessWidget {
       child: ListView(
         padding: const EdgeInsets.fromLTRB(18, 18, 18, 28),
         children: [
-        const OfficialHospitalHeader(),
-        const DigitalClockCard(),
+        const OfficialHospitalHeader(compact: true),
+        const DigitalClockCard(adminStyle: true),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           decoration: BoxDecoration(
@@ -269,32 +259,56 @@ class DashboardScreen extends StatelessWidget {
                 : FirebaseFirestore.instance.collection('users').doc(currentUid).snapshots(),
             builder: (context, snapshot) {
               final name = (snapshot.data?.data()?['displayName'] ?? '').toString().trim();
+              final shownName = name.isEmpty ? 'المسؤول' : name;
               return Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   Container(
-                    width: 46,
-                    height: 46,
+                    width: 48,
+                    height: 48,
                     decoration: BoxDecoration(
                       color: const Color(0xFFE8F4F3),
-                      borderRadius: BorderRadius.circular(14),
+                      borderRadius: BorderRadius.circular(15),
                     ),
-                    child: const Icon(Icons.admin_panel_settings_rounded, color: Color(0xFF087E78), size: 27),
+                    child: const Icon(
+                      Icons.admin_panel_settings_rounded,
+                      color: Color(0xFF087E78),
+                      size: 28,
+                    ),
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: 13),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        const Text(
+                          'المسؤول: الإدارة',
+                          style: TextStyle(
+                            color: Color(0xFF087E78),
+                            fontSize: 13,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        const SizedBox(height: 3),
                         Text(
-                          name.isEmpty ? 'لوحة الإدارة' : 'مرحبًا، $name',
-                          maxLines: 1,
+                          shownName,
+                          maxLines: 2,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(color: Color(0xFF102A43), fontSize: 17, fontWeight: FontWeight.w900),
+                          style: const TextStyle(
+                            color: Color(0xFF102A43),
+                            fontSize: 17,
+                            height: 1.25,
+                            fontWeight: FontWeight.w900,
+                          ),
                         ),
                         const SizedBox(height: 3),
                         const Text(
-                          'مركز المتابعة والتحكم الإداري',
-                          style: TextStyle(color: Color(0xFF526579), fontSize: 12, fontWeight: FontWeight.w600),
+                          'أهلًا بك من جديد',
+                          style: TextStyle(
+                            color: Color(0xFF526579),
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ],
                     ),
