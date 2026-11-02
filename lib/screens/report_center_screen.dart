@@ -80,10 +80,14 @@ class _ReportCenterScreenState extends State<ReportCenterScreen> {
             const SizedBox(height: 12),
             TextFormField(controller: title, decoration: const InputDecoration(labelText: 'عنوان التقرير'),
               validator: (v) => v == null || v.trim().length < 4 ? 'أدخل عنوانًا واضحًا' : null),
-            if (!supervisor) const SizedBox(height: 0) else ...[
-              const SizedBox(height: 12),
-              TextFormField(controller: employee, decoration: const InputDecoration(labelText: 'اسم الموظف المعني (اختياري)')),
-            ],
+            const SizedBox(height: 12),
+            TextFormField(
+              controller: employee,
+              decoration: const InputDecoration(
+                labelText: 'اسم الموظف المعني بالتقرير (اختياري)',
+                helperText: 'اكتب اسم الشخص الذي يتناوله التقرير، إن وُجد',
+              ),
+            ),
             const SizedBox(height: 12),
             TextFormField(controller: body, minLines: 4, maxLines: 8,
               decoration: const InputDecoration(labelText: 'تفاصيل التقرير والإجراء المتخذ', alignLabelWithHint: true),
