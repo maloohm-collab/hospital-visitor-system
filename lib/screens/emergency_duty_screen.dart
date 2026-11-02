@@ -79,8 +79,8 @@ class _EmergencyDutyScreenState extends State<EmergencyDutyScreen> {
     super.dispose();
   }
 
-  Future<void> takeOver() async {
-    if (claimed || user == null) return;
+  Future<void> takeOver({bool force = false}) async {
+    if ((claimed && !force) || user == null) return;
     claimed = true;
     final uid = user!.uid;
     try {
@@ -250,7 +250,6 @@ class _EmergencyDutyScreenState extends State<EmergencyDutyScreen> {
               final expired = ends != null && !ends.toDate().isAfter(DateTime.now().toUtc());
               final mine = holder == uid && !expired;
               final waiting = holder.isEmpty || expired;
-              if (!claimed) takeOver();
               return ListView(padding: const EdgeInsets.all(16), children: [
                 shiftCard(s['label'] as String, holder, a, mine, expired),
                 if (errorText != null) Padding(
@@ -259,7 +258,7 @@ class _EmergencyDutyScreenState extends State<EmergencyDutyScreen> {
                 ),
                 if (waiting && !mine) Padding(
                   padding: const EdgeInsets.only(top: 10),
-                  child: FilledButton.icon(onPressed: takeOver,
+                  child: FilledButton.icon(onPressed: () => takeOver(force: true),
                     icon: const Icon(Icons.login), label: const Text('استلام مسؤولية المناوبة الآن')),
                 ),
                 if (mine) ...[
