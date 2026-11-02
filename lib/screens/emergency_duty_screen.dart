@@ -159,6 +159,10 @@ class _EmergencyDutyScreenState extends State<EmergencyDutyScreen> {
       message('اختر مستلمًا واحدًا على الأقل.');
       return;
     }
+    if (selected.length > 5) {
+      message('يمكن اختيار خمسة مستلمين كحد أقصى في الإشعار الواحد.');
+      return;
+    }
     final ok = await showDialog<bool>(
       context: context,
       builder: (d) => AlertDialog(
@@ -226,8 +230,7 @@ class _EmergencyDutyScreenState extends State<EmergencyDutyScreen> {
           if (profileSnap.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
-          if (!eligible) return panel(Icons.lock_outline, 'صلاحية مسؤول الطوارئ غير مفعّلة',
-            'تُمنح هذه الصلاحية من الإدارة للموظفين المخولين دون تغيير دورهم الوظيفي.');
+          if (!eligible) return inbox(uid);
           return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
             stream: db.collection('emergency_duty_shifts').doc(sid).snapshots(),
             builder: (context, shiftSnap) {
@@ -350,6 +353,51 @@ class _EmergencyDutyScreenState extends State<EmergencyDutyScreen> {
       ),
     );
   }
+
+  Widget inbox(String uid) => Scaffold(
+    appBar: AppBar(title: const Text('إشعارات وصول الحالات الطارئة')),
+    body: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+      stream: db.collection('emergency_arrival_reports')
+        .where('recipientUids', arrayContains: uid).snapshots(),
+      builder: (context, snap) {
+        if (snap.hasError) return panel(Icons.cloud_off_outlined,
+          'تعذر تحميل الإشعارات', 'تحقق من قواعد Firestore والاتصال.');
+        if (snap.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        final docs = snap.data!.docs.toList()
+          ..sort((a, b) {
+            final at = a.data()['createdAt'] as Timestamp?;
+            final bt = b.data()['createdAt'] as Timestamp?;
+            return (bt?.millisecondsSinceEpoch ?? 0).compareTo(at?.millisecondsSinceEpoch ?? 0);
+          });
+        if (docs.isEmpty) return panel(Icons.notifications_none,
+          'لا توجد إشعارات طوارئ', 'ستظهر هنا الإشعارات التي يختارك مسؤول الطوارئ لاستلامها.');
+        return ListView(padding: const EdgeInsets.all(16), children: [
+          for (final doc in docs)
+            Card(child: Padding(
+              padding: const EdgeInsets.all(14),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                Row(children: [
+                  const Icon(Icons.emergency, color: Color(0xFFB42318)),
+                  const SizedBox(width: 8),
+                  Expanded(child: Text((doc.data()['title'] ?? '').toString(),
+                    style: const TextStyle(fontWeight: FontWeight.w900, color: navy))),
+                  const Text('عاجل', style: TextStyle(color: Color(0xFFB42318), fontWeight: FontWeight.w800)),
+                ]),
+                const SizedBox(height: 10),
+                SelectableText((doc.data()['body'] ?? '').toString()),
+                const Divider(height: 22),
+                Text('من: ' + (doc.data()['createdByName'] ?? 'مسؤول الطوارئ').toString(),
+                  style: const TextStyle(fontSize: 12, color: Colors.blueGrey)),
+                Text('الوقت: ' + formatTime(doc.data()['createdAt']),
+                  style: const TextStyle(fontSize: 12, color: Colors.blueGrey)),
+              ]),
+            )),
+        ]);
+      },
+    ),
+  );
 
   Widget shiftCard(String label, String holder, Map<String, dynamic> data, bool mine, bool expired) {
     final history = data['handoverHistory'] as List? ?? [];
