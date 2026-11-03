@@ -271,9 +271,9 @@ class DashboardScreen extends StatelessWidget {
 
   Widget _buildAdminDashboard(BuildContext context, String? currentUid) {
     return DecoratedBox(
-      decoration: const BoxDecoration(color: Color(0xFFF2F5F9)),
+      decoration: const BoxDecoration(color: Color(0xFFF3F6FA)),
       child: ListView(
-        padding: const EdgeInsets.fromLTRB(18, 18, 18, 28),
+        padding: const EdgeInsets.fromLTRB(16, 14, 16, 26),
         children: [
         const OfficialHospitalHeader(compact: true),
         const DigitalClockCard(adminStyle: true),
@@ -281,8 +281,9 @@ class DashboardScreen extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: const Color(0xFFDCE5ED)),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: const Color(0xFFE1E8EF)),
+            boxShadow: const [BoxShadow(color: Color(0x0A082B55), blurRadius: 14, offset: Offset(0, 4))],
           ),
           child: StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
             stream: currentUid == null
@@ -349,7 +350,7 @@ class DashboardScreen extends StatelessWidget {
             },
           ),
         ),
-        const SizedBox(height: 24),
+        const SizedBox(height: 22),
         const Text(
           'الخدمات الإدارية',
           style: TextStyle(color: Color(0xFF082B55), fontSize: 19, fontWeight: FontWeight.w900),
@@ -416,9 +417,9 @@ class DashboardScreen extends StatelessWidget {
               itemCount: actions.length,
               gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: 3,
-                crossAxisSpacing: 11,
-                mainAxisSpacing: 11,
-                childAspectRatio: 0.88,
+                crossAxisSpacing: 12,
+                mainAxisSpacing: 12,
+                childAspectRatio: 0.92,
               ),
               itemBuilder: (context, index) => _AdminActionCard(action: actions[index]),
             );
@@ -498,17 +499,17 @@ class _AdminActionCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Material(
       color: Colors.white,
-      borderRadius: BorderRadius.circular(18),
+      borderRadius: BorderRadius.circular(20),
       child: InkWell(
         onTap: action.onTap,
         borderRadius: BorderRadius.circular(18),
         child: Container(
           padding: const EdgeInsets.fromLTRB(7, 12, 7, 10),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: const Color(0xFFD9E3EC)),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: const Color(0xFFE1E8EF)),
             boxShadow: const [
-              BoxShadow(color: Color(0x09082B55), blurRadius: 10, offset: Offset(0, 3)),
+              BoxShadow(color: Color(0x08082B55), blurRadius: 14, offset: Offset(0, 4)),
             ],
           ),
           child: Column(
@@ -524,7 +525,7 @@ class _AdminActionCard extends StatelessWidget {
                       color: Color.fromRGBO(action.color.red, action.color.green, action.color.blue, 0.10),
                       borderRadius: BorderRadius.circular(15),
                     ),
-                    child: Icon(action.icon, color: action.color, size: 26),
+                    child: Icon(action.icon, color: action.color, size: 28),
                   ),
                   if (action.badge != null)
                     Positioned(
@@ -549,7 +550,7 @@ class _AdminActionCard extends StatelessWidget {
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
                 textAlign: TextAlign.center,
-                style: const TextStyle(color: Color(0xFF173653), fontSize: 12.5, height: 1.3, fontWeight: FontWeight.w800),
+                style: const TextStyle(color: Color(0xFF173653), fontSize: 13, height: 1.3, fontWeight: FontWeight.w800),
               ),
             ],
           ),
