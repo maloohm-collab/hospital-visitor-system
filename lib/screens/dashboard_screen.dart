@@ -186,25 +186,23 @@ class DashboardScreen extends StatelessWidget {
                 onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => VisitorReportsScreen(userRole: userRole))),
               ),
             ];
-            // Keep the final single card centered when the dashboard has seven actions.
-            final hasCenteredLastCard = actions.length == 7;
+            // Reserve the remaining grid cells so the final card stays at the far right.
+            final hasTrailingCapacity = actions.length == 7;
             return GridView.builder(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
-              itemCount: hasCenteredLastCard ? 9 : actions.length,
+              itemCount: hasTrailingCapacity ? 9 : actions.length,
               gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: 3,
                 crossAxisSpacing: 12,
                 mainAxisSpacing: 12,
-                childAspectRatio: 0.96,
+                childAspectRatio: 0.90,
               ),
               itemBuilder: (context, index) {
-                if (hasCenteredLastCard && (index == 6 || index == 8)) {
+                if (hasTrailingCapacity && index > 6) {
                   return const SizedBox.shrink();
                 }
-                final actionIndex = hasCenteredLastCard && index == 7
-                    ? 6
-                    : index;
+                final actionIndex = index;
                 return _AdminActionCard(action: actions[actionIndex]);
               },
             );
@@ -242,15 +240,15 @@ class _ActionTile extends StatelessWidget {
     child: InkWell(
       borderRadius: BorderRadius.circular(16), onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 14),
+        padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 15),
         decoration: BoxDecoration(borderRadius: BorderRadius.circular(16), border: Border.all(color: const Color(0xFFDCE5ED))),
         child: Row(children: [
-          Container(width: 46, height: 46, decoration: BoxDecoration(color: color.withOpacity(0.10), borderRadius: BorderRadius.circular(14)), child: Icon(icon, color: color)),
+          Container(width: 52, height: 52, decoration: BoxDecoration(gradient: LinearGradient(colors: [color.withOpacity(0.18), color.withOpacity(0.07)], begin: Alignment.topLeft, end: Alignment.bottomRight), borderRadius: BorderRadius.circular(17), border: Border.all(color: color.withOpacity(0.12))), child: Icon(icon, color: color, size: 29)),
           const SizedBox(width: 13),
           Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: DashboardScreen.navy)),
+            Text(title, style: const TextStyle(fontSize: 16, height: 1.25, fontWeight: FontWeight.w800, color: DashboardScreen.navy)),
             const SizedBox(height: 4),
-            Text(subtitle, style: const TextStyle(fontSize: 12, color: Color(0xFF526579))),
+            Text(subtitle, style: const TextStyle(fontSize: 13, height: 1.3, color: Color(0xFF526579))),
           ])),
           const Icon(Icons.chevron_left_rounded, color: Color(0xFF8796A5)),
         ]),
@@ -289,7 +287,7 @@ class _AdminActionCard extends StatelessWidget {
         onTap: action.onTap,
         borderRadius: BorderRadius.circular(18),
         child: Container(
-          padding: const EdgeInsets.fromLTRB(7, 12, 7, 10),
+          padding: const EdgeInsets.fromLTRB(6, 13, 6, 11),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(20),
             border: Border.all(color: const Color(0xFFE1E8EF)),
@@ -304,13 +302,17 @@ class _AdminActionCard extends StatelessWidget {
                 clipBehavior: Clip.none,
                 children: [
                   Container(
-                    width: 48,
-                    height: 48,
+                    width: 54,
+                    height: 54,
                     decoration: BoxDecoration(
                       color: Color.fromRGBO(action.color.red, action.color.green, action.color.blue, 0.10),
-                      borderRadius: BorderRadius.circular(15),
+                      borderRadius: BorderRadius.circular(18),
+                      border: Border.all(color: action.color.withOpacity(0.14)),
+                      boxShadow: [
+                        BoxShadow(color: action.color.withOpacity(0.10), blurRadius: 10, offset: const Offset(0, 3)),
+                      ],
                     ),
-                    child: Icon(action.icon, color: action.color, size: 28),
+                    child: Icon(action.icon, color: action.color, size: 31),
                   ),
                   if (action.badge != null)
                     Positioned(
@@ -329,13 +331,13 @@ class _AdminActionCard extends StatelessWidget {
                     ),
                 ],
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 12),
               Text(
                 action.title,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
                 textAlign: TextAlign.center,
-                style: const TextStyle(color: Color(0xFF173653), fontSize: 13, height: 1.3, fontWeight: FontWeight.w800),
+                style: const TextStyle(color: Color(0xFF173653), fontSize: 15, height: 1.25, fontWeight: FontWeight.w800),
               ),
             ],
           ),
