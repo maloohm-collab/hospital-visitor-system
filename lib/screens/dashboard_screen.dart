@@ -2,8 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'direct_contact_screen.dart';
 import 'package:flutter/material.dart';
-import '../widgets/official_hospital_header.dart';
-import '../widgets/digital_clock_card.dart';
+import '../widgets/dashboard_header.dart';
 import 'account_profile_screen.dart';
 import 'staff_management_screen.dart';
 import 'duty_reports_screen.dart';
@@ -28,94 +27,7 @@ class DashboardScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final currentUid = FirebaseAuth.instance.currentUser?.uid;
     return Scaffold(
-      appBar: AppBar(
-        centerTitle: true,
-        title: Text(
-          userRole == 'admin' ? 'شاشة الإدارة الرئيسية' : 'إدارة الزوار',
-          textAlign: TextAlign.center,
-          style: const TextStyle(fontWeight: FontWeight.w900),
-        ),
-        actions: [
-          StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-            stream: FirebaseFirestore.instance
-                .collection('notifications')
-                .where('recipientUid', isEqualTo: FirebaseAuth.instance.currentUser?.uid ?? '')
-                .snapshots(),
-            builder: (context, snapshot) {
-              final unread = (snapshot.data?.docs ?? [])
-                  .where((doc) => doc.data()['read'] != true)
-                  .length;
-              return IconButton(
-                tooltip: unread > 0 ? 'الإشعارات غير المقروءة: $unread' : 'الإشعارات',
-                onPressed: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => NotificationsScreen(userRole: userRole),
-                  ),
-                ),
-                icon: Stack(
-                  clipBehavior: Clip.none,
-                  children: [
-                    const Icon(Icons.notifications_none_rounded),
-                    if (unread > 0)
-                      Positioned(
-                        top: -5,
-                        right: -7,
-                        child: Container(
-                          constraints: const BoxConstraints(minWidth: 17, minHeight: 17),
-                          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                          decoration: const BoxDecoration(
-                            color: Color(0xFFD92D20),
-                            shape: BoxShape.circle,
-                          ),
-                          child: Text(
-                            unread > 9 ? '9+' : '$unread',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-              );
-            },
-          ),
-          IconButton(
-            tooltip: 'تسجيل الخروج',
-            onPressed: () async {
-              final shouldSignOut = await showDialog<bool>(
-                context: context,
-                builder: (dialogContext) => AlertDialog(
-                  title: const Text('تسجيل الخروج'),
-                  content: const Text('هل أنت متأكد أنك تريد تسجيل الخروج؟'),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(dialogContext, false),
-                      child: const Text('إلغاء'),
-                    ),
-                    FilledButton(
-                      onPressed: () => Navigator.pop(dialogContext, true),
-                      child: const Text('تسجيل الخروج'),
-                    ),
-                  ],
-                ),
-              );
-              if (shouldSignOut != true || !context.mounted) return;
-              await FirebaseAuth.instance.signOut();
-              if (!context.mounted) return;
-              Navigator.of(context).pushAndRemoveUntil(
-                MaterialPageRoute(builder: (_) => const AuthScreen()),
-                (_) => false,
-              );
-            },
-            icon: const Icon(Icons.logout_rounded),
-          ),
-        ],
-      ),
+,
       bottomNavigationBar: NavigationBar(
         selectedIndex: 0,
         backgroundColor: Colors.white,
@@ -148,68 +60,7 @@ class DashboardScreen extends StatelessWidget {
             : ListView(
                 padding: const EdgeInsets.fromLTRB(18, 18, 18, 28),
                 children: [
-                  const OfficialHospitalHeader(),
-                  const DigitalClockCard(),
-                  Container(
-                    padding: const EdgeInsets.fromLTRB(18, 18, 18, 20),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF4F7FB),
-                      borderRadius: BorderRadius.circular(22),
-                      border: Border.all(color: const Color(0xFFDCE5ED)),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Center(
-                          child: Container(
-                            width: 54,
-                            height: 54,
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFE5F3F3),
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            child: const Icon(Icons.local_hospital_rounded, color: teal, size: 30),
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-                        StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-                          stream: currentUid == null
-                              ? null
-                              : FirebaseFirestore.instance.collection('users').doc(currentUid).snapshots(),
-                          builder: (context, snapshot) {
-                            final profile = snapshot.data?.data() ?? const <String, dynamic>{};
-                            final name = (profile['displayName'] ?? '').toString().trim();
-                            final shownName = name.isEmpty ? 'الموظف' : name;
-                            return Text(
-                              'أهلًا، $shownName',
-                              textAlign: TextAlign.center,
-                              style: const TextStyle(
-                                color: Color(0xFF101820),
-                                fontSize: 20,
-                                fontWeight: FontWeight.w900,
-                              ),
-                            );
-                          },
-                        ),
-                        const SizedBox(height: 4),
-                        Text(_roleLabel(userRole), textAlign: TextAlign.center,
-                            style: const TextStyle(color: Color(0xFF263238), fontSize: 14, fontWeight: FontWeight.w800)),
-                        const SizedBox(height: 5),
-                        const Text('إدارة الزيارات بسهولة وأمان', textAlign: TextAlign.center,
-                            style: TextStyle(color: Color(0xFF101820), fontSize: 21, height: 1.35, fontWeight: FontWeight.w900)),
-                        const SizedBox(height: 8),
-                        Container(height: 1.2, color: const Color(0xFF101820)),
-                        const SizedBox(height: 10),
-                        Center(
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 7),
-                            decoration: BoxDecoration(color: const Color(0xFFE5F3F3), borderRadius: BorderRadius.circular(30)),
-                            child: Text(_roleLabel(userRole), style: const TextStyle(color: Color(0xFF082B55), fontSize: 12, fontWeight: FontWeight.w800)),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+                  DashboardHeader(userRole: userRole, currentUid: currentUid),
                   const SizedBox(height: 26),
                   const Text('الخدمات السريعة', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: navy)),
                   const SizedBox(height: 12),
@@ -275,81 +126,7 @@ class DashboardScreen extends StatelessWidget {
       child: ListView(
         padding: const EdgeInsets.fromLTRB(16, 14, 16, 26),
         children: [
-        const OfficialHospitalHeader(compact: true),
-        const DigitalClockCard(adminStyle: true),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: const Color(0xFFE1E8EF)),
-            boxShadow: const [BoxShadow(color: Color(0x0A082B55), blurRadius: 14, offset: Offset(0, 4))],
-          ),
-          child: StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-            stream: currentUid == null
-                ? null
-                : FirebaseFirestore.instance.collection('users').doc(currentUid).snapshots(),
-            builder: (context, snapshot) {
-              final name = (snapshot.data?.data()?['displayName'] ?? '').toString().trim();
-              final shownName = name.isEmpty ? 'المسؤول' : name;
-              return Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Container(
-                    width: 50,
-                    height: 50,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFE8F4F3),
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: const Icon(
-                      Icons.admin_panel_settings_rounded,
-                      color: Color(0xFF087E78),
-                      size: 28,
-                    ),
-                  ),
-                  const SizedBox(width: 13),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'المسؤول الإداري',
-                          style: TextStyle(
-                            color: Color(0xFF087E78),
-                            fontSize: 13,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                        const SizedBox(height: 3),
-                        Text(
-                          shownName,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            color: Color(0xFF102A43),
-                            fontSize: 17,
-                            height: 1.25,
-                            fontWeight: FontWeight.w900,
-                          ),
-                        ),
-                        const SizedBox(height: 3),
-                        const Text(
-                          'أهلًا بك من جديد',
-                          style: TextStyle(
-                            color: Color(0xFF526579),
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              );
-            },
-          ),
-        ),
+        DashboardHeader(userRole: userRole, currentUid: currentUid),
         const SizedBox(height: 22),
         const Text(
           'الخدمات الإدارية',
