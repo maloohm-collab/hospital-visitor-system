@@ -411,17 +411,27 @@ class DashboardScreen extends StatelessWidget {
                 onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => VisitorReportsScreen(userRole: userRole))),
               ),
             ];
+            // Keep the final single card centered when the dashboard has seven actions.
+            final hasCenteredLastCard = actions.length == 7;
             return GridView.builder(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
-              itemCount: actions.length,
+              itemCount: hasCenteredLastCard ? 9 : actions.length,
               gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: 3,
                 crossAxisSpacing: 12,
                 mainAxisSpacing: 12,
-                childAspectRatio: 0.92,
+                childAspectRatio: 0.96,
               ),
-              itemBuilder: (context, index) => _AdminActionCard(action: actions[index]),
+              itemBuilder: (context, index) {
+                if (hasCenteredLastCard && (index == 6 || index == 8)) {
+                  return const SizedBox.shrink();
+                }
+                final actionIndex = hasCenteredLastCard && index == 7
+                    ? 6
+                    : index;
+                return _AdminActionCard(action: actions[actionIndex]);
+              },
             );
           },
         ),
