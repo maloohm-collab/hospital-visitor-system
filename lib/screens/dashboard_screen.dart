@@ -221,13 +221,6 @@ class DashboardScreen extends StatelessWidget {
     );
   }
 
-  String _roleLabel(String role) {
-    switch (role) {
-      case 'admin': return 'الإدارة';
-      case 'supervisor': return 'مشرف';
-      default: return 'ضابط أمن';
-    }
-  }
 }
 
 class _ActionTile extends StatelessWidget {
