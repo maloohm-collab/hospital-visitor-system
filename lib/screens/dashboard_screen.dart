@@ -14,6 +14,7 @@ import 'admin_approval_screen.dart';
 import 'report_center_screen.dart';
 import 'notifications_screen.dart';
 import 'emergency_duty_screen.dart';
+import 'work_location_screen.dart';
 
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({super.key, this.userRole = 'security_officer'});
@@ -74,6 +75,12 @@ class DashboardScreen extends StatelessWidget {
     if (userRole == 'security_officer') {
       actions.addAll([
         _AdminAction(
+          icon: Icons.location_on_rounded,
+          title: 'مباشرة العمل',
+          color: const Color(0xFF087E78),
+          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const WorkLocationScreen(userRole: 'security_officer'))),
+        ),
+        _AdminAction(
           icon: Icons.person_add_alt_1_rounded,
           title: 'تسجيل زائر',
           color: teal,
@@ -106,6 +113,12 @@ class DashboardScreen extends StatelessWidget {
       ]);
     } else if (userRole == 'supervisor') {
       actions.addAll([
+        _AdminAction(
+          icon: Icons.sticky_note_2_rounded,
+          title: 'ملاحظات مواقع العمل',
+          color: const Color(0xFFD28A25),
+          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const WorkLocationScreen(userRole: 'supervisor'))),
+        ),
         _AdminAction(
           icon: Icons.fact_check_rounded,
           title: 'تقارير ضباط الأمن',
@@ -232,6 +245,12 @@ class DashboardScreen extends StatelessWidget {
           builder: (context, snapshot) {
             final pending = snapshot.data?.docs.length ?? 0;
             final actions = <_AdminAction>[
+              _AdminAction(
+                icon: Icons.sticky_note_2_rounded,
+                title: 'ملاحظات مواقع العمل',
+                color: const Color(0xFFD28A25),
+                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const WorkLocationScreen(userRole: 'admin'))),
+              ),
               _AdminAction(
                 icon: Icons.emergency_share_rounded,
                 title: 'الطوارئ',
