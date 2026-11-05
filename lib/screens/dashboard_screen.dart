@@ -224,31 +224,85 @@ class DashboardScreen extends StatelessWidget {
 }
 
 class _ActionTile extends StatelessWidget {
-  const _ActionTile({required this.icon, required this.title, required this.subtitle, required this.color, required this.onTap});
-  final IconData icon; final String title, subtitle; final Color color; final VoidCallback onTap;
+  const _ActionTile({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.color,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final Color color;
+  final VoidCallback onTap;
+
   @override
-  Widget build(BuildContext context) => Material(
-    color: Colors.white,
-    margin: const EdgeInsets.symmetric(horizontal: 18),
-    borderRadius: BorderRadius.circular(16),
-    child: InkWell(
-      borderRadius: BorderRadius.circular(16), onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 15),
-        decoration: BoxDecoration(borderRadius: BorderRadius.circular(16), border: Border.all(color: const Color(0xFFDCE5ED))),
-        child: Row(children: [
-          Container(width: 52, height: 52, decoration: BoxDecoration(gradient: LinearGradient(colors: [color.withOpacity(0.18), color.withOpacity(0.07)], begin: Alignment.topLeft, end: Alignment.bottomRight), borderRadius: BorderRadius.circular(17), border: Border.all(color: color.withOpacity(0.12))), child: Icon(icon, color: color, size: 29)),
-          const SizedBox(width: 13),
-          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(title, style: const TextStyle(fontSize: 16, height: 1.25, fontWeight: FontWeight.w800, color: DashboardScreen.navy)),
-            const SizedBox(height: 4),
-            Text(subtitle, style: const TextStyle(fontSize: 13, height: 1.3, color: Color(0xFF526579))),
-          ])),
-          const Icon(Icons.chevron_left_rounded, color: Color(0xFF8796A5)),
-        ]),
-      ),
-    ),
-  );
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 18),
+        child: Material(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(16),
+            onTap: onTap,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 15),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: const Color(0xFFDCE5ED)),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 52,
+                    height: 52,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [color.withOpacity(0.18), color.withOpacity(0.07)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(17),
+                      border: Border.all(color: color.withOpacity(0.12)),
+                    ),
+                    child: Icon(icon, color: color, size: 29),
+                  ),
+                  const SizedBox(width: 13),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          title,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            height: 1.25,
+                            fontWeight: FontWeight.w800,
+                            color: DashboardScreen.navy,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          subtitle,
+                          style: const TextStyle(
+                            fontSize: 13,
+                            height: 1.3,
+                            color: Color(0xFF526579),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Icon(Icons.chevron_left_rounded, color: Color(0xFF8796A5)),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+  }
 }
 
 class _AdminAction {
