@@ -59,41 +59,48 @@ class DashboardHeader extends StatelessWidget {
               fit: StackFit.expand,
               children: [
                 const CustomPaint(painter: _JordanFlagPainter()),
-                Container(color: Colors.white.withOpacity(0.48)),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(8, 8, 8, 25),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _notificationButton(context),
-                      Expanded(
-                        child: Padding(
-                          padding: const EdgeInsets.only(top: 9, left: 3, right: 3),
-                          child: FittedBox(
-                            fit: BoxFit.scaleDown,
-                            child: Text(
-                              _company,
-                              maxLines: 1,
-                              softWrap: false,
-                              textAlign: TextAlign.center,
-                              style: const TextStyle(
-                                color: _ink,
-                                fontSize: 21,
-                                height: 1.15,
-                                fontWeight: FontWeight.w900,
-                                letterSpacing: -0.45,
-                              ),
-                            ),
+                Container(color: Colors.white.withOpacity(0.20)),
+                Positioned(
+                  top: 8,
+                  left: 8,
+                  child: _notificationButton(context),
+                ),
+                Positioned(
+                  top: 8,
+                  right: 8,
+                  child: IconButton(
+                    tooltip: 'تسجيل الخروج',
+                    visualDensity: VisualDensity.compact,
+                    onPressed: () => _confirmSignOut(context),
+                    icon: const Icon(Icons.logout_rounded, color: _ink, size: 23),
+                  ),
+                ),
+                Align(
+                  alignment: const Alignment(0, -0.02),
+                  child: SizedBox(
+                    width: MediaQuery.of(context).size.width * 0.70,
+                    child: Padding(
+                      padding: const EdgeInsets.only(top: 3),
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(
+                          _company,
+                          maxLines: 1,
+                          softWrap: false,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            color: Color(0xFF17324D),
+                            fontSize: 24,
+                            height: 1.12,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: -0.55,
+                            shadows: [
+                              Shadow(color: Colors.white, blurRadius: 5, offset: Offset(0, 1)),
+                            ],
                           ),
                         ),
                       ),
-                      IconButton(
-                        tooltip: 'تسجيل الخروج',
-                        visualDensity: VisualDensity.compact,
-                        onPressed: () => _confirmSignOut(context),
-                        icon: const Icon(Icons.logout_rounded, color: _ink, size: 23),
-                      ),
-                    ],
+                    ),
                   ),
                 ),
               ],
@@ -121,8 +128,8 @@ class DashboardHeader extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
                         color: _ink,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
                       ),
                     ),
                   ),
@@ -137,8 +144,8 @@ class DashboardHeader extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
                         color: _ink,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
                       ),
                     ),
                   ),
@@ -168,8 +175,8 @@ class DashboardHeader extends StatelessWidget {
                         textDirection: TextDirection.ltr,
                         style: const TextStyle(
                           color: _muted,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w800,
                           fontFeatures: [FontFeature.tabularFigures()],
                         ),
                       ),
@@ -183,8 +190,8 @@ class DashboardHeader extends StatelessWidget {
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
                             color: _muted,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
                           ),
                         ),
                       ),
@@ -298,9 +305,9 @@ class _JordanFlagPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final stripeHeight = size.height / 3;
     final colors = [
-      const Color(0xFF151515).withOpacity(0.15),
-      Colors.white.withOpacity(0.20),
-      const Color(0xFF087A45).withOpacity(0.15),
+      const Color(0xFF111111).withOpacity(0.38),
+      Colors.white.withOpacity(0.48),
+      const Color(0xFF087A45).withOpacity(0.34),
     ];
     for (var i = 0; i < 3; i++) {
       canvas.drawRect(
@@ -314,7 +321,14 @@ class _JordanFlagPainter extends CustomPainter {
       ..lineTo(size.width * 0.36, size.height * 0.5)
       ..lineTo(0, size.height)
       ..close();
-    canvas.drawPath(triangle, Paint()..color = const Color(0xFFCE293D).withOpacity(0.19));
+    canvas.drawPath(triangle, Paint()..color = const Color(0xFFCE293D).withOpacity(0.46));
+    canvas.drawPath(
+      triangle,
+      Paint()
+        ..color = Colors.white.withOpacity(0.62)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.2,
+    );
 
     final center = Offset(size.width * 0.105, size.height * 0.5);
     final star = Path();
@@ -335,7 +349,7 @@ class _JordanFlagPainter extends CustomPainter {
       }
     }
     star.close();
-    canvas.drawPath(star, Paint()..color = Colors.white.withOpacity(0.34));
+    canvas.drawPath(star, Paint()..color = Colors.white.withOpacity(0.92));
   }
 
   @override
