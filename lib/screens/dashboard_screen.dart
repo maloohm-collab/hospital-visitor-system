@@ -56,11 +56,14 @@ class DashboardScreen extends StatelessWidget {
         child: userRole == 'admin'
             ? _buildAdminDashboard(context, currentUid)
             : ListView(
-                padding: const EdgeInsets.fromLTRB(18, 18, 18, 28),
+                padding: EdgeInsets.zero,
                 children: [
                   DashboardHeader(userRole: userRole, currentUid: currentUid),
-                  const SizedBox(height: 26),
-                  const Text('الخدمات السريعة', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: navy)),
+                  const SizedBox(height: 10),
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 18),
+                    child: Text('الخدمات السريعة', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: navy)),
+                  ),
                   const SizedBox(height: 12),
                   _ActionTile(icon: Icons.emergency_share_outlined, title: 'مسؤول الطوارئ وتسليم المناوبة', subtitle: 'إشعار وصول الحالات الطارئة وملاحظات تسليم المسؤولية', color: const Color(0xFFB42318), onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const EmergencyDutyScreen()))),
                   const SizedBox(height: 10),
@@ -110,7 +113,10 @@ class DashboardScreen extends StatelessWidget {
                   const SizedBox(height: 10),
                   _ActionTile(icon: Icons.bar_chart_rounded, title: 'التقارير والإحصاءات', subtitle: userRole == 'security_officer' ? 'إحصاءات سجلاتك' : 'مؤشرات حركة الزوار على مستوى المستشفى', color: const Color(0xFFD28A25), onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => VisitorReportsScreen(userRole: userRole)))),
                   const SizedBox(height: 20),
-                  const Center(child: Text('تُحدّث السجلات والإحصاءات من قاعدة بيانات Firestore', textAlign: TextAlign.center, style: TextStyle(fontSize: 11, color: Colors.black45))),
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 18),
+                    child: Center(child: Text('تُحدّث السجلات والإحصاءات من قاعدة بيانات Firestore', textAlign: TextAlign.center, style: TextStyle(fontSize: 11, color: Colors.black45))),
+                  ),
                 ],
               ),
       ),
@@ -122,20 +128,10 @@ class DashboardScreen extends StatelessWidget {
     return DecoratedBox(
       decoration: const BoxDecoration(color: Color(0xFFF3F6FA)),
       child: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 14, 16, 26),
+        padding: EdgeInsets.zero,
         children: [
         DashboardHeader(userRole: userRole, currentUid: currentUid),
-        const SizedBox(height: 22),
-        const Text(
-          'الخدمات الإدارية',
-          style: TextStyle(color: Color(0xFF082B55), fontSize: 19, fontWeight: FontWeight.w900),
-        ),
-        const SizedBox(height: 5),
-        const Text(
-          'اختر القسم المطلوب للوصول المباشر',
-          style: TextStyle(color: Color(0xFF526579), fontSize: 12, fontWeight: FontWeight.w600),
-        ),
-        const SizedBox(height: 14),
+        const SizedBox(height: 4),
         StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
           stream: FirebaseFirestore.instance.collection('account_requests')
               .where('status', isEqualTo: 'pending').snapshots(),
@@ -189,6 +185,7 @@ class DashboardScreen extends StatelessWidget {
             // Reserve the remaining grid cells so the final card stays at the far right.
             final hasTrailingCapacity = actions.length == 7;
             return GridView.builder(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
               itemCount: hasTrailingCapacity ? 9 : actions.length,
@@ -209,12 +206,15 @@ class DashboardScreen extends StatelessWidget {
           },
         ),
         const SizedBox(height: 18),
-        const Center(
+        const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 16),
+          child: Center(
           child: Text(
             'تُحدّث البيانات مباشرة من نظام المستشفى',
             textAlign: TextAlign.center,
             style: TextStyle(color: Color(0xFF65788A), fontSize: 11, fontWeight: FontWeight.w500),
           ),
+        ),
         ),
         ],
       ),
@@ -229,6 +229,7 @@ class _ActionTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Material(
     color: Colors.white,
+    margin: const EdgeInsets.symmetric(horizontal: 18),
     borderRadius: BorderRadius.circular(16),
     child: InkWell(
       borderRadius: BorderRadius.circular(16), onTap: onTap,
