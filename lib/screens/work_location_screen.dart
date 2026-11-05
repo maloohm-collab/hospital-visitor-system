@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 
 class WorkLocationScreen extends StatefulWidget {
@@ -211,6 +212,114 @@ class _WorkLocationScreenState extends State<WorkLocationScreen> {
       msg('تعذر إرسال الملاحظة (' + e.code + ').');
     } finally { if (mounted) setState(() => busy = false); }
   }
+
+  Future<void> _deleteNote(String noteId) async {
+    if (officer || busy) return;
+    final yes = await showDialog<bool>(
+      context: context,
+      builder: (c) => AlertDialog(
+        title: const Text('حذف الملاحظة؟'),
+        content: const Text('سيتم حذف الملاحظة من قائمة المستلمين. لا يمكن التراجع عن هذا الإجراء.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('إلغاء')),
+          FilledButton(onPressed: () => Navigator.pop(c, true),
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('حذف')),
+        ],
+      ),
+    );
+    if (yes != true) return;
+    try {
+      await db.collection('work_shift_notes').doc(noteId).delete();
+      msg('تم حذف الملاحظة.');
+    } on FirebaseException catch (e) {
+      msg('تعذر حذف الملاحظة (' + e.code + ').');
+    }
+  }
+
+  Future<void> _forwardNote(String noteId, Map<String, dynamic> data) async {
+    if (officer || busy) return;
+    try {
+      final usersSnapshot = await db.collection('users').where('status', isEqualTo: 'active').get();
+      final eligible = usersSnapshot.docs.where((d) =>
+        (d.data()['role'] == 'supervisor' || d.data()['role'] == 'admin') && d.id != uid).toList();
+      if (eligible.isEmpty) { msg('لا يوجد مستلمون آخرون متاحون حاليًا.'); return; }
+      final selected = <String>{};
+      final chosen = await showDialog<Set<String>>(
+        context: context,
+        builder: (dialogContext) => StatefulBuilder(
+          builder: (context, refresh) => AlertDialog(
+            title: const Text('إعادة إرسال الملاحظة'),
+            content: SizedBox(
+              width: double.maxFinite,
+              child: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, children: [
+                const Text('اختر المشرف أو الإداري الذي تريد إرسال نسخة إليه.'),
+                const SizedBox(height: 8),
+                ...eligible.map((d) {
+                  final userData = d.data();
+                  final roleLabel = userData['role'] == 'admin' ? 'الإدارة' : 'مشرف';
+                  return CheckboxListTile(
+                    dense: true, contentPadding: EdgeInsets.zero,
+                    value: selected.contains(d.id),
+                    title: Text((userData['displayName'] as String? ?? 'مستخدم') + ' (' + roleLabel + ')'),
+                    onChanged: (value) => refresh(() {
+                      if (value == true) {
+                        if (selected.length < 5) { selected.add(d.id); }
+                        else { msg('يمكن اختيار خمسة مستلمين كحد أقصى.'); }
+                      } else { selected.remove(d.id); }
+                    }),
+                  );
+                }),
+              ])),
+            ),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('إلغاء')),
+              FilledButton(
+                onPressed: selected.isEmpty ? null : () => Navigator.pop(dialogContext, Set<String>.from(selected)),
+                child: const Text('إرسال النسخة'),
+              ),
+            ],
+          ),
+        ),
+      );
+      if (chosen == null || chosen.isEmpty) return;
+      final currentUser = await db.collection('users').doc(uid).get();
+      final senderName = (currentUser.data()?['displayName'] as String? ?? 'المشرف').trim();
+      final forwarded = db.collection('work_shift_notes').doc();
+      await forwarded.set({
+        'noteId': forwarded.id, 'shiftId': data['shiftId'],
+        'officerUid': data['officerUid'], 'officerName': data['officerName'],
+        'locationName': data['locationName'] ?? '', 'body': data['body'],
+        'recipientUids': chosen.toList(), 'createdAt': FieldValue.serverTimestamp(),
+        'forwardedFromNoteId': noteId, 'forwardedByUid': uid, 'forwardedByName': senderName,
+      });
+      msg('تم إرسال نسخة من الملاحظة، وبقيت الملاحظة الأصلية محفوظة.');
+    } on FirebaseException catch (e) {
+      msg('تعذرت إعادة إرسال الملاحظة (' + e.code + ').');
+    }
+  }
+
+  Widget _noteActions(String noteId, Map<String, dynamic> data) => Wrap(
+    spacing: 8, runSpacing: 4,
+    children: [
+      TextButton.icon(
+        onPressed: () {
+          Clipboard.setData(ClipboardData(text: data['body'] as String? ?? ''));
+          msg('تم نسخ نص الملاحظة.');
+        },
+        icon: const Icon(Icons.copy_rounded, size: 18), label: const Text('نسخ'),
+      ),
+      TextButton.icon(
+        onPressed: busy ? null : () => _forwardNote(noteId, data),
+        icon: const Icon(Icons.forward_to_inbox_rounded, size: 18), label: const Text('إعادة إرسال'),
+      ),
+      TextButton.icon(
+        onPressed: busy ? null : () => _deleteNote(noteId),
+        style: TextButton.styleFrom(foregroundColor: Colors.red),
+        icon: const Icon(Icons.delete_outline_rounded, size: 18), label: const Text('حذف'),
+      ),
+    ],
+  );
 
   Widget _time(dynamic value) => Text(
     value is Timestamp ? DateFormat('yyyy/MM/dd  HH:mm:ss').format(value.toDate().toLocal()) : 'جارٍ تسجيل الوقت...',
@@ -438,7 +547,15 @@ class _WorkLocationScreenState extends State<WorkLocationScreen> {
               if ((d['locationName'] as String? ?? '').isNotEmpty)
                 Text('الموقع: ' + (d['locationName'] as String), style: const TextStyle(color: Color(0xFF526579))),
               const SizedBox(height: 6), Text(d['body'] as String? ?? ''),
+              if ((d['forwardedByName'] as String? ?? '').isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(top: 6),
+                  child: Text('أُعيد إرسالها بواسطة: ' + (d['forwardedByName'] as String),
+                    style: const TextStyle(color: Color(0xFF65788A), fontSize: 12)),
+                ),
               const SizedBox(height: 8), _time(d['createdAt']),
+              const Divider(height: 16),
+              _noteActions(docs[i].id, d),
             ])));
         });
     },
