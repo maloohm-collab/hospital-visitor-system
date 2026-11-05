@@ -783,10 +783,10 @@ service cloud.firestore {
             || isActiveSupervisor() || isActiveAdmin());
 
         allow create: if isActiveUser()
-          && get(/databases/$(database)/documents/work_shifts/$(shiftId)).data.officerUid == request.auth.uid
-          && get(/databases/$(database)/documents/work_shifts/$(shiftId)).data.status == 'active'
-          && exists(/databases/$(database)/documents/active_work_shifts/$(request.auth.uid))
-          && get(/databases/$(database)/documents/active_work_shifts/$(request.auth.uid)).data.shiftId == shiftId
+          && getAfter(/databases/$(database)/documents/work_shifts/$(shiftId)).data.officerUid == request.auth.uid
+          && getAfter(/databases/$(database)/documents/work_shifts/$(shiftId)).data.status == 'active'
+          && existsAfter(/databases/$(database)/documents/active_work_shifts/$(request.auth.uid))
+          && getAfter(/databases/$(database)/documents/active_work_shifts/$(request.auth.uid)).data.shiftId == shiftId
           && request.resource.data.keys().hasOnly([
             'locationId', 'locationName', 'status', 'startedAt', 'endedAt'
           ])
