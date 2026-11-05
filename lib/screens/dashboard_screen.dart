@@ -140,6 +140,12 @@ class DashboardScreen extends StatelessWidget {
           onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => DutyReportsScreen(userRole: userRole))),
         ),
         _AdminAction(
+          icon: Icons.admin_panel_settings_rounded,
+          title: 'طلبات الحسابات',
+          color: const Color(0xFF7656A8),
+          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AdminApprovalScreen())),
+        ),
+        _AdminAction(
           icon: Icons.manage_accounts_rounded,
           title: 'إدارة الموظفين',
           color: const Color(0xFFB42318),
