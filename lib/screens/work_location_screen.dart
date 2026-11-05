@@ -153,6 +153,8 @@ class _WorkLocationScreenState extends State<WorkLocationScreen> {
           'activeLocationId': null, 'activeLocationName': null});
         tx.delete(pointer);
       });
+      expiryTimer?.cancel();
+      expiryShiftId = null;
       msg(automatic ? 'انتهت مدة المناوبة تلقائيًا بعد ثماني ساعات.' : 'تم إنهاء المناوبة وحفظ سجلها.');
     } catch (e) {
       msg(e is FirebaseException ? 'تعذر إنهاء المناوبة (' + e.code + ').' : e.toString().replaceFirst('Bad state: ', ''));
