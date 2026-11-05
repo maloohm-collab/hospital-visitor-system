@@ -115,7 +115,7 @@ class DashboardScreen extends StatelessWidget {
       actions.addAll([
         _AdminAction(
           icon: Icons.sticky_note_2_rounded,
-          title: 'ملاحظات مواقع العمل',
+          title: 'مواقع الضباط والملاحظات',
           color: const Color(0xFFD28A25),
           onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const WorkLocationScreen(userRole: 'supervisor'))),
         ),
