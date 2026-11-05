@@ -1,4 +1,5 @@
-import 'dart:math' as math;\nimport 'dart:ui' show FontFeature;
+import 'dart:math' as math;
+import 'dart:ui' show FontFeature;
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
