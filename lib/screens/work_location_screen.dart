@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -26,12 +27,14 @@ class _WorkLocationScreenState extends State<WorkLocationScreen> {
   final recipients = <String>{};
   String? location;
   bool busy = false;
+  Timer? expiryTimer;
+  String? expiryShiftId;
   User? get user => FirebaseAuth.instance.currentUser;
   String get uid => user?.uid ?? '';
   bool get officer => widget.userRole == 'security_officer';
 
   @override
-  void dispose() { note.dispose(); super.dispose(); }
+  void dispose() { expiryTimer?.cancel(); note.dispose(); super.dispose(); }
 
   void msg(String value) {
     if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(value)));
@@ -111,16 +114,19 @@ class _WorkLocationScreenState extends State<WorkLocationScreen> {
     } finally { if (mounted) setState(() => busy = false); }
   }
 
-  Future<void> _endShift(String shiftId, String? siteId) async {
-    final yes = await showDialog<bool>(context: context, builder: (c) => AlertDialog(
-      title: const Text('إنهاء المناوبة؟'),
-      content: const Text('سيتم إغلاق الموقع الحالي وحفظ السجل والملاحظات لدى المستلمين.'),
-      actions: [
-        TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('رجوع')),
-        FilledButton(onPressed: () => Navigator.pop(c, true), child: const Text('إنهاء المناوبة')),
-      ],
-    ));
-    if (yes != true || busy) return;
+  Future<void> _endShift(String shiftId, String? siteId, {bool automatic = false}) async {
+    if (!automatic) {
+      final yes = await showDialog<bool>(context: context, builder: (c) => AlertDialog(
+        title: const Text('إنهاء المناوبة؟'),
+        content: const Text('سيتم إغلاق الموقع الحالي وحفظ السجل والملاحظات لدى المستلمين.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('رجوع')),
+          FilledButton(onPressed: () => Navigator.pop(c, true), child: const Text('إنهاء المناوبة')),
+        ],
+      ));
+      if (yes != true) return;
+    }
+    if (busy) return;
     setState(() => busy = true);
     try {
       final shift = db.collection('work_shifts').doc(shiftId);
@@ -141,7 +147,7 @@ class _WorkLocationScreenState extends State<WorkLocationScreen> {
           'activeLocationId': null, 'activeLocationName': null});
         tx.delete(pointer);
       });
-      msg('تم إنهاء المناوبة وحفظ سجلها.');
+      msg(automatic ? 'انتهت مدة المناوبة تلقائيًا بعد ثماني ساعات.' : 'تم إنهاء المناوبة وحفظ سجلها.');
     } catch (e) {
       msg(e is FirebaseException ? 'تعذر إنهاء المناوبة (' + e.code + ').' : e.toString().replaceFirst('Bad state: ', ''));
     } finally { if (mounted) setState(() => busy = false); }
@@ -154,10 +160,12 @@ class _WorkLocationScreenState extends State<WorkLocationScreen> {
     if (busy) return;
     setState(() => busy = true);
     try {
+      final shiftSnapshot = await db.collection('work_shifts').doc(shiftId).get();
+      final currentLocation = (shiftSnapshot.data()?['activeLocationName'] as String? ?? '').trim();
       final ref = db.collection('work_shift_notes').doc();
       await ref.set({'noteId': ref.id, 'shiftId': shiftId, 'officerUid': uid,
-        'officerName': officerName, 'body': value, 'recipientUids': recipients.toList(),
-        'createdAt': FieldValue.serverTimestamp()});
+        'officerName': officerName, 'locationName': currentLocation, 'body': value,
+        'recipientUids': recipients.toList(), 'createdAt': FieldValue.serverTimestamp()});
       note.clear();
       if (mounted) setState(() => recipients.clear());
       msg('تم إرسال الملاحظة وحفظها لدى المستلمين.');
@@ -196,6 +204,15 @@ class _WorkLocationScreenState extends State<WorkLocationScreen> {
 
   Widget _activeShift(String shiftId, Map<String, dynamic> data) {
     final siteId = data['activeLocationId'] as String?;
+    final startedAt = data['startedAt'];
+    if (startedAt is Timestamp && expiryShiftId != shiftId) {
+      expiryTimer?.cancel();
+      expiryShiftId = shiftId;
+      final remaining = startedAt.toDate().toUtc().add(const Duration(hours: 8)).difference(DateTime.now().toUtc());
+      expiryTimer = Timer(remaining.isNegative ? Duration.zero : remaining, () {
+        if (mounted) _endShift(shiftId, siteId, automatic: true);
+      });
+    }
     final siteName = data['activeLocationName'] as String? ?? '';
     return ListView(padding: const EdgeInsets.all(16), children: [
       Card(color: Colors.white, elevation: 0,
@@ -313,6 +330,8 @@ class _WorkLocationScreenState extends State<WorkLocationScreen> {
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text(d['officerName'] as String? ?? 'ضابط أمن',
                 style: const TextStyle(color: navy, fontWeight: FontWeight.w900, fontSize: 16)),
+              if ((d['locationName'] as String? ?? '').isNotEmpty)
+                Text('الموقع: ' + (d['locationName'] as String), style: const TextStyle(color: Color(0xFF526579))),
               const SizedBox(height: 6), Text(d['body'] as String? ?? ''),
               const SizedBox(height: 8), _time(d['createdAt']),
             ])));
