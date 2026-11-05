@@ -296,7 +296,7 @@ class DashboardScreen extends StatelessWidget {
               ),
             ];
             // Reserve the remaining grid cells so the final card stays at the far right.
-            final hasTrailingCapacity = actions.length == 7;
+            final hasTrailingCapacity = actions.length == 8;
             return GridView.builder(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               shrinkWrap: true,
@@ -309,7 +309,7 @@ class DashboardScreen extends StatelessWidget {
                 childAspectRatio: 0.90,
               ),
               itemBuilder: (context, index) {
-                if (hasTrailingCapacity && index > 6) {
+                if (hasTrailingCapacity && index > 7) {
                   return const SizedBox.shrink();
                 }
                 final actionIndex = index;
