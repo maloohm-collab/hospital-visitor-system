@@ -171,7 +171,7 @@ class _WorkLocationScreenState extends State<WorkLocationScreen> {
         final p = await tx.get(pointer);
         if (!s.exists || !p.exists || p.data()?['shiftId'] != shiftId ||
             s.data()?['status'] != 'active') throw StateError('المناوبة غير نشطة.');
-        final activeSiteId = automatic ? s.data()?['activeLocationId'] as String? : siteId;
+        final activeSiteId = automatic ? (s.data()?['activeLocationId'] as String?) : siteId;
         if (activeSiteId != null) {
           final site = shift.collection('locations').doc(activeSiteId);
           final l = await tx.get(site);
