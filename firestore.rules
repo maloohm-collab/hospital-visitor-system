@@ -818,7 +818,7 @@ service cloud.firestore {
       allow create: if isActiveUser()
         && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'security_officer'
         && request.resource.data.keys().hasOnly([
-          'noteId', 'shiftId', 'officerUid', 'officerName', 'body', 'recipientUids', 'createdAt'
+          'noteId', 'shiftId', 'officerUid', 'officerName', 'locationName', 'body', 'recipientUids', 'createdAt'
         ])
         && request.resource.data.keys().hasAll([
           'noteId', 'shiftId', 'officerUid', 'officerName', 'body', 'recipientUids', 'createdAt'
@@ -826,12 +826,14 @@ service cloud.firestore {
         && request.resource.data.noteId == noteId
         && request.resource.data.officerUid == request.auth.uid
         && request.resource.data.officerName is string
+        && request.resource.data.locationName is string
         && request.resource.data.body is string
         && request.resource.data.body.size() >= 2
         && request.resource.data.createdAt == request.time
         && exists(/databases/$(database)/documents/work_shifts/$(request.resource.data.shiftId))
         && get(/databases/$(database)/documents/work_shifts/$(request.resource.data.shiftId)).data.officerUid == request.auth.uid
         && get(/databases/$(database)/documents/work_shifts/$(request.resource.data.shiftId)).data.status == 'active'
+        && request.time < get(/databases/$(database)/documents/work_shifts/$(request.resource.data.shiftId)).data.startedAt + duration.value(8, 'h')
         && exists(/databases/$(database)/documents/active_work_shifts/$(request.auth.uid))
         && get(/databases/$(database)/documents/active_work_shifts/$(request.auth.uid)).data.shiftId == request.resource.data.shiftId
         && validWorkNoteRecipients(request.resource.data);
@@ -842,6 +844,7 @@ service cloud.firestore {
             resource.data.officerUid == request.auth.uid
             && exists(/databases/$(database)/documents/work_shifts/$(resource.data.shiftId))
             && get(/databases/$(database)/documents/work_shifts/$(resource.data.shiftId)).data.status == 'active'
+            && request.time < get(/databases/$(database)/documents/work_shifts/$(resource.data.shiftId)).data.startedAt + duration.value(8, 'h')
           )
           || (
             request.auth.uid in resource.data.recipientUids
