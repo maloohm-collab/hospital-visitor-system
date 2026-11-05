@@ -320,6 +320,73 @@ class _WorkLocationScreenState extends State<WorkLocationScreen> {
     ]);
   }
 
+  Widget _activeShifts() => StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+    stream: db.collection('work_shifts').where('status', isEqualTo: 'active').snapshots(),
+    builder: (context, snap) {
+      if (snap.hasError) return const Center(child: Text('تعذر تحميل مواقع ضباط الأمن الحالية.'));
+      if (snap.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
+      final docs = (snap.data?.docs ?? []).toList()
+        ..sort((a, b) {
+          final x = a.data()['startedAt'];
+          final y = b.data()['startedAt'];
+          if (x is Timestamp && y is Timestamp) return x.compareTo(y);
+          return 0;
+        });
+      if (docs.isEmpty) return const Center(child: Text('لا توجد مناوبات مباشرة حاليًا.'));
+      return ListView.builder(
+        padding: const EdgeInsets.all(16),
+        itemCount: docs.length,
+        itemBuilder: (context, index) {
+          final data = docs[index].data();
+          final shiftId = docs[index].id;
+          final siteId = data['activeLocationId'] as String?;
+          return Card(
+            color: Colors.white,
+            elevation: 0,
+            margin: const EdgeInsets.only(bottom: 10),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+              side: const BorderSide(color: Color(0xFFDCE5ED)),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(15),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(data['officerName'] as String? ?? 'ضابط أمن',
+                    style: const TextStyle(color: navy, fontSize: 16, fontWeight: FontWeight.w900)),
+                  const SizedBox(height: 5),
+                  const Text('موقع العمل الحالي', style: TextStyle(color: Color(0xFF65788A), fontSize: 12)),
+                  Text(data['activeLocationName'] as String? ?? 'انتقال بين المواقع',
+                    style: const TextStyle(color: navy, fontSize: 18, fontWeight: FontWeight.w800)),
+                  const SizedBox(height: 5),
+                  const Text('بداية المناوبة', style: TextStyle(color: Color(0xFF65788A), fontSize: 12)),
+                  _time(data['startedAt']),
+                  if (siteId != null)
+                    StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+                      stream: db.collection('work_shifts').doc(shiftId)
+                          .collection('locations').doc(siteId).snapshots(),
+                      builder: (context, siteSnap) {
+                        final site = siteSnap.data?.data() ?? {};
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const SizedBox(height: 5),
+                            const Text('بداية المباشرة في الموقع', style: TextStyle(color: Color(0xFF65788A), fontSize: 12)),
+                            _time(site['startedAt']),
+                          ],
+                        );
+                      },
+                    ),
+                ],
+              ),
+            ),
+          );
+        },
+      );
+    },
+  );
+
   Widget _receivedNotes() => StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
     stream: db.collection('work_shift_notes').where('recipientUids', arrayContains: uid).snapshots(),
     builder: (context, snap) {
@@ -348,34 +415,54 @@ class _WorkLocationScreenState extends State<WorkLocationScreen> {
   );
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: Text(officer ? 'مباشرة العمل والملاحظات' : 'ملاحظات مواقع العمل')),
-    backgroundColor: const Color(0xFFF3F6FA),
-    body: officer ? StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-      stream: db.collection('active_work_shifts').doc(uid).snapshots(),
-      builder: (context, pointerSnap) {
-        if (pointerSnap.hasError) return const Center(child: Text('تعذر تحميل حالة المناوبة.'));
-        if (pointerSnap.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
-        final shiftId = pointerSnap.data?.data()?['shiftId'] as String?;
-        if (shiftId == null) return ListView(padding: const EdgeInsets.all(16), children: [
-          const SizedBox(height: 30), const Icon(Icons.location_on_outlined, size: 58, color: teal),
-          const SizedBox(height: 12), const Text('لم تبدأ مناوبتك بعد', textAlign: TextAlign.center,
-            style: TextStyle(color: navy, fontSize: 20, fontWeight: FontWeight.w900)),
-          const SizedBox(height: 8), const Text('اختر موقعك الحالي ثم اضغط مباشرة العمل. سيتم تسجيل الوقت واسم الموظف تلقائيًا.',
-            textAlign: TextAlign.center),
-          const SizedBox(height: 20), _startCard('مباشرة العمل', _start),
-        ]);
-        return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-          stream: db.collection('work_shifts').doc(shiftId).snapshots(),
-          builder: (context, shiftSnap) {
-            if (shiftSnap.hasError) return const Center(child: Text('تعذر تحميل سجل المناوبة.'));
-            if (shiftSnap.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
-            final data = shiftSnap.data?.data();
-            if (data == null || data['status'] != 'active') return const Center(child: Text('حالة المناوبة غير متاحة.'));
-            return _activeShift(shiftId, data);
-          },
-        );
-      },
-    ) : _receivedNotes(),
-  );
+  Widget build(BuildContext context) {
+    if (!officer) {
+      return DefaultTabController(
+        length: 2,
+        child: Scaffold(
+          appBar: AppBar(
+            title: const Text('مواقع الضباط والملاحظات'),
+            bottom: const TabBar(
+              tabs: [
+                Tab(icon: Icon(Icons.location_on_outlined), text: 'المباشرات الحالية'),
+                Tab(icon: Icon(Icons.sticky_note_2_outlined), text: 'الملاحظات الواردة'),
+              ],
+            ),
+          ),
+          backgroundColor: const Color(0xFFF3F6FA),
+          body: TabBarView(children: [_activeShifts(), _receivedNotes()]),
+        ),
+      );
+    }
+    return Scaffold(
+      appBar: AppBar(title: const Text('مباشرة العمل والملاحظات')),
+      backgroundColor: const Color(0xFFF3F6FA),
+      body: StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+        stream: db.collection('active_work_shifts').doc(uid).snapshots(),
+        builder: (context, pointerSnap) {
+          if (pointerSnap.hasError) return const Center(child: Text('تعذر تحميل حالة المناوبة.'));
+          if (pointerSnap.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
+          final shiftId = pointerSnap.data?.data()?['shiftId'] as String?;
+          if (shiftId == null) return ListView(padding: const EdgeInsets.all(16), children: [
+            const SizedBox(height: 30), const Icon(Icons.location_on_outlined, size: 58, color: teal),
+            const SizedBox(height: 12), const Text('لم تبدأ مناوبتك بعد', textAlign: TextAlign.center,
+              style: TextStyle(color: navy, fontSize: 20, fontWeight: FontWeight.w900)),
+            const SizedBox(height: 8), const Text('اختر موقعك الحالي ثم اضغط مباشرة العمل. سيتم تسجيل الوقت واسم الموظف تلقائيًا.',
+              textAlign: TextAlign.center),
+            const SizedBox(height: 20), _startCard('مباشرة العمل', _start),
+          ]);
+          return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+            stream: db.collection('work_shifts').doc(shiftId).snapshots(),
+            builder: (context, shiftSnap) {
+              if (shiftSnap.hasError) return const Center(child: Text('تعذر تحميل سجل المناوبة.'));
+              if (shiftSnap.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
+              final data = shiftSnap.data?.data();
+              if (data == null || data['status'] != 'active') return const Center(child: Text('حالة المناوبة غير متاحة.'));
+              return _activeShift(shiftId, data);
+            },
+          );
+        },
+      ),
+    );
+  }
 }
