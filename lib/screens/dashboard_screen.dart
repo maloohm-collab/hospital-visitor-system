@@ -246,12 +246,6 @@ class DashboardScreen extends StatelessWidget {
             final pending = snapshot.data?.docs.length ?? 0;
             final actions = <_AdminAction>[
               _AdminAction(
-                icon: Icons.sticky_note_2_rounded,
-                title: 'ملاحظات مواقع العمل',
-                color: const Color(0xFFD28A25),
-                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const WorkLocationScreen(userRole: 'admin'))),
-              ),
-              _AdminAction(
                 icon: Icons.emergency_share_rounded,
                 title: 'الطوارئ',
                 color: const Color(0xFFB42318),
@@ -293,6 +287,12 @@ class DashboardScreen extends StatelessWidget {
                 title: 'الإحصاءات',
                 color: const Color(0xFFB7791F),
                 onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => VisitorReportsScreen(userRole: userRole))),
+              ),
+              _AdminAction(
+                icon: Icons.sticky_note_2_rounded,
+                title: 'ملاحظات مواقع العمل',
+                color: const Color(0xFFD28A25),
+                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const WorkLocationScreen(userRole: 'admin'))),
               ),
             ];
             // Reserve the remaining grid cells so the final card stays at the far right.
