@@ -432,7 +432,8 @@ class _WorkLocationScreenState extends State<WorkLocationScreen> {
                   .where('shiftId', isEqualTo: shiftId).snapshots(),
               builder: (context, notesSnap) {
                 if (notesSnap.hasError) return const Text('تعذر تحميل الملاحظات المرسلة.');
-                final sent = notesSnap.data?.docs ?? [];
+                final sent = (notesSnap.data?.docs ?? [])
+                    .where((doc) => !doc.data().containsKey('forwardedFromNoteId')).toList();
                 if (sent.isEmpty) return const SizedBox.shrink();
                 return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
                   const Divider(height: 20),
