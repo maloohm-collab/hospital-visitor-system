@@ -250,7 +250,7 @@ class _WorkLocationScreenState extends State<WorkLocationScreen> {
                     title: Text((d.data()['displayName'] as String? ?? 'مستخدم') +
                       (d.data()['role'] == 'admin' ? ' (الإدارة)' : ' (مشرف)')),
                     onChanged: busy ? null : (v) => setState(() {
-                      if (v == true) { recipients.add(d.id); } else { recipients.remove(d.id); }
+                      if (v == true) { if (recipients.length < 5) { recipients.add(d.id); } else { msg('يمكن اختيار خمسة مستلمين كحد أقصى.'); } } else { recipients.remove(d.id); }
                     }),
                   )),
                 ]);
@@ -260,6 +260,32 @@ class _WorkLocationScreenState extends State<WorkLocationScreen> {
               shiftId, data['officerName'] as String? ?? 'ضابط أمن'),
               icon: const Icon(Icons.send_rounded), label: const Text('إرسال الملاحظة'),
               style: FilledButton.styleFrom(backgroundColor: teal, foregroundColor: Colors.white)),
+
+            const SizedBox(height: 12),
+            StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+              stream: db.collection('work_shift_notes')
+                  .where('officerUid', isEqualTo: uid)
+                  .where('shiftId', isEqualTo: shiftId).snapshots(),
+              builder: (context, notesSnap) {
+                if (notesSnap.hasError) return const Text('تعذر تحميل الملاحظات المرسلة.');
+                final sent = notesSnap.data?.docs ?? [];
+                if (sent.isEmpty) return const SizedBox.shrink();
+                return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                  const Divider(height: 20),
+                  const Text('ملاحظاتي المرسلة في هذه المناوبة',
+                    style: TextStyle(color: navy, fontWeight: FontWeight.w900)),
+                  ...sent.map((doc) {
+                    final item = doc.data();
+                    return ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: const Icon(Icons.sticky_note_2_outlined, color: teal),
+                      title: Text(item['body'] as String? ?? ''),
+                      subtitle: _time(item['createdAt']),
+                    );
+                  }),
+                ]);
+              },
+            ),
           ],
         )),
       ),
