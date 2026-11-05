@@ -126,7 +126,12 @@ class _WorkLocationScreenState extends State<WorkLocationScreen> {
       ));
       if (yes != true) return;
     }
-    if (busy) return;
+    if (busy) {
+      if (automatic) {
+        expiryTimer = Timer(const Duration(seconds: 5), () => _endShift(shiftId, null, automatic: true));
+      }
+      return;
+    }
     setState(() => busy = true);
     try {
       final shift = db.collection('work_shifts').doc(shiftId);
@@ -136,8 +141,9 @@ class _WorkLocationScreenState extends State<WorkLocationScreen> {
         final p = await tx.get(pointer);
         if (!s.exists || !p.exists || p.data()?['shiftId'] != shiftId ||
             s.data()?['status'] != 'active') throw StateError('المناوبة غير نشطة.');
-        if (siteId != null) {
-          final site = shift.collection('locations').doc(siteId);
+        final activeSiteId = automatic ? s.data()?['activeLocationId'] as String? : siteId;
+        if (activeSiteId != null) {
+          final site = shift.collection('locations').doc(activeSiteId);
           final l = await tx.get(site);
           if (l.exists && l.data()?['status'] == 'active') {
             tx.update(site, {'status': 'completed', 'endedAt': FieldValue.serverTimestamp()});
