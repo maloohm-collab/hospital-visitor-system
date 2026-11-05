@@ -852,6 +852,7 @@ service cloud.firestore {
               'forwardedFromNoteId', 'forwardedByUid', 'forwardedByName'
             ])
             && (isActiveAdmin() || isActiveSupervisor())
+            && request.resource.data.forwardedFromNoteId is string
             && request.resource.data.forwardedByUid == request.auth.uid
             && request.resource.data.forwardedByName is string
             && exists(/databases/$(database)/documents/work_shift_notes/$(request.resource.data.forwardedFromNoteId))
