@@ -737,6 +737,7 @@ service cloud.firestore {
           (
             request.resource.data.status == 'active'
             && request.resource.data.endedAt == null
+            && request.time < resource.data.startedAt + duration.value(8, 'h')
             && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
               'activeLocationId', 'activeLocationName'
             ])
@@ -787,6 +788,7 @@ service cloud.firestore {
           && getAfter(/databases/$(database)/documents/work_shifts/$(shiftId)).data.status == 'active'
           && existsAfter(/databases/$(database)/documents/active_work_shifts/$(request.auth.uid))
           && getAfter(/databases/$(database)/documents/active_work_shifts/$(request.auth.uid)).data.shiftId == shiftId
+          && request.time < getAfter(/databases/$(database)/documents/work_shifts/$(shiftId)).data.startedAt + duration.value(8, 'h')
           && request.resource.data.keys().hasOnly([
             'locationId', 'locationName', 'status', 'startedAt', 'endedAt'
           ])
@@ -821,7 +823,7 @@ service cloud.firestore {
           'noteId', 'shiftId', 'officerUid', 'officerName', 'locationName', 'body', 'recipientUids', 'createdAt'
         ])
         && request.resource.data.keys().hasAll([
-          'noteId', 'shiftId', 'officerUid', 'officerName', 'body', 'recipientUids', 'createdAt'
+          'noteId', 'shiftId', 'officerUid', 'officerName', 'locationName', 'body', 'recipientUids', 'createdAt'
         ])
         && request.resource.data.noteId == noteId
         && request.resource.data.officerUid == request.auth.uid
