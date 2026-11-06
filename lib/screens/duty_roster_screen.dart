@@ -73,7 +73,19 @@ class _DutyRosterScreenState extends State<DutyRosterScreen> with SingleTickerPr
 
   Future<void> _save() async {
     if (!admin || busy) return; setState(() => busy = true);
-    try { await db.collection('daily_duty_rosters').doc(keyDay).set(await _data('draft'), SetOptions(merge: true)); msg('تم حفظ المسودة.'); }
+    try {
+      final roster = db.collection('daily_duty_rosters').doc(keyDay);
+      final old = await roster.get();
+      final batch = db.batch();
+      if (old.exists) {
+        final version = roster.collection('versions').doc();
+        batch.set(version, {...old.data()!, 'archivedAt': FieldValue.serverTimestamp(),
+          'archivedBy': FirebaseAuth.instance.currentUser?.uid});
+      }
+      batch.set(roster, await _data('draft'), SetOptions(merge: true));
+      await batch.commit();
+      msg('تم حفظ المسودة مع الاحتفاظ بالإصدار السابق في الأرشيف.');
+    }
     catch (_) { msg('تعذر حفظ المسودة.'); } finally { if (mounted) setState(() => busy = false); }
   }
 
@@ -98,8 +110,15 @@ class _DutyRosterScreenState extends State<DutyRosterScreen> with SingleTickerPr
     setState(() => busy = true);
     try {
       final users = await db.collection('users').where('status', isEqualTo: 'active').get();
+      final roster = db.collection('daily_duty_rosters').doc(keyDay);
+      final old = await roster.get();
       final batch = db.batch();
-      batch.set(db.collection('daily_duty_rosters').doc(keyDay), await _data('published'), SetOptions(merge: true));
+      if (old.exists) {
+        final version = roster.collection('versions').doc();
+        batch.set(version, {...old.data()!, 'archivedAt': FieldValue.serverTimestamp(),
+          'archivedBy': FirebaseAuth.instance.currentUser?.uid});
+      }
+      batch.set(roster, await _data('published'), SetOptions(merge: true));
       final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
       for (final u in users.docs) {
         if (u.id == uid) continue;
