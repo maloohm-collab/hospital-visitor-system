@@ -25,8 +25,6 @@ class _DutyRosterScreenState extends State<DutyRosterScreen> with SingleTickerPr
   final Map<String, String> notes = {'A': '', 'B': '', 'C': ''};
   String? siteManager = 'ياسر الشديفات';
   final Map<String, String?> supervisors = {'A': 'فراس الشرعة', 'B': 'أيمن بدارنه', 'C': 'أيمن بدارنه'};
-  String? siteManager = 'ياسر الشديفات';
-  final Map<String, String?> supervisors = {'A': 'فراس الشرعة', 'B': 'أيمن بدارنه', 'C': 'أيمن بدارنه'};
   bool busy = false;
   bool get admin => widget.userRole == 'admin';
   String get keyDay => DateFormat('yyyy-MM-dd').format(day);
@@ -45,7 +43,6 @@ class _DutyRosterScreenState extends State<DutyRosterScreen> with SingleTickerPr
       if (data == null) { if (admin && mounted) setState(() { for (final s in ['A','B','C']) { rows[s] = []; offs[s] = []; specials[s] = []; notes[s] = ''; } }); return; }
       final shifts = Map<String, dynamic>.from(data['shifts'] ?? {});
       siteManager = data['siteManager']?.toString() ?? siteManager;
-      siteManager = data['siteManager']?.toString() ?? siteManager;
       if (!mounted) return;
       setState(() { for (final s in ['A','B','C']) {
         final b = Map<String, dynamic>.from(shifts[s] ?? {});
@@ -53,7 +50,6 @@ class _DutyRosterScreenState extends State<DutyRosterScreen> with SingleTickerPr
         offs[s] = List<String>.from(b['offNames'] ?? const []);
         specials[s] = List<String>.from(b['specialNames'] ?? const []);
         notes[s] = (b['adminNote'] ?? '').toString();
-        supervisors[s] = b['supervisorName']?.toString() ?? supervisors[s];
         supervisors[s] = b['supervisorName']?.toString() ?? supervisors[s];
       }});
     } catch (_) { msg('تعذر تحميل الكشف.'); }
@@ -74,7 +70,6 @@ class _DutyRosterScreenState extends State<DutyRosterScreen> with SingleTickerPr
         'hours': s == 'A' ? '08:00–16:00' : s == 'B' ? '16:00–00:00' : '00:00–08:00',
         'assignments': rows[s]!.where((r) => (r['officer'] ?? '').isNotEmpty && (r['location'] ?? '').isNotEmpty).toList(),
         'offNames': offs[s], 'specialNames': specials[s], 'adminNote': notes[s], 'supervisorName': supervisors[s], 'siteManager': siteManager,
-        'supervisorName': supervisors[s],
       };
     }
     return {'dateKey': keyDay, 'siteManager': siteManager, 'shifts': blocks, 'status': status, 'updatedAt': FieldValue.serverTimestamp(), 'updatedBy': u?.uid, 'updatedByName': display,
