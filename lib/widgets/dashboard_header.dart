@@ -62,9 +62,6 @@ class DashboardHeader extends StatelessWidget {
                 end: Alignment.centerLeft,
                 colors: [_navyLight, _navy, Color(0xFF244565)],
               ),
-              border: Border(
-                bottom: BorderSide(color: _gold, width: 1.4),
-              ),
               boxShadow: [
                 BoxShadow(
                   color: Color(0x1A08152B),
@@ -76,6 +73,17 @@ class DashboardHeader extends StatelessWidget {
             child: Stack(
               fit: StackFit.expand,
               children: [
+                const Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  height: 7,
+                  child: IgnorePointer(
+                    child: CustomPaint(
+                      painter: _OceanWaveBorderPainter(),
+                    ),
+                  ),
+                ),
                 Positioned(
                   left: 8,
                   top: 7,
@@ -382,3 +390,41 @@ class DashboardHeader extends StatelessWidget {
   }
 }
 
+
+
+/// Thin gold wave along the bottom edge of the dashboard header.
+class _OceanWaveBorderPainter extends CustomPainter {
+  const _OceanWaveBorderPainter();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final path = Path();
+    const cycles = 2.0;
+    const amplitude = 2.0;
+    final centerY = size.height / 2;
+
+    for (var i = 0; i <= 100; i++) {
+      final x = size.width * i / 100;
+      final phase = (i / 100) * cycles * 2 * math.pi;
+      final y = centerY + math.sin(phase) * amplitude;
+      if (i == 0) {
+        path.moveTo(x, y);
+      } else {
+        path.lineTo(x, y);
+      }
+    }
+
+    canvas.drawPath(
+      path,
+      Paint()
+        ..color = const Color(0xFFD8B65A)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.6
+        ..strokeCap = StrokeCap.round
+        ..isAntiAlias = true,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _OceanWaveBorderPainter oldDelegate) => false;
+}
