@@ -220,7 +220,6 @@ class _DutyRosterScreenState extends State<DutyRosterScreen> with SingleTickerPr
             items: DutyRosterCatalog.siteManagers.map((v) => DropdownMenuItem(value: v, child: Text(v))).toList(),
             onChanged: (v) => setState(() => siteManager = v),
           ),
-          if (admin) DropdownButtonFormField<String>(value: DutyRosterCatalog.siteManagers.contains(siteManager) ? siteManager : null, isExpanded: true, decoration: const InputDecoration(labelText: 'مدير الموقع'), items: DutyRosterCatalog.siteManagers.map((v) => DropdownMenuItem(value: v, child: Text(v))).toList(), onChanged: (v) => setState(() => siteManager = v)),
           TabBar(controller: tabs, labelColor: navy, indicatorColor: teal, tabs: const [Tab(text: 'A'),Tab(text: 'B'),Tab(text: 'C')]),
           const SizedBox(height: 12),
           _editor(shift, blocks[shift], readOnly: !admin),
