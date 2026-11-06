@@ -64,9 +64,9 @@ class DutyRosterCatalog {
   static List<String> get allOfficers {
     final values = <String>{...shiftA, ...shiftB, ...shiftC};
     final result = values.toList();
-    result.removeAll([
+    result.removeWhere((name) => const {
       'ايمن بدارنه', 'فراس الشرعه', 'باسم حماد', 'احمد قاسم محمد عقله',
-    ]);
+    }.contains(name));
     result.sort((a, b) => a.compareTo(b));
     return result;
   }
