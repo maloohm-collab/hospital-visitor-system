@@ -60,16 +60,42 @@ class DutyRosterCatalog {
     'هشام محمود العمري',
   ];
 
-  /// القائمة العامة المنسدلة: جميع الأسماء دون تكرار.
-  static List<String> get allOfficers {
+  /// توحيد اختلافات كتابة الاسم العربي قبل المقارنة لمنع تكرار الأشخاص.
+  static String normalizeName(String value) {
+    return value
+        .replaceAll(RegExp(r'[\\u064B-\\u065F\\u0670\\u0640]'), '')
+        .replaceAll('أ', 'ا')
+        .replaceAll('إ', 'ا')
+        .replaceAll('آ', 'ا')
+        .replaceAll('ى', 'ي')
+        .replaceAll('ة', 'ه')
+        .replaceAll(RegExp(r'\\s+'), '')
+        .trim();
+  }
+
+  static bool isSupervisor(String name) {
+    final normalized = normalizeName(name);
+    return supervisors.any((person) => normalizeName(person) == normalized);
+  }
+
+  static bool isClinicOfficer(String name) {
+    final normalized = normalizeName(name);
+    return clinicOfficers.any((person) => normalizeName(person) == normalized);
+  }
+
+  /// الأسماء الأصلية تبقى محفوظة كما هي، وتُستبعد فئاتها من الاختيار الأمني.
+  static List<String> officersFor(String shift, {bool clinicReplacement = false}) {
     final values = <String>{...shiftA, ...shiftB, ...shiftC};
-    final result = values.toList();
-    result.removeWhere((name) => const {
-      'ايمن بدارنه', 'فراس الشرعه', 'باسم حماد', 'احمد قاسم محمد عقله',
-    }.contains(name));
-    result.sort((a, b) => a.compareTo(b));
+    final result = values.where((name) {
+      if (isSupervisor(name)) return false;
+      if (!clinicReplacement && isClinicOfficer(name)) return false;
+      return true;
+    }).toList()
+      ..sort((a, b) => a.compareTo(b));
     return result;
   }
+
+  static List<String> get allOfficers => officersFor('A');
 
   static const List<String> specialA = <String>[];
   static const List<String> specialB = <String>[];
