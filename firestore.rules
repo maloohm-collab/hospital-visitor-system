@@ -894,6 +894,14 @@ service cloud.firestore {
         && request.resource.data.shifts is map
         && request.resource.data.shifts.keys().hasAll(['A', 'B', 'C']);
       allow delete: if isActiveAdmin();
+
+      match /versions/{versionId} {
+        allow get, list: if isActiveAdmin();
+        allow create: if isActiveAdmin()
+          && request.resource.data.archivedAt == request.time
+          && request.resource.data.archivedBy == request.auth.uid;
+        allow update, delete: if false;
+      }
     }
 
     match /{document=**} {
