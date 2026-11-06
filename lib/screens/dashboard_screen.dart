@@ -15,6 +15,7 @@ import 'report_center_screen.dart';
 import 'notifications_screen.dart';
 import 'emergency_duty_screen.dart';
 import 'work_location_screen.dart';
+import 'duty_roster_screen.dart';
 
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({super.key, this.userRole = 'security_officer'});
@@ -173,6 +174,13 @@ class DashboardScreen extends StatelessWidget {
       ]);
     }
 
+    actions.add(_AdminAction(
+      icon: Icons.calendar_month_rounded,
+      title: 'جدول المناوبات',
+      color: const Color(0xFF087E78),
+      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => DutyRosterScreen(userRole: userRole))),
+    ));
+
     actions.addAll([
       _AdminAction(
         icon: Icons.notifications_active_rounded,
@@ -287,6 +295,12 @@ class DashboardScreen extends StatelessWidget {
                 title: 'الإحصاءات',
                 color: const Color(0xFFB7791F),
                 onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => VisitorReportsScreen(userRole: userRole))),
+              ),
+              _AdminAction(
+                icon: Icons.calendar_month_rounded,
+                title: 'جدول المناوبات',
+                color: const Color(0xFF087E78),
+                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => DutyRosterScreen(userRole: userRole))),
               ),
               _AdminAction(
                 icon: Icons.sticky_note_2_rounded,
