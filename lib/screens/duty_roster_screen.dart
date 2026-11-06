@@ -127,9 +127,9 @@ class _DutyRosterScreenState extends State<DutyRosterScreen> with SingleTickerPr
                 Expanded(
                   child: TabBarView(
                     children: [
-                      _officerChoices(dialogContext, DutyRosterCatalog.officersFor('A', clinicReplacement: clinicReplacement), currentShift, currentIndex),
-                      _officerChoices(dialogContext, DutyRosterCatalog.officersFor('B', clinicReplacement: clinicReplacement), currentShift, currentIndex),
-                      _officerChoices(dialogContext, DutyRosterCatalog.officersFor('C', clinicReplacement: clinicReplacement), currentShift, currentIndex),
+                      _officerChoices(dialogContext, DutyRosterCatalog.officersFor('A', clinicReplacement: clinicReplacement, excludeClinicOfficers: isClinicDay && !clinicReplacement), currentShift, currentIndex),
+                      _officerChoices(dialogContext, DutyRosterCatalog.officersFor('B', clinicReplacement: clinicReplacement, excludeClinicOfficers: isClinicDay && !clinicReplacement), currentShift, currentIndex),
+                      _officerChoices(dialogContext, DutyRosterCatalog.officersFor('C', clinicReplacement: clinicReplacement, excludeClinicOfficers: isClinicDay && !clinicReplacement), currentShift, currentIndex),
                     ],
                   ),
                 ),
