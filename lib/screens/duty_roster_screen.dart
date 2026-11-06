@@ -599,7 +599,7 @@ class _DutyRosterScreenState extends State<DutyRosterScreen> with SingleTickerPr
                 Padding(
                   padding: const EdgeInsets.only(top: 6),
                   child: Text(
-                    'مسودة هذا اليوم مسترجعة من كشف اليوم المناظر في الأسبوع السابق: $copiedFromDateKey. سيبقى الكشف السابق محفوظاً دون تغيير.',
+                    'هذا الكشف مُعد بالاستناد إلى كشف اليوم المناظر في الأسبوع السابق: $copiedFromDateKey. سيبقى الكشف السابق محفوظاً دون تغيير.',
                     textAlign: TextAlign.center,
                     style: const TextStyle(color: Colors.white70, fontSize: 11),
                   ),
