@@ -21,6 +21,7 @@ class _DutyRosterScreenState extends State<DutyRosterScreen> with SingleTickerPr
   DateTime day = DateTime.now();
   final Map<String, List<Map<String, String?>>> rows = {'A': [], 'B': [], 'C': []};
   final Map<String, List<String>> offs = {'A': [], 'B': [], 'C': []};
+  final Map<String, List<String>> specials = {'A': [], 'B': [], 'C': []};
   final Map<String, String> notes = {'A': '', 'B': '', 'C': ''};
   bool busy = false;
   bool get admin => widget.userRole == 'admin';
@@ -37,13 +38,14 @@ class _DutyRosterScreenState extends State<DutyRosterScreen> with SingleTickerPr
     try {
       final snap = await db.collection('daily_duty_rosters').doc(keyDay).get();
       final data = snap.data();
-      if (data == null) { if (admin && mounted) setState(() { for (final s in ['A','B','C']) { rows[s] = []; offs[s] = []; notes[s] = ''; } }); return; }
+      if (data == null) { if (admin && mounted) setState(() { for (final s in ['A','B','C']) { rows[s] = []; offs[s] = []; specials[s] = []; notes[s] = ''; } }); return; }
       final shifts = Map<String, dynamic>.from(data['shifts'] ?? {});
       if (!mounted) return;
       setState(() { for (final s in ['A','B','C']) {
         final b = Map<String, dynamic>.from(shifts[s] ?? {});
         rows[s] = (b['assignments'] as List? ?? []).map((e) { final m = Map<String,dynamic>.from(e); return <String,String?>{'officer': m['officer']?.toString(), 'location': m['location']?.toString()}; }).toList();
         offs[s] = List<String>.from(b['offNames'] ?? const []);
+        specials[s] = List<String>.from(b['specialNames'] ?? const []);
         notes[s] = (b['adminNote'] ?? '').toString();
       }});
     } catch (_) { msg('تعذر تحميل الكشف.'); }
@@ -63,7 +65,7 @@ class _DutyRosterScreenState extends State<DutyRosterScreen> with SingleTickerPr
       blocks[s] = {
         'hours': s == 'A' ? '08:00–16:00' : s == 'B' ? '16:00–00:00' : '00:00–08:00',
         'assignments': rows[s]!.where((r) => (r['officer'] ?? '').isNotEmpty && (r['location'] ?? '').isNotEmpty).toList(),
-        'offNames': offs[s], 'adminNote': notes[s],
+        'offNames': offs[s], 'specialNames': specials[s], 'adminNote': notes[s],
       };
     }
     return {'dateKey': keyDay, 'shifts': blocks, 'status': status, 'updatedAt': FieldValue.serverTimestamp(), 'updatedBy': u?.uid, 'updatedByName': display,
@@ -256,6 +258,15 @@ class _DutyRosterScreenState extends State<DutyRosterScreen> with SingleTickerPr
         DropdownButtonFormField<String>(value: null, isExpanded: true, decoration: const InputDecoration(labelText: 'إضافة اسم إلى قائمة OFF'),
           items: DutyRosterCatalog.offFor(s).toSet().where((n) => !offs[s]!.contains(n)).map((n) => DropdownMenuItem(value: n, child: Text(n))).toList(),
           onChanged: (v) { if (v != null) setState(() => offs[s]!.add(v)); }),
+      ],
+      const SizedBox(height: 10),
+      const Text('سنوية / سوات', style: TextStyle(fontWeight: FontWeight.bold, color: navy)),
+      if (readOnly) Wrap(children: (b['specialNames'] as List? ?? []).map((n) => Chip(label: Text(n.toString()))).toList())
+      else ...[
+        Wrap(spacing: 5, children: specials[s]!.map((n) => InputChip(label: Text(n), onDeleted: () => setState(() => specials[s]!.remove(n)))).toList()),
+        DropdownButtonFormField<String>(value: null, isExpanded: true, decoration: const InputDecoration(labelText: 'إضافة اسم سنوية أو سوات'),
+          items: DutyRosterCatalog.specialFor(s).where((n) => !specials[s]!.contains(n)).map((n) => DropdownMenuItem(value: n, child: Text(n))).toList(),
+          onChanged: (v) { if (v != null) setState(() => specials[s]!.add(v)); }),
       ],
     ]);
   }
