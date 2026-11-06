@@ -411,12 +411,12 @@ class _DutyRosterScreenState extends State<DutyRosterScreen> with SingleTickerPr
           onChanged: (v) { if (v != null) setState(() => offs[s]!.add(v)); }),
       ],
       const SizedBox(height: 10),
-      const Text('سنوية / سوات', style: TextStyle(fontWeight: FontWeight.bold, color: navy)),
+      const Text('قائمة سوات', style: TextStyle(fontWeight: FontWeight.bold, color: navy)),
       if (readOnly) Wrap(children: (b['specialNames'] as List? ?? []).map((n) => Chip(label: Text(n.toString()))).toList())
       else ...[
         Wrap(spacing: 5, children: specials[s]!.map((n) => InputChip(label: Text(n), onDeleted: () => setState(() => specials[s]!.remove(n)))).toList()),
-        DropdownButtonFormField<String>(value: null, isExpanded: true, decoration: const InputDecoration(labelText: 'إضافة اسم سنوية أو سوات'),
-          items: DutyRosterCatalog.specialFor(s).where((n) => !specials[s]!.contains(n)).map((n) => DropdownMenuItem(value: n, child: Text(n))).toList(),
+        DropdownButtonFormField<String>(value: null, isExpanded: true, decoration: const InputDecoration(labelText: 'إضافة اسم إلى قائمة سوات'),
+          items: DutyRosterCatalog.specialFor(s).toSet().where((n) => !specials[s]!.contains(n)).map((n) => DropdownMenuItem(value: n, child: Text(n))).toList(),
           onChanged: (v) { if (v != null) setState(() => specials[s]!.add(v)); }),
       ],
     ]);
