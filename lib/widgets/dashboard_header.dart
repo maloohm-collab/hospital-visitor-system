@@ -8,7 +8,7 @@ import 'package:flutter/material.dart';
 import '../screens/auth_screen.dart';
 import '../screens/notifications_screen.dart';
 
-/// Shared full-width identity header for administration, supervisors and officers.
+/// Shared compact identity header for administration, supervisors and officers.
 class DashboardHeader extends StatelessWidget {
   const DashboardHeader({
     super.key,
@@ -19,9 +19,11 @@ class DashboardHeader extends StatelessWidget {
   final String userRole;
   final String? currentUid;
 
-  static const _ink = Color(0xFF243F59);
-  static const _muted = Color(0xFF687D90);
-  static const _company = 'شركة الصخرة للخدمات والاستشارات الأمنية';
+  static const _navy = Color(0xFF08152B);
+  static const _navyLight = Color(0xFF122B4A);
+  static const _gold = Color(0xFFD8B65A);
+  static const _ink = Color(0xFF17324D);
+  static const _muted = Color(0xFF536B82);
 
   static const _weekdays = <String>[
     'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس',
@@ -50,57 +52,117 @@ class DashboardHeader extends StatelessWidget {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        ClipPath(
-          clipper: _HeaderWaveClipper(),
-          child: SizedBox(
-            width: double.infinity,
-            height: 150,
+        SizedBox(
+          width: double.infinity,
+          height: 104,
+          child: DecoratedBox(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.centerRight,
+                end: Alignment.centerLeft,
+                colors: [_navyLight, _navy, Color(0xFF050B16)],
+              ),
+              border: Border(
+                bottom: BorderSide(color: _gold, width: 1.4),
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Color(0x1A08152B),
+                  blurRadius: 12,
+                  offset: Offset(0, 4),
+                ),
+              ],
+            ),
             child: Stack(
               fit: StackFit.expand,
               children: [
-                const CustomPaint(painter: _JordanFlagPainter()),
-                Container(color: Colors.white.withOpacity(0.20)),
-                Positioned(
-                  top: 8,
-                  left: 8,
-                  child: _notificationButton(context),
-                ),
-                Positioned(
-                  top: 8,
-                  right: 8,
-                  child: IconButton(
-                    tooltip: 'تسجيل الخروج',
-                    visualDensity: VisualDensity.compact,
-                    onPressed: () => _confirmSignOut(context),
-                    icon: const Icon(Icons.logout_rounded, color: _ink, size: 23),
-                  ),
-                ),
-                Align(
-                  alignment: const Alignment(0, -0.02),
-                  child: SizedBox(
-                    width: MediaQuery.of(context).size.width * 0.70,
-                    child: Padding(
-                      padding: const EdgeInsets.only(top: 3),
-                      child: FittedBox(
-                        fit: BoxFit.scaleDown,
-                        child: Text(
-                          _company,
-                          maxLines: 1,
-                          softWrap: false,
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            color: Color(0xFF17324D),
-                            fontSize: 24,
-                            height: 1.12,
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: -0.55,
-                            shadows: [
-                              Shadow(color: Colors.white, blurRadius: 5, offset: Offset(0, 1)),
-                            ],
-                          ),
+                const CustomPaint(painter: _SubtleJordanFlagPainter()),
+                Padding(
+                  padding: const EdgeInsetsDirectional.fromSTEB(10, 8, 10, 8),
+                  child: Row(
+                    textDirection: TextDirection.rtl,
+                    children: [
+                      const _SecurityEmblem(),
+                      const SizedBox(width: 9),
+                      Expanded(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const FittedBox(
+                              fit: BoxFit.scaleDown,
+                              alignment: Alignment.centerRight,
+                              child: Text(
+                                'الصخرة',
+                                maxLines: 1,
+                                style: TextStyle(
+                                  color: Color(0xFFFFE5A0),
+                                  fontSize: 29,
+                                  height: 1.05,
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: 0.1,
+                                  shadows: [
+                                    Shadow(
+                                      color: Color(0x66000000),
+                                      blurRadius: 7,
+                                      offset: Offset(0, 2),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            const FittedBox(
+                              fit: BoxFit.scaleDown,
+                              alignment: Alignment.centerRight,
+                              child: Text(
+                                'للخدمات والاستشارات الأمنية',
+                                maxLines: 1,
+                                softWrap: false,
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 16,
+                                  height: 1.1,
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: 0,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                    ),
+                      const SizedBox(width: 8),
+                      Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          _headerAction(
+                            tooltip: 'الإشعارات',
+                            child: _notificationButton(context),
+                          ),
+                          const SizedBox(height: 2),
+                          _headerAction(
+                            tooltip: 'تسجيل الخروج',
+                            child: IconButton(
+                              tooltip: 'تسجيل الخروج',
+                              visualDensity: VisualDensity.compact,
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints.tightFor(
+                                width: 36,
+                                height: 34,
+                              ),
+                              onPressed: () => _confirmSignOut(context),
+                              icon: const Icon(
+                                Icons.logout_rounded,
+                                color: Color(0xFFFFE5A0),
+                                size: 21,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
                 ),
               ],
@@ -108,13 +170,17 @@ class DashboardHeader extends StatelessWidget {
           ),
         ),
         Padding(
-          padding: const EdgeInsets.fromLTRB(18, 0, 18, 5),
+          padding: const EdgeInsets.fromLTRB(14, 5, 14, 2),
           child: StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
             stream: currentUid == null
                 ? null
-                : FirebaseFirestore.instance.collection('users').doc(currentUid).snapshots(),
+                : FirebaseFirestore.instance
+                    .collection('users')
+                    .doc(currentUid)
+                    .snapshots(),
             builder: (context, snapshot) {
-              final rawName = (snapshot.data?.data()?['displayName'] ?? '').toString().trim();
+              final rawName =
+                  (snapshot.data?.data()?['displayName'] ?? '').toString().trim();
               final shownName = rawName.isEmpty
                   ? (userRole == 'admin' ? 'المسؤول' : 'الموظف')
                   : rawName;
@@ -135,7 +201,10 @@ class DashboardHeader extends StatelessWidget {
                   ),
                   const Padding(
                     padding: EdgeInsets.symmetric(horizontal: 7),
-                    child: Text('•', style: TextStyle(color: Color(0xFF9AAABA), fontSize: 12)),
+                    child: Text(
+                      '•',
+                      style: TextStyle(color: Color(0xFF9AAABA), fontSize: 12),
+                    ),
                   ),
                   Flexible(
                     child: Text(
@@ -155,18 +224,27 @@ class DashboardHeader extends StatelessWidget {
           ),
         ),
         Padding(
-          padding: const EdgeInsets.fromLTRB(18, 1, 18, 9),
+          padding: const EdgeInsets.fromLTRB(14, 1, 14, 7),
           child: StreamBuilder<DateTime>(
-            stream: Stream<DateTime>.periodic(const Duration(seconds: 1), (_) => DateTime.now()),
+            stream: Stream<DateTime>.periodic(
+              const Duration(seconds: 1),
+              (_) => DateTime.now(),
+            ),
             initialData: DateTime.now(),
             builder: (context, snapshot) {
               final now = snapshot.data ?? DateTime.now();
-              final time = '${_two(now.hour)}:${_two(now.minute)}:${_two(now.second)}';
-              final date = '${_weekdays[now.weekday - 1]}، ${now.day} ${_months[now.month - 1]} ${now.year}';
+              final time =
+                  '${_two(now.hour)}:${_two(now.minute)}:${_two(now.second)}';
+              final date =
+                  '${_weekdays[now.weekday - 1]}، ${now.day} ${_months[now.month - 1]} ${now.year}';
               return Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Divider(height: 8, thickness: 0.8, color: Color(0xFFDCE4EB)),
+                  const Divider(
+                    height: 7,
+                    thickness: 0.8,
+                    color: Color(0xFFDCE4EB),
+                  ),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
@@ -174,15 +252,19 @@ class DashboardHeader extends StatelessWidget {
                         time,
                         textDirection: TextDirection.ltr,
                         style: const TextStyle(
-                          color: _muted,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w800,
+                          color: _ink,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w900,
                           fontFeatures: [FontFeature.tabularFigures()],
                         ),
                       ),
-                      const SizedBox(width: 10),
-                      Container(width: 1, height: 12, color: const Color(0xFFD3DDE6)),
-                      const SizedBox(width: 10),
+                      const SizedBox(width: 9),
+                      Container(
+                        width: 1,
+                        height: 14,
+                        color: const Color(0xFFD3DDE6),
+                      ),
+                      const SizedBox(width: 9),
                       Flexible(
                         child: Text(
                           date,
@@ -197,7 +279,11 @@ class DashboardHeader extends StatelessWidget {
                       ),
                     ],
                   ),
-                  const Divider(height: 12, thickness: 0.8, color: Color(0xFFDCE4EB)),
+                  const Divider(
+                    height: 10,
+                    thickness: 0.8,
+                    color: Color(0xFFDCE4EB),
+                  ),
                 ],
               );
             },
@@ -207,11 +293,28 @@ class DashboardHeader extends StatelessWidget {
     );
   }
 
+  Widget _headerAction({required String tooltip, required Widget child}) {
+    return Tooltip(
+      message: tooltip,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.09),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: _gold.withOpacity(0.42)),
+        ),
+        child: child,
+      ),
+    );
+  }
+
   Widget _notificationButton(BuildContext context) {
     return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
       stream: FirebaseFirestore.instance
           .collection('notifications')
-          .where('recipientUid', isEqualTo: FirebaseAuth.instance.currentUser?.uid ?? '')
+          .where(
+            'recipientUid',
+            isEqualTo: FirebaseAuth.instance.currentUser?.uid ?? '',
+          )
           .snapshots(),
       builder: (context, snapshot) {
         final unread = (snapshot.data?.docs ?? [])
@@ -220,29 +323,46 @@ class DashboardHeader extends StatelessWidget {
         return IconButton(
           tooltip: unread > 0 ? 'الإشعارات غير المقروءة: $unread' : 'الإشعارات',
           visualDensity: VisualDensity.compact,
+          padding: EdgeInsets.zero,
+          constraints: const BoxConstraints.tightFor(width: 36, height: 34),
           onPressed: () => Navigator.push(
             context,
-            MaterialPageRoute(builder: (_) => NotificationsScreen(userRole: userRole)),
+            MaterialPageRoute(
+              builder: (_) => NotificationsScreen(userRole: userRole),
+            ),
           ),
           icon: Stack(
             clipBehavior: Clip.none,
             children: [
-              const Icon(Icons.notifications_none_rounded, color: _ink, size: 24),
+              const Icon(
+                Icons.notifications_none_rounded,
+                color: Color(0xFFFFE5A0),
+                size: 22,
+              ),
               if (unread > 0)
                 Positioned(
-                  top: -5,
+                  top: -6,
                   right: -7,
                   child: Container(
-                    constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
-                    padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 1),
-                    decoration: const BoxDecoration(color: Color(0xFFD92D20), shape: BoxShape.circle),
+                    constraints: const BoxConstraints(
+                      minWidth: 16,
+                      minHeight: 16,
+                    ),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 3,
+                      vertical: 1,
+                    ),
+                    decoration: const BoxDecoration(
+                      color: Color(0xFFD92D20),
+                      shape: BoxShape.circle,
+                    ),
                     child: Text(
                       unread > 9 ? '9+' : '$unread',
                       textAlign: TextAlign.center,
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 9,
-                        fontWeight: FontWeight.bold,
+                        fontWeight: FontWeight.w900,
                       ),
                     ),
                   ),
@@ -282,32 +402,38 @@ class DashboardHeader extends StatelessWidget {
   }
 }
 
-class _HeaderWaveClipper extends CustomClipper<Path> {
-  @override
-  Path getClip(Size size) {
-    return Path()
-      ..lineTo(0, 0)
-      ..lineTo(size.width, 0)
-      ..lineTo(size.width, size.height - 22)
-      ..cubicTo(size.width * 0.78, size.height + 5, size.width * 0.58, size.height - 2, size.width * 0.38, size.height - 12)
-      ..cubicTo(size.width * 0.20, size.height - 22, size.width * 0.10, size.height - 3, 0, size.height - 15)
-      ..close();
-  }
+class _SecurityEmblem extends StatelessWidget {
+  const _SecurityEmblem();
 
   @override
-  bool shouldReclip(covariant CustomClipper<Path> oldClipper) => false;
+  Widget build(BuildContext context) {
+    return Container(
+      width: 43,
+      height: 48,
+      decoration: BoxDecoration(
+        color: const Color(0x1AD8B65A),
+        borderRadius: BorderRadius.circular(13),
+        border: Border.all(color: const Color(0x99D8B65A)),
+      ),
+      child: const Icon(
+        Icons.shield_rounded,
+        color: Color(0xFFFFD978),
+        size: 30,
+      ),
+    );
+  }
 }
 
-class _JordanFlagPainter extends CustomPainter {
-  const _JordanFlagPainter();
+class _SubtleJordanFlagPainter extends CustomPainter {
+  const _SubtleJordanFlagPainter();
 
   @override
   void paint(Canvas canvas, Size size) {
     final stripeHeight = size.height / 3;
     final colors = [
-      const Color(0xFF111111).withOpacity(0.38),
-      Colors.white.withOpacity(0.48),
-      const Color(0xFF087A45).withOpacity(0.34),
+      const Color(0xFF111111).withOpacity(0.16),
+      Colors.white.withOpacity(0.10),
+      const Color(0xFF087A45).withOpacity(0.15),
     ];
     for (var i = 0; i < 3; i++) {
       canvas.drawRect(
@@ -318,26 +444,22 @@ class _JordanFlagPainter extends CustomPainter {
 
     final triangle = Path()
       ..moveTo(0, 0)
-      ..lineTo(size.width * 0.36, size.height * 0.5)
+      ..lineTo(size.width * 0.25, size.height * 0.5)
       ..lineTo(0, size.height)
       ..close();
-    canvas.drawPath(triangle, Paint()..color = const Color(0xFFCE293D).withOpacity(0.46));
     canvas.drawPath(
       triangle,
-      Paint()
-        ..color = Colors.white.withOpacity(0.62)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 1.2,
+      Paint()..color = const Color(0xFFCE293D).withOpacity(0.20),
     );
 
-    final center = Offset(size.width * 0.105, size.height * 0.5);
+    final center = Offset(size.width * 0.075, size.height * 0.5);
     final star = Path();
     const points = 7;
-    final outerRadius = size.height * 0.105;
+    final outerRadius = size.height * 0.075;
     final innerRadius = outerRadius * 0.43;
     for (var i = 0; i < points * 2; i++) {
       final radius = i.isEven ? outerRadius : innerRadius;
-      final angle = -1.5708 + i * 3.14159265 / points;
+      final angle = -1.5708 + i * math.pi / points;
       final point = Offset(
         center.dx + radius * math.cos(angle),
         center.dy + radius * math.sin(angle),
@@ -349,7 +471,7 @@ class _JordanFlagPainter extends CustomPainter {
       }
     }
     star.close();
-    canvas.drawPath(star, Paint()..color = Colors.white.withOpacity(0.92));
+    canvas.drawPath(star, Paint()..color = Colors.white.withOpacity(0.72));
   }
 
   @override
