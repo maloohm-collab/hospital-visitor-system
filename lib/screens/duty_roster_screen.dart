@@ -84,6 +84,82 @@ class _DutyRosterScreenState extends State<DutyRosterScreen> with SingleTickerPr
     setState(() => rows[code]![index]['officer'] = officer);
   }
 
+  Future<String?> _pickOfficer(int currentIndex, String currentShift) async {
+    final width = MediaQuery.of(context).size.width * 0.80;
+    return showDialog<String>(
+      context: context,
+      builder: (dialogContext) => Dialog(
+        insetPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 24),
+        child: SizedBox(
+          width: width,
+          height: MediaQuery.of(dialogContext).size.height * 0.76,
+          child: DefaultTabController(
+            length: 3,
+            child: Column(
+              children: [
+                const Padding(
+                  padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
+                  child: Text('اختيار ضابط الأمن حسب الشفت الأصلي',
+                    style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: navy)),
+                ),
+                const TabBar(
+                  labelColor: navy,
+                  tabs: [
+                    Tab(text: 'أسماء شفت A'),
+                    Tab(text: 'أسماء شفت B'),
+                    Tab(text: 'أسماء شفت C'),
+                  ],
+                ),
+                Expanded(
+                  child: TabBarView(
+                    children: [
+                      _officerChoices(dialogContext, DutyRosterCatalog.shiftA, currentShift, currentIndex),
+                      _officerChoices(dialogContext, DutyRosterCatalog.shiftB, currentShift, currentIndex),
+                      _officerChoices(dialogContext, DutyRosterCatalog.shiftC, currentShift, currentIndex),
+                    ],
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.all(8),
+                  child: TextButton(
+                    onPressed: () => Navigator.pop(dialogContext),
+                    child: const Text('إغلاق'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _officerChoices(BuildContext dialogContext, List<String> officers,
+      String currentShift, int currentIndex) {
+    return ListView.separated(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      itemCount: officers.length,
+      separatorBuilder: (_, __) => const Divider(height: 1),
+      itemBuilder: (context, index) {
+        final officer = officers[index];
+        final otherSites = _otherAssignments(officer, currentShift, currentIndex);
+        return ListTile(
+          dense: true,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+          title: Text(officer, style: const TextStyle(fontWeight: FontWeight.w600)),
+          subtitle: otherSites.isEmpty
+              ? null
+              : Text('مسجل أيضاً في: ${otherSites.join('، ')}',
+                  style: const TextStyle(color: Colors.deepOrange, fontSize: 11)),
+          trailing: otherSites.isEmpty
+              ? const Icon(Icons.person_outline, color: navy)
+              : const Icon(Icons.warning_amber_rounded, color: Colors.deepOrange),
+          onTap: () => Navigator.pop(dialogContext, officer),
+        );
+      },
+    );
+  }
+
   Future<void> _load() async {
     try {
       final snap = await db.collection('daily_duty_rosters').doc(keyDay).get();
@@ -268,8 +344,7 @@ class _DutyRosterScreenState extends State<DutyRosterScreen> with SingleTickerPr
   Widget _editor(String s, dynamic saved, {required bool readOnly}) {
     final b = saved is Map ? Map<String,dynamic>.from(saved) : <String,dynamic>{};
     final list = readOnly ? (b['assignments'] as List? ?? []).map((e) => Map<String,dynamic>.from(e)).toList() : rows[s]!;
-    final names = DutyRosterCatalog.officersFor(s);
-    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       if (!readOnly)
         const Padding(
           padding: EdgeInsets.only(bottom: 8),
@@ -295,28 +370,28 @@ class _DutyRosterScreenState extends State<DutyRosterScreen> with SingleTickerPr
           Row(children: [
             CircleAvatar(radius: 13, child: Text((i+1).toString())),
             const SizedBox(width: 8),
-            Expanded(child: DropdownButtonFormField<String>(value: names.contains(n) ? n : null, isExpanded: true,
-              decoration: const InputDecoration(labelText: 'اختيار ضابط الأمن'),
-              items: names.toSet().map((v) {
-                final otherSites = _otherAssignments(v, s, i);
-                final selectedElsewhere = otherSites.isNotEmpty;
-                return DropdownMenuItem<String>(
-                  value: v,
-                  child: Row(children: [
-                    if (selectedElsewhere) const Icon(Icons.warning_amber_rounded, color: Colors.deepOrange, size: 17),
-                    if (selectedElsewhere) const SizedBox(width: 5),
-                    Expanded(child: Text(
-                      selectedElsewhere ? '$v — مختار في ${otherSites.join('، ')}' : v,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: selectedElsewhere ? Colors.deepOrange.shade700 : null,
-                        fontWeight: selectedElsewhere ? FontWeight.w600 : FontWeight.normal,
+            Expanded(
+              child: readOnly
+                  ? InputDecorator(
+                      decoration: const InputDecoration(labelText: 'ضابط الأمن'),
+                      child: Text(n.isEmpty ? 'غير محدد' : n),
+                    )
+                  : OutlinedButton.icon(
+                      onPressed: () async {
+                        final selected = await _pickOfficer(i, s);
+                        if (selected != null && mounted) {
+                          await _selectOfficer(s, i, selected);
+                        }
+                      },
+                      icon: const Icon(Icons.person_search),
+                      label: Text(n.isEmpty ? 'اختيار ضابط الأمن' : n,
+                          overflow: TextOverflow.ellipsis),
+                      style: OutlinedButton.styleFrom(
+                        alignment: Alignment.centerRight,
+                        minimumSize: const Size.fromHeight(52),
                       ),
-                    )),
-                  ]),
-                );
-              }).toList(),
-              onChanged: readOnly ? null : (v) => _selectOfficer(s, i, v))),
+                    ),
+            ),
             if (!readOnly) IconButton(onPressed: () => setState(() => rows[s]!.removeAt(i)), icon: const Icon(Icons.delete_outline, color: Colors.red)),
           ]),
           DropdownButtonFormField<String>(value: DutyRosterCatalog.locations.contains(l) ? l : null, isExpanded: true,
