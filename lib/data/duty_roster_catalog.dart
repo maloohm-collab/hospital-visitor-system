@@ -74,15 +74,15 @@ class DutyRosterCatalog {
   static const List<String> specialA = <String>[];
   static const List<String> specialB = <String>[];
   static const List<String> specialC = <String>[];
-  static List<String> specialFor(String shift) => switch (shift) {
-    'A' => specialA, 'B' => specialB, _ => specialC,
-  };
+  /// سوات هم المشرفون أنفسهم وفق تنظيم المؤسسة.
+  static List<String> specialFor(String shift) => supervisors;
 
   static const List<String> offA = <String>[];
   static const List<String> offB = <String>[];
   static const List<String> offC = <String>[];
+  /// قائمة المجازين تُختار من الأسماء الأصلية للشفت المحدد.
   static List<String> offFor(String shift) => switch (shift) {
-    'A' => offA, 'B' => offB, _ => offC,
+    'A' => shiftA, 'B' => shiftB, _ => shiftC,
   };
 
   static const List<String> locations = [
