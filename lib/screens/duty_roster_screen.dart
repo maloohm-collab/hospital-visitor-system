@@ -270,6 +270,14 @@ class _DutyRosterScreenState extends State<DutyRosterScreen> with SingleTickerPr
     final list = readOnly ? (b['assignments'] as List? ?? []).map((e) => Map<String,dynamic>.from(e)).toList() : rows[s]!;
     final names = DutyRosterCatalog.officersFor(s);
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      if (!readOnly)
+        const Padding(
+          padding: EdgeInsets.only(bottom: 8),
+          child: Text(
+            'الإدارة تستطيع اختيار أي ضابط من القائمة العامة لأي مناوبة A أو B أو C، وبذلك يمكن إجراء تبديل بين الكشوفات. سيُحفظ كل اسم ضمن المناوبة التي أُسند إليها عند حفظ الكشف.',
+            style: TextStyle(fontSize: 12, color: Colors.black54),
+          ),
+        ),
       if (!readOnly) DropdownButtonFormField<String>(
         value: DutyRosterCatalog.supervisorsFor(s).contains(supervisors[s]) ? supervisors[s] : null,
         isExpanded: true,
