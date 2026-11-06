@@ -312,42 +312,122 @@ class _DutyRosterScreenState extends State<DutyRosterScreen> with SingleTickerPr
 
   Future<void> _publish() async {
     if (!admin || busy) return;
-    final a = await _confirm('اعتماد الكشف', 'هل توافق على اعتماد كشوفات A وB وC بتاريخ ' + keyDay + '؟');
-    if (a != 2) return;
-    final b = await _confirm('إرسال للجميع', 'تم اعتماد الكشف. هل توافق على نشره وإرسال إشعار لجميع المستخدمين؟');
-    if (b == 1 || b == null) {
-      final current = await db.collection('daily_duty_rosters').doc(keyDay).get();
-      if (current.data()?['status'] != 'published') {
-        await db.collection('daily_duty_rosters').doc(keyDay).set(await _data('approved'), SetOptions(merge: true));
-      }
-      msg('تم الاعتماد دون الإرسال.'); return;
-    }
-    if (b == 0) { await _publish(); return; }
+
+    // اعرض نسخة PDF النهائية للإدارة أولاً، ولا يتم الاعتماد أو الإرسال
+    // إلا بعد اختيار أحد الإجراءين من نافذة المعاينة.
+    final previewData = await _data('draft');
+    final previewBlocks = Map<String, dynamic>.from(previewData['shifts'] ?? {});
+    final choice = await showDialog<int>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => Dialog(
+        insetPadding: const EdgeInsets.all(12),
+        child: SizedBox(
+          width: MediaQuery.of(dialogContext).size.width * 0.96,
+          height: MediaQuery.of(dialogContext).size.height * 0.88,
+          child: Column(
+            children: [
+              const Padding(
+                padding: EdgeInsets.fromLTRB(12, 12, 12, 4),
+                child: Text('معاينة كشف المناوبات قبل الاعتماد',
+                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: navy)),
+              ),
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                child: Text('راجع صفحات A وB وC والتعليمات قبل اعتماد الكشف أو إرساله.',
+                  textAlign: TextAlign.center, style: TextStyle(fontSize: 12, color: Colors.black54)),
+              ),
+              Expanded(
+                child: PdfPreview(
+                  build: (_) async => Uint8List.fromList(
+                    await DutyRosterPdf.build(date: keyDay, shifts: previewBlocks),
+                  ),
+                  canChangeOrientation: false,
+                  canChangePageFormat: false,
+                  allowPrinting: false,
+                  allowSharing: false,
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(10),
+                child: Wrap(
+                  alignment: WrapAlignment.center,
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    OutlinedButton(
+                      onPressed: () => Navigator.pop(dialogContext, 0),
+                      child: const Text('رجوع للتعديل'),
+                    ),
+                    FilledButton.tonal(
+                      onPressed: () => Navigator.pop(dialogContext, 1),
+                      child: const Text('اعتماد دون إرسال'),
+                    ),
+                    FilledButton.icon(
+                      onPressed: () => Navigator.pop(dialogContext, 2),
+                      icon: const Icon(Icons.send),
+                      label: const Text('اعتماد وإرسال'),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (choice == null || choice == 0) return;
+
     setState(() => busy = true);
     try {
-      final users = await db.collection('users').where('status', isEqualTo: 'active').get();
       final roster = db.collection('daily_duty_rosters').doc(keyDay);
       final old = await roster.get();
       final batch = db.batch();
       if (old.exists) {
         final version = roster.collection('versions').doc();
-        batch.set(version, {...old.data()!, 'archivedAt': FieldValue.serverTimestamp(),
-          'archivedBy': FirebaseAuth.instance.currentUser?.uid});
+        batch.set(version, {
+          ...old.data()!,
+          'archivedAt': FieldValue.serverTimestamp(),
+          'archivedBy': FirebaseAuth.instance.currentUser?.uid,
+        });
       }
+
+      if (choice == 1) {
+        batch.set(roster, await _data('approved'), SetOptions(merge: true));
+        await batch.commit();
+        msg('تم اعتماد الكشف بعد معاينته، دون إرساله للمستخدمين.');
+        return;
+      }
+
+      final users = await db.collection('users')
+          .where('status', isEqualTo: 'active').get();
       batch.set(roster, await _data('published'), SetOptions(merge: true));
       final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
-      for (final u in users.docs) {
-        if (u.id == uid) continue;
-        final n = db.collection('notifications').doc();
-        batch.set(n, {'notificationId': n.id, 'recipientUid': u.id, 'recipientRole': u.data()['role'] ?? 'security_officer',
-          'senderUid': uid, 'senderEmail': FirebaseAuth.instance.currentUser?.email ?? '',
-          'title': 'كشف الوظائف اليومي الجديد', 'body': 'تم نشر كشف المناوبات A وB وC بتاريخ ' + keyDay + '.',
-          'priority': 'important', 'read': false, 'createdAt': FieldValue.serverTimestamp(),
-          'kind': 'daily_duty_roster', 'relatedId': keyDay});
+      for (final user in users.docs) {
+        if (user.id == uid) continue;
+        final notification = db.collection('notifications').doc();
+        batch.set(notification, {
+          'notificationId': notification.id,
+          'recipientUid': user.id,
+          'recipientRole': user.data()['role'] ?? 'security_officer',
+          'senderUid': uid,
+          'senderEmail': FirebaseAuth.instance.currentUser?.email ?? '',
+          'title': 'كشف الوظائف اليومي الجديد',
+          'body': 'تم اعتماد ونشر كشف المناوبات A وB وC بتاريخ $keyDay.',
+          'priority': 'important',
+          'read': false,
+          'createdAt': FieldValue.serverTimestamp(),
+          'kind': 'daily_duty_roster',
+          'relatedId': keyDay,
+        });
       }
-      await batch.commit(); msg('تم نشر الكشف وإرسال الإشعارات للمستخدمين النشطين.');
-    } catch (_) { msg('تعذر نشر الكشف. لم يتم تأكيد الإرسال.'); }
-    finally { if (mounted) setState(() => busy = false); }
+      await batch.commit();
+      msg('تم اعتماد الكشف بعد معاينته ونشره وإرسال الإشعارات للمستخدمين النشطين.');
+    } catch (_) {
+      msg('تعذر اعتماد أو نشر الكشف. لم يتم تأكيد العملية.');
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
   }
 
   Future<void> _sharePdf(Map<String,dynamic> data) async {
@@ -427,7 +507,8 @@ class _DutyRosterScreenState extends State<DutyRosterScreen> with SingleTickerPr
   Widget _editor(String s, dynamic saved, {required bool readOnly}) {
     final b = saved is Map ? Map<String,dynamic>.from(saved) : <String,dynamic>{};
     final list = readOnly ? (b['assignments'] as List? ?? []).map((e) => Map<String,dynamic>.from(e)).toList() : rows[s]!;
-      return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+    final savedClinicRows = (b['clinicAssignments'] as List? ?? clinicRows);
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       if (!readOnly)
         const Padding(
           padding: EdgeInsets.only(bottom: 8),
@@ -511,7 +592,6 @@ class _DutyRosterScreenState extends State<DutyRosterScreen> with SingleTickerPr
               const Text('تعمل العيادات من الأحد إلى الخميس. يمكن استبدال الموظف عند الإجازة أو الطوارئ مع بقاء موقع العيادة ثابتاً.',
                 style: TextStyle(fontSize: 12, color: Colors.black54)),
               const SizedBox(height: 8),
-              final savedClinicRows = (b['clinicAssignments'] as List? ?? clinicRows);
               ...List.generate(readOnly
                   ? savedClinicRows.length
                   : clinicRows.length, (index) {
