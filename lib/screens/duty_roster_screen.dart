@@ -103,7 +103,10 @@ class _DutyRosterScreenState extends State<DutyRosterScreen> with SingleTickerPr
     if (a != 2) return;
     final b = await _confirm('إرسال للجميع', 'تم اعتماد الكشف. هل توافق على نشره وإرسال إشعار لجميع المستخدمين؟');
     if (b == 1 || b == null) {
-      await db.collection('daily_duty_rosters').doc(keyDay).set(await _data('approved'), SetOptions(merge: true));
+      final current = await db.collection('daily_duty_rosters').doc(keyDay).get();
+      if (current.data()?['status'] != 'published') {
+        await db.collection('daily_duty_rosters').doc(keyDay).set(await _data('approved'), SetOptions(merge: true));
+      }
       msg('تم الاعتماد دون الإرسال.'); return;
     }
     if (b == 0) { await _publish(); return; }
@@ -197,10 +200,8 @@ class _DutyRosterScreenState extends State<DutyRosterScreen> with SingleTickerPr
             const SizedBox(width: 8),
             Expanded(child: FilledButton.icon(onPressed: busy ? null : _publish, icon: const Icon(Icons.send), label: const Text('اعتماد ونشر'))),
           ]),
-          if (admin && data != null) Row(children: [
-            Expanded(child: TextButton.icon(onPressed: () => _sharePdf(data), icon: const Icon(Icons.share), label: const Text('مشاركة PDF'))),
-            Expanded(child: TextButton.icon(onPressed: _delete, icon: const Icon(Icons.delete_outline), label: const Text('حذف'))),
-          ]),
+          if (admin && data != null) Align(alignment: Alignment.centerLeft,
+            child: TextButton.icon(onPressed: _delete, icon: const Icon(Icons.delete_outline), label: const Text('حذف الكشف'))),
           if (data != null && (admin || published)) Row(children: [
             Expanded(child: FilledButton.icon(onPressed: () => _sharePdf(data), icon: const Icon(Icons.share), label: const Text('مشاركة PDF'))),
             const SizedBox(width: 8),
