@@ -21,6 +21,8 @@ class _DutyRosterScreenState extends State<DutyRosterScreen> with SingleTickerPr
   late final TabController tabs;
   DateTime day = DateTime.now();
   final Map<String, List<Map<String, String?>>> rows = {'A': [], 'B': [], 'C': []};
+  final List<Map<String, String?>> clinicRows = [];
+  final Map<String, List<String>> recentAssignments = {};
   final Map<String, List<String>> offs = {'A': [], 'B': [], 'C': []};
   final Map<String, List<String>> specials = {'A': [], 'B': [], 'C': []};
   final Map<String, String> notes = {'A': '', 'B': '', 'C': ''};
@@ -30,6 +32,17 @@ class _DutyRosterScreenState extends State<DutyRosterScreen> with SingleTickerPr
   bool get admin => widget.userRole == 'admin';
   String get keyDay => DateFormat('yyyy-MM-dd').format(day);
   String get shift => ['A', 'B', 'C'][tabs.index];
+  bool get isClinicDay => day.weekday == DateTime.sunday ||
+      (day.weekday >= DateTime.monday && day.weekday <= DateTime.thursday);
+
+  void _setDefaultClinicRows() {
+    clinicRows
+      ..clear()
+      ..addAll(DutyRosterCatalog.clinicOfficers.map((name) => <String, String?>{
+        'officer': name,
+        'location': DutyRosterCatalog.clinicAssignments[name],
+      }));
+  }
 
   @override
   void initState() { super.initState(); tabs = TabController(length: 3, vsync: this)..addListener(() { if (mounted) setState(() {}); }); _load(); }
@@ -162,9 +175,48 @@ class _DutyRosterScreenState extends State<DutyRosterScreen> with SingleTickerPr
 
   Future<void> _load() async {
     try {
+      recentAssignments.clear();
+      for (var offset = 1; offset <= 2; offset++) {
+        final previousDay = day.subtract(Duration(days: offset));
+        final previousKey = DateFormat('yyyy-MM-dd').format(previousDay);
+        final previousSnap = await db.collection('daily_duty_rosters').doc(previousKey).get();
+        final previousData = previousSnap.data();
+        final previousShifts = Map<String, dynamic>.from(previousData?['shifts'] ?? {});
+        for (final code in ['A', 'B', 'C']) {
+          final block = Map<String, dynamic>.from(previousShifts[code] ?? {});
+          for (final value in (block['assignments'] as List? ?? [])) {
+            final assignment = Map<String, dynamic>.from(value);
+            final name = (assignment['officer'] ?? '').toString();
+            final location = (assignment['location'] ?? '').toString();
+            if (name.isNotEmpty) {
+              recentAssignments.putIfAbsent(name, () => []).add(
+                '$previousKey • $code • $location',
+              );
+            }
+          }
+          if (code == 'A') {
+            for (final value in (block['clinicAssignments'] as List? ?? [])) {
+              final assignment = Map<String, dynamic>.from(value);
+              final name = (assignment['officer'] ?? '').toString();
+              final location = (assignment['location'] ?? '').toString();
+              if (name.isNotEmpty) {
+                recentAssignments.putIfAbsent(name, () => []).add(
+                  '$previousKey • عيادات • $location',
+                );
+              }
+            }
+          }
+        }
+      }
       final snap = await db.collection('daily_duty_rosters').doc(keyDay).get();
       final data = snap.data();
-      if (data == null) { if (admin && mounted) setState(() { for (final s in ['A','B','C']) { rows[s] = []; offs[s] = []; specials[s] = []; notes[s] = ''; } }); return; }
+      if (data == null) {
+        if (admin && mounted) setState(() {
+          for (final s in ['A','B','C']) { rows[s] = []; offs[s] = []; specials[s] = []; notes[s] = ''; }
+          if (isClinicDay) { _setDefaultClinicRows(); } else { clinicRows.clear(); }
+        });
+        return;
+      }
       final shifts = Map<String, dynamic>.from(data['shifts'] ?? {});
       siteManager = data['siteManager']?.toString() ?? siteManager;
       if (!mounted) return;
@@ -175,7 +227,20 @@ class _DutyRosterScreenState extends State<DutyRosterScreen> with SingleTickerPr
         specials[s] = List<String>.from(b['specialNames'] ?? const []);
         notes[s] = (b['adminNote'] ?? '').toString();
         supervisors[s] = b['supervisorName']?.toString() ?? supervisors[s];
-      }});
+      }
+      final savedClinics = (Map<String, dynamic>.from(shifts['A'] ?? {})['clinicAssignments'] as List? ?? []);
+      clinicRows
+        ..clear()
+        ..addAll(savedClinics.map((value) {
+          final item = Map<String, dynamic>.from(value);
+          return <String, String?>{
+            'officer': item['officer']?.toString(),
+            'location': item['location']?.toString(),
+          };
+        }));
+      if (clinicRows.isEmpty && isClinicDay) _setDefaultClinicRows();
+      if (!isClinicDay) clinicRows.clear();
+      });
     } catch (_) { msg('تعذر تحميل الكشف.'); }
   }
 
@@ -194,6 +259,9 @@ class _DutyRosterScreenState extends State<DutyRosterScreen> with SingleTickerPr
         'hours': s == 'A' ? '08:00–16:00' : s == 'B' ? '16:00–00:00' : '00:00–08:00',
         'assignments': rows[s]!.where((r) => (r['officer'] ?? '').isNotEmpty && (r['location'] ?? '').isNotEmpty).toList(),
         'offNames': offs[s], 'specialNames': specials[s], 'adminNote': notes[s], 'supervisorName': supervisors[s], 'siteManager': siteManager,
+        if (s == 'A') 'clinicAssignments': isClinicDay
+            ? clinicRows.where((r) => (r['officer'] ?? '').isNotEmpty).toList()
+            : <Map<String, String?>>[],
       };
     }
     return {'dateKey': keyDay, 'siteManager': siteManager, 'shifts': blocks, 'status': status, 'updatedAt': FieldValue.serverTimestamp(), 'updatedBy': u?.uid, 'updatedByName': display,
@@ -409,6 +477,72 @@ class _DutyRosterScreenState extends State<DutyRosterScreen> with SingleTickerPr
         DropdownButtonFormField<String>(value: null, isExpanded: true, decoration: const InputDecoration(labelText: 'إضافة اسم إلى قائمة OFF'),
           items: DutyRosterCatalog.offFor(s).toSet().where((n) => !offs[s]!.contains(n)).map((n) => DropdownMenuItem(value: n, child: Text(n))).toList(),
           onChanged: (v) { if (v != null) setState(() => offs[s]!.add(v)); }),
+      ],
+      if (s == 'A' && isClinicDay) ...[
+        const SizedBox(height: 16),
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: const Color(0xFFEAF5F2),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: teal.withValues(alpha: 0.35)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Text('وظائف العيادات — شفت A',
+                style: TextStyle(fontWeight: FontWeight.bold, color: navy, fontSize: 16)),
+              const SizedBox(height: 4),
+              const Text('تعمل العيادات من الأحد إلى الخميس. يمكن استبدال الموظف عند الإجازة أو الطوارئ مع بقاء موقع العيادة ثابتاً.',
+                style: TextStyle(fontSize: 12, color: Colors.black54)),
+              const SizedBox(height: 8),
+              ...List.generate(readOnly
+                  ? ((b['clinicAssignments'] as List? ?? []).length)
+                  : clinicRows.length, (index) {
+                final clinic = readOnly
+                    ? Map<String, dynamic>.from((b['clinicAssignments'] as List)[index])
+                    : clinicRows[index];
+                final officer = (clinic['officer'] ?? '').toString();
+                final location = (clinic['location'] ?? '').toString();
+                return Card(
+                  child: ListTile(
+                    dense: true,
+                    title: Text(location, style: const TextStyle(fontWeight: FontWeight.w600)),
+                    subtitle: Text(officer.isEmpty ? 'لم يتم تحديد الموظف' : officer),
+                    trailing: readOnly ? null : IconButton(
+                      tooltip: 'استبدال موظف العيادة',
+                      icon: const Icon(Icons.swap_horiz, color: navy),
+                      onPressed: () async {
+                        final selected = await _pickOfficer(-1, 'A');
+                        if (selected == null || !mounted) return;
+                        final other = _otherAssignments(selected, 'A', -1);
+                        if (other.isNotEmpty) {
+                          final accepted = await showDialog<bool>(
+                            context: context,
+                            builder: (dialogContext) => AlertDialog(
+                              title: const Text('الضابط مسجل مسبقاً'),
+                              content: Text('$selected مسجل أيضاً في: ${other.join('، ')}. هل تريد إسناد وظيفة العيادة إليه أيضاً؟'),
+                              actions: [
+                                TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('إلغاء')),
+                                FilledButton(onPressed: () => Navigator.pop(dialogContext, true), child: const Text('تأكيد')),
+                              ],
+                            ),
+                          );
+                          if (accepted != true || !mounted) return;
+                        }
+                        setState(() => clinicRows[index]['officer'] = selected);
+                      },
+                    ),
+                  ),
+                );
+              }),
+            ],
+          ),
+        ),
+      ] else if (s == 'A' && !isClinicDay && !readOnly) ...[
+        const SizedBox(height: 10),
+        const Text('لا توجد وظائف عيادات يوم الجمعة والسبت.',
+          textAlign: TextAlign.center, style: TextStyle(color: Colors.black54)),
       ],
       const SizedBox(height: 10),
       const Text('قائمة سوات', style: TextStyle(fontWeight: FontWeight.bold, color: navy)),
