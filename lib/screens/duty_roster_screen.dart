@@ -168,7 +168,7 @@ class _DutyRosterScreenState extends State<DutyRosterScreen> with SingleTickerPr
           if (!admin && published && data != null) FilledButton.icon(onPressed: () => Share.share(_text(data)), icon: const Icon(Icons.share), label: const Text('مشاركة الكشف')),
           TabBar(controller: tabs, labelColor: navy, indicatorColor: teal, tabs: const [Tab(text: 'A'),Tab(text: 'B'),Tab(text: 'C')]),
           const SizedBox(height: 12),
-          _editor(shift, blocks[shift], readOnly: !admin || !published && data != null),
+          _editor(shift, blocks[shift], readOnly: !admin),
           if (admin) ...[
             const SizedBox(height: 12), const Text('ملاحظة المشرف الإداري', style: TextStyle(fontWeight: FontWeight.bold, color: navy)),
             TextFormField(key: ValueKey('note-' + shift + keyDay), initialValue: notes[shift], maxLines: 2,
