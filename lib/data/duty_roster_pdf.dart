@@ -14,6 +14,7 @@ class DutyRosterPdf {
       pw.Text('مستشفى الزرقاء الحكومي', style: pw.TextStyle(font: bold, fontSize: 18)),
       pw.Text('شركة الصخرة للخدمات والاستشارات الأمنية', style: pw.TextStyle(font: bold, fontSize: 13)),
       pw.Text('كشف الوظائف اليومي — ' + date, style: pw.TextStyle(font: bold, fontSize: 16)),
+      pw.Text('مدير الموقع: ' + (Map<String, dynamic>.from(shifts['A'] ?? {})['siteManager'] ?? '').toString(), style: pw.TextStyle(font: regular, fontSize: 10)),
       pw.SizedBox(height: 12),
     ];
     for (final code in ['A', 'B', 'C']) {
@@ -25,6 +26,7 @@ class DutyRosterPdf {
         rows.add([number.toString(), (row['officer'] ?? '').toString(), (row['location'] ?? '').toString()]);
         number++;
       }
+      widgets.add(pw.Text('المشرف: ' + (block['supervisorName'] ?? '').toString(), style: pw.TextStyle(font: regular, fontSize: 9)));
       widgets.add(pw.Text('المناوبة ' + code + ' — ' + (block['hours'] ?? '').toString(),
         style: pw.TextStyle(font: bold, fontSize: 13)));
       widgets.add(pw.TableHelper.fromTextArray(
