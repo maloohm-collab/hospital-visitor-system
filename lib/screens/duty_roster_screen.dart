@@ -816,6 +816,7 @@ class _DutyRosterScreenState extends State<DutyRosterScreen> with SingleTickerPr
         onChanged: (v) => setState(() => supervisors[s] = v),
       ) else if ((b['supervisorName'] ?? '').toString().isNotEmpty)
         ListTile(dense: true, title: const Text('المشرف'), subtitle: Text(b['supervisorName'].toString())),
+      const SizedBox(height: 12),
       Container(padding: const EdgeInsets.all(12), decoration: BoxDecoration(color: const Color(0xFFEAF1F7), borderRadius: BorderRadius.circular(12)),
         child: Text('المناوبة ' + s + ' • ' + (s == 'A' ? '08:00–16:00' : s == 'B' ? '16:00–00:00' : '00:00–08:00'),
           textAlign: TextAlign.center, style: const TextStyle(color: navy, fontWeight: FontWeight.bold))),
@@ -854,6 +855,7 @@ class _DutyRosterScreenState extends State<DutyRosterScreen> with SingleTickerPr
             ),
             if (!readOnly) IconButton(onPressed: () => setState(() => rows[s]!.removeAt(i)), icon: const Icon(Icons.delete_outline, color: Colors.red)),
           ]),
+          const SizedBox(height: 10),
           DropdownButtonFormField<String>(value: DutyRosterCatalog.locations.contains(l) ? l : null, isExpanded: true,
             decoration: const InputDecoration(labelText: 'اختيار الموقع / الوظيفة',
               border: OutlineInputBorder(), contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 15)),
@@ -869,7 +871,10 @@ class _DutyRosterScreenState extends State<DutyRosterScreen> with SingleTickerPr
       if (readOnly) Wrap(children: (b['offNames'] as List? ?? []).map((n) => Chip(label: Text(n.toString()))).toList())
       else ...[
         Wrap(spacing: 5, children: offs[s]!.map((n) => InputChip(label: Text(n), onDeleted: () => setState(() => offs[s]!.remove(n)))).toList()),
-        DropdownButtonFormField<String>(value: null, isExpanded: true, decoration: const InputDecoration(labelText: 'إضافة اسم إلى قائمة OFF'),
+        const SizedBox(height: 10),
+        DropdownButtonFormField<String>(value: null, isExpanded: true, decoration: const InputDecoration(
+          labelText: 'إضافة اسم إلى قائمة OFF', border: OutlineInputBorder(),
+          contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 15)),
           items: DutyRosterCatalog.offFor(s).toSet().where((n) => !offs[s]!.contains(n)).map((n) => DropdownMenuItem(value: n, child: Text(n))).toList(),
           onChanged: (v) { if (v != null) setState(() => offs[s]!.add(v)); }),
       ],
@@ -946,7 +951,10 @@ class _DutyRosterScreenState extends State<DutyRosterScreen> with SingleTickerPr
       if (readOnly) Wrap(children: (b['specialNames'] as List? ?? []).map((n) => Chip(label: Text(n.toString()))).toList())
       else ...[
         Wrap(spacing: 5, children: specials[s]!.map((n) => InputChip(label: Text(n), onDeleted: () => setState(() => specials[s]!.remove(n)))).toList()),
-        DropdownButtonFormField<String>(value: null, isExpanded: true, decoration: const InputDecoration(labelText: 'إضافة اسم إلى قائمة سوات'),
+        const SizedBox(height: 10),
+        DropdownButtonFormField<String>(value: null, isExpanded: true, decoration: const InputDecoration(
+          labelText: 'إضافة اسم إلى قائمة سوات', border: OutlineInputBorder(),
+          contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 15)),
           items: DutyRosterCatalog.specialFor(s).toSet().where((n) => !specials[s]!.contains(n)).map((n) => DropdownMenuItem(value: n, child: Text(n))).toList(),
           onChanged: (v) { if (v != null) setState(() => specials[s]!.add(v)); }),
       ],
