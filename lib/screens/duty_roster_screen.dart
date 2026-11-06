@@ -500,7 +500,7 @@ class _DutyRosterScreenState extends State<DutyRosterScreen> with SingleTickerPr
           decoration: BoxDecoration(
             color: const Color(0xFFEAF5F2),
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: teal.withValues(alpha: 0.35)),
+            border: Border.all(color: const Color(0x59087E78)),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
