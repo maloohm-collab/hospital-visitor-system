@@ -221,6 +221,7 @@ class _DutyRosterScreenState extends State<DutyRosterScreen> with SingleTickerPr
             onChanged: (v) => setState(() => siteManager = v),
           ),
           if (admin) DropdownButtonFormField<String>(value: DutyRosterCatalog.siteManagers.contains(siteManager) ? siteManager : null, isExpanded: true, decoration: const InputDecoration(labelText: 'مدير الموقع'), items: DutyRosterCatalog.siteManagers.map((v) => DropdownMenuItem(value: v, child: Text(v))).toList(), onChanged: (v) => setState(() => siteManager = v)),
+          if (admin) DropdownButtonFormField<String>(value: DutyRosterCatalog.siteManagers.contains(siteManager) ? siteManager : null, isExpanded: true, decoration: const InputDecoration(labelText: 'مدير الموقع'), items: DutyRosterCatalog.siteManagers.map((v) => DropdownMenuItem(value: v, child: Text(v))).toList(), onChanged: (v) => setState(() => siteManager = v)),
           TabBar(controller: tabs, labelColor: navy, indicatorColor: teal, tabs: const [Tab(text: 'A'),Tab(text: 'B'),Tab(text: 'C')]),
           const SizedBox(height: 12),
           _editor(shift, blocks[shift], readOnly: !admin),
@@ -248,7 +249,6 @@ class _DutyRosterScreenState extends State<DutyRosterScreen> with SingleTickerPr
         onChanged: (v) => setState(() => supervisors[s] = v),
       ) else if ((b['supervisorName'] ?? '').toString().isNotEmpty)
         ListTile(dense: true, title: const Text('المشرف'), subtitle: Text(b['supervisorName'].toString())),
-      if (!readOnly) DropdownButtonFormField<String>(value: DutyRosterCatalog.supervisorsFor(s).contains(supervisors[s]) ? supervisors[s] : null, isExpanded: true, decoration: const InputDecoration(labelText: 'المشرف'), items: DutyRosterCatalog.supervisorsFor(s).map((v) => DropdownMenuItem(value: v, child: Text(v))).toList(), onChanged: (v) => setState(() => supervisors[s] = v)) else if ((b['supervisorName'] ?? '').toString().isNotEmpty) ListTile(dense: true, title: const Text('المشرف'), subtitle: Text(b['supervisorName'].toString())),
       Container(padding: const EdgeInsets.all(12), decoration: BoxDecoration(color: const Color(0xFFEAF1F7), borderRadius: BorderRadius.circular(12)),
         child: Text('المناوبة ' + s + ' • ' + (s == 'A' ? '08:00–16:00' : s == 'B' ? '16:00–00:00' : '00:00–08:00'),
           textAlign: TextAlign.center, style: const TextStyle(color: navy, fontWeight: FontWeight.bold))),
