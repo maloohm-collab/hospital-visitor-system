@@ -80,7 +80,14 @@ class DutyRosterCatalog {
 
   static bool isClinicOfficer(String name) {
     final normalized = normalizeName(name);
-    return clinicOfficers.any((person) => normalizeName(person) == normalized);
+    const rosterAliases = {
+      'كاتب محمد محمود بني خالد': 'كاتب محمد محمود الخالدي',
+    };
+    final canonical = rosterAliases[name] ?? name;
+    final canonicalNormalized = normalizeName(canonical);
+    return clinicOfficers.any((person) =>
+        normalizeName(person) == normalized ||
+        normalizeName(person) == canonicalNormalized);
   }
 
   /// الأسماء الأصلية تبقى محفوظة كما هي، وتُستبعد فئاتها من الاختيار الأمني.
