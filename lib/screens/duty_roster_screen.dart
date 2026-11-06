@@ -156,17 +156,32 @@ class _DutyRosterScreenState extends State<DutyRosterScreen> with SingleTickerPr
       itemBuilder: (context, index) {
         final officer = officers[index];
         final otherSites = _otherAssignments(officer, currentShift, currentIndex);
+        final recentSites = recentAssignments[officer] ?? const <String>[];
+        final allRecentSites = [
+          ...recentSites,
+          ...otherSites.map((site) => '${keyDay} • اليوم • $site'),
+        ];
+        final repeatedWithinTwoDays = allRecentSites.length >= 2;
+        final note = repeatedWithinTwoDays
+            ? 'تم اختيار ضابط الأمن أكثر من مرة خلال آخر يومين في المواقع التالية: ${allRecentSites.join('، ')}'
+            : (otherSites.isNotEmpty
+                ? 'مسجل أيضاً اليوم في: ${otherSites.join('، ')}'
+                : null);
         return ListTile(
           dense: true,
           contentPadding: const EdgeInsets.symmetric(horizontal: 8),
           title: Text(officer, style: const TextStyle(fontWeight: FontWeight.w600)),
-          subtitle: otherSites.isEmpty
-              ? null
-              : Text('مسجل أيضاً في: ${otherSites.join('، ')}',
-                  style: const TextStyle(color: Colors.deepOrange, fontSize: 11)),
-          trailing: otherSites.isEmpty
-              ? const Icon(Icons.person_outline, color: navy)
-              : const Icon(Icons.warning_amber_rounded, color: Colors.deepOrange),
+          subtitle: note == null ? null : Text(note,
+              style: TextStyle(
+                color: repeatedWithinTwoDays ? Colors.deepOrange : Colors.black54,
+                fontSize: 11,
+                fontWeight: repeatedWithinTwoDays ? FontWeight.w600 : FontWeight.normal,
+              )),
+          trailing: repeatedWithinTwoDays
+              ? const Icon(Icons.info_outline, color: Colors.deepOrange)
+              : (otherSites.isEmpty
+                  ? const Icon(Icons.person_outline, color: navy)
+                  : const Icon(Icons.warning_amber_rounded, color: Colors.deepOrange)),
           onTap: () => Navigator.pop(dialogContext, officer),
         );
       },
@@ -176,7 +191,7 @@ class _DutyRosterScreenState extends State<DutyRosterScreen> with SingleTickerPr
   Future<void> _load() async {
     try {
       recentAssignments.clear();
-      for (var offset = 1; offset <= 2; offset++) {
+      for (var offset = 1; offset <= 1; offset++) {
         final previousDay = day.subtract(Duration(days: offset));
         final previousKey = DateFormat('yyyy-MM-dd').format(previousDay);
         final previousSnap = await db.collection('daily_duty_rosters').doc(previousKey).get();
