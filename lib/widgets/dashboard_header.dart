@@ -77,92 +77,96 @@ class DashboardHeader extends StatelessWidget {
               fit: StackFit.expand,
               children: [
                 const CustomPaint(painter: _SubtleJordanFlagPainter()),
-                Padding(
-                  padding: const EdgeInsetsDirectional.fromSTEB(10, 8, 10, 8),
-                  child: Row(
-                    textDirection: TextDirection.rtl,
-                    children: [
-                      const _SecurityEmblem(),
-                      const SizedBox(width: 9),
-                      Expanded(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const FittedBox(
-                              fit: BoxFit.scaleDown,
-                              alignment: Alignment.centerRight,
-                              child: Text(
-                                'الصخرة',
-                                maxLines: 1,
-                                style: TextStyle(
-                                  color: Color(0xFFFFE5A0),
-                                  fontSize: 29,
-                                  height: 1.05,
-                                  fontWeight: FontWeight.w900,
-                                  letterSpacing: 0.1,
-                                  shadows: [
-                                    Shadow(
-                                      color: Color(0x66000000),
-                                      blurRadius: 7,
-                                      offset: Offset(0, 2),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            const FittedBox(
-                              fit: BoxFit.scaleDown,
-                              alignment: Alignment.centerRight,
-                              child: Text(
-                                'للخدمات والاستشارات الأمنية',
-                                maxLines: 1,
-                                softWrap: false,
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 16,
-                                  height: 1.1,
-                                  fontWeight: FontWeight.w900,
-                                  letterSpacing: 0,
-                                ),
-                              ),
-                            ),
-                          ],
+                Positioned(
+                  right: 10,
+                  top: 0,
+                  bottom: 0,
+                  child: const Center(child: _SecurityEmblem()),
+                ),
+                Positioned(
+                  left: 8,
+                  top: 0,
+                  bottom: 0,
+                  child: Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        _headerAction(
+                          tooltip: 'الإشعارات',
+                          child: _notificationButton(context),
                         ),
-                      ),
-                      const SizedBox(width: 8),
-                      Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          _headerAction(
-                            tooltip: 'الإشعارات',
-                            child: _notificationButton(context),
-                          ),
-                          const SizedBox(height: 2),
-                          _headerAction(
+                        const SizedBox(height: 4),
+                        _headerAction(
+                          tooltip: 'تسجيل الخروج',
+                          child: IconButton(
                             tooltip: 'تسجيل الخروج',
-                            child: IconButton(
-                              tooltip: 'تسجيل الخروج',
-                              visualDensity: VisualDensity.compact,
-                              padding: EdgeInsets.zero,
-                              constraints: const BoxConstraints.tightFor(
-                                width: 36,
-                                height: 34,
-                              ),
-                              onPressed: () => _confirmSignOut(context),
-                              icon: const Icon(
-                                Icons.logout_rounded,
-                                color: Color(0xFFFFE5A0),
-                                size: 21,
-                              ),
+                            visualDensity: VisualDensity.compact,
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints.tightFor(
+                              width: 36,
+                              height: 34,
+                            ),
+                            onPressed: () => _confirmSignOut(context),
+                            icon: const Icon(
+                              Icons.logout_rounded,
+                              color: Color(0xFFFFE5A0),
+                              size: 21,
                             ),
                           ),
-                        ],
-                      ),
-                    ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                Align(
+                  alignment: Alignment.center,
+                  child: SizedBox(
+                    width: MediaQuery.of(context).size.width * 0.67,
+                    child: const Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            'الصخرة',
+                            maxLines: 1,
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: Color(0xFFFFE5A0),
+                              fontSize: 30,
+                              height: 1.05,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: 0.1,
+                              shadows: [
+                                Shadow(
+                                  color: Color(0x66000000),
+                                  blurRadius: 7,
+                                  offset: Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        SizedBox(height: 4),
+                        FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            'للخدمات والاستشارات الأمنية',
+                            maxLines: 1,
+                            softWrap: false,
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                              height: 1.1,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: 0,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ],
