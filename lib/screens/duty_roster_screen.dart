@@ -25,6 +25,8 @@ class _DutyRosterScreenState extends State<DutyRosterScreen> with SingleTickerPr
   final Map<String, String> notes = {'A': '', 'B': '', 'C': ''};
   String? siteManager = 'ياسر الشديفات';
   final Map<String, String?> supervisors = {'A': 'فراس الشرعة', 'B': 'أيمن بدارنه', 'C': 'أيمن بدارنه'};
+  String? siteManager = 'ياسر الشديفات';
+  final Map<String, String?> supervisors = {'A': 'فراس الشرعة', 'B': 'أيمن بدارنه', 'C': 'أيمن بدارنه'};
   bool busy = false;
   bool get admin => widget.userRole == 'admin';
   String get keyDay => DateFormat('yyyy-MM-dd').format(day);
@@ -43,6 +45,7 @@ class _DutyRosterScreenState extends State<DutyRosterScreen> with SingleTickerPr
       if (data == null) { if (admin && mounted) setState(() { for (final s in ['A','B','C']) { rows[s] = []; offs[s] = []; specials[s] = []; notes[s] = ''; } }); return; }
       final shifts = Map<String, dynamic>.from(data['shifts'] ?? {});
       siteManager = data['siteManager']?.toString() ?? siteManager;
+      siteManager = data['siteManager']?.toString() ?? siteManager;
       if (!mounted) return;
       setState(() { for (final s in ['A','B','C']) {
         final b = Map<String, dynamic>.from(shifts[s] ?? {});
@@ -50,6 +53,7 @@ class _DutyRosterScreenState extends State<DutyRosterScreen> with SingleTickerPr
         offs[s] = List<String>.from(b['offNames'] ?? const []);
         specials[s] = List<String>.from(b['specialNames'] ?? const []);
         notes[s] = (b['adminNote'] ?? '').toString();
+        supervisors[s] = b['supervisorName']?.toString() ?? supervisors[s];
         supervisors[s] = b['supervisorName']?.toString() ?? supervisors[s];
       }});
     } catch (_) { msg('تعذر تحميل الكشف.'); }
@@ -69,7 +73,7 @@ class _DutyRosterScreenState extends State<DutyRosterScreen> with SingleTickerPr
       blocks[s] = {
         'hours': s == 'A' ? '08:00–16:00' : s == 'B' ? '16:00–00:00' : '00:00–08:00',
         'assignments': rows[s]!.where((r) => (r['officer'] ?? '').isNotEmpty && (r['location'] ?? '').isNotEmpty).toList(),
-        'offNames': offs[s], 'specialNames': specials[s], 'adminNote': notes[s],
+        'offNames': offs[s], 'specialNames': specials[s], 'adminNote': notes[s], 'supervisorName': supervisors[s],
         'supervisorName': supervisors[s],
       };
     }
@@ -221,6 +225,7 @@ class _DutyRosterScreenState extends State<DutyRosterScreen> with SingleTickerPr
             items: DutyRosterCatalog.siteManagers.map((v) => DropdownMenuItem(value: v, child: Text(v))).toList(),
             onChanged: (v) => setState(() => siteManager = v),
           ),
+          if (admin) DropdownButtonFormField<String>(value: DutyRosterCatalog.siteManagers.contains(siteManager) ? siteManager : null, isExpanded: true, decoration: const InputDecoration(labelText: 'مدير الموقع'), items: DutyRosterCatalog.siteManagers.map((v) => DropdownMenuItem(value: v, child: Text(v))).toList(), onChanged: (v) => setState(() => siteManager = v)),
           TabBar(controller: tabs, labelColor: navy, indicatorColor: teal, tabs: const [Tab(text: 'A'),Tab(text: 'B'),Tab(text: 'C')]),
           const SizedBox(height: 12),
           _editor(shift, blocks[shift], readOnly: !admin),
@@ -248,6 +253,7 @@ class _DutyRosterScreenState extends State<DutyRosterScreen> with SingleTickerPr
         onChanged: (v) => setState(() => supervisors[s] = v),
       ) else if ((b['supervisorName'] ?? '').toString().isNotEmpty)
         ListTile(dense: true, title: const Text('المشرف'), subtitle: Text(b['supervisorName'].toString())),
+      if (!readOnly) DropdownButtonFormField<String>(value: DutyRosterCatalog.supervisorsFor(s).contains(supervisors[s]) ? supervisors[s] : null, isExpanded: true, decoration: const InputDecoration(labelText: 'المشرف'), items: DutyRosterCatalog.supervisorsFor(s).map((v) => DropdownMenuItem(value: v, child: Text(v))).toList(), onChanged: (v) => setState(() => supervisors[s] = v)) else if ((b['supervisorName'] ?? '').toString().isNotEmpty) ListTile(dense: true, title: const Text('المشرف'), subtitle: Text(b['supervisorName'].toString())),
       Container(padding: const EdgeInsets.all(12), decoration: BoxDecoration(color: const Color(0xFFEAF1F7), borderRadius: BorderRadius.circular(12)),
         child: Text('المناوبة ' + s + ' • ' + (s == 'A' ? '08:00–16:00' : s == 'B' ? '16:00–00:00' : '00:00–08:00'),
           textAlign: TextAlign.center, style: const TextStyle(color: navy, fontWeight: FontWeight.bold))),
