@@ -64,8 +64,8 @@ class _DutyRosterScreenState extends State<DutyRosterScreen> with SingleTickerPr
           title: const Text('الضابط مسجل مسبقاً'),
           content: Text(
             'ضابط الأمن ($officer) تم اختياره مسبقاً في الموقع التالي:'
-            '\\n${previous.join('\\n')}'
-            '\\n\\nهل أنت متأكد من إضافته إلى موقع آخر أيضاً؟',
+            '\n${previous.join('\n')}'
+            '\n\nهل أنت متأكد من إضافته إلى موقع آخر أيضاً؟',
           ),
           actions: [
             TextButton(
