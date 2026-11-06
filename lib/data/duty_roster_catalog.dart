@@ -91,11 +91,14 @@ class DutyRosterCatalog {
   }
 
   /// الأسماء الأصلية تبقى محفوظة كما هي، وتُستبعد فئاتها من الاختيار الأمني.
-  static List<String> officersFor(String shift, {bool clinicReplacement = false}) {
+  static List<String> officersFor(String shift, {
+    bool clinicReplacement = false,
+    bool excludeClinicOfficers = true,
+  }) {
     final values = <String>{...shiftA, ...shiftB, ...shiftC};
     final result = values.where((name) {
       if (isSupervisor(name)) return false;
-      if (!clinicReplacement && isClinicOfficer(name)) return false;
+      if (!clinicReplacement && excludeClinicOfficers && isClinicOfficer(name)) return false;
       return true;
     }).toList()
       ..sort((a, b) => a.compareTo(b));
