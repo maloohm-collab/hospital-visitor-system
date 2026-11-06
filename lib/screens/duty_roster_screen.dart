@@ -98,7 +98,7 @@ class _DutyRosterScreenState extends State<DutyRosterScreen> with SingleTickerPr
     setState(() => rows[code]![index]['officer'] = officer);
   }
 
-  Future<String?> _pickOfficer(int currentIndex, String currentShift) async {
+  Future<String?> _pickOfficer(int currentIndex, String currentShift, {bool clinicReplacement = false}) async {
     final width = MediaQuery.of(context).size.width * 0.80;
     return showDialog<String>(
       context: context,
@@ -127,9 +127,9 @@ class _DutyRosterScreenState extends State<DutyRosterScreen> with SingleTickerPr
                 Expanded(
                   child: TabBarView(
                     children: [
-                      _officerChoices(dialogContext, DutyRosterCatalog.shiftA, currentShift, currentIndex),
-                      _officerChoices(dialogContext, DutyRosterCatalog.shiftB, currentShift, currentIndex),
-                      _officerChoices(dialogContext, DutyRosterCatalog.shiftC, currentShift, currentIndex),
+                      _officerChoices(dialogContext, DutyRosterCatalog.officersFor('A', clinicReplacement: clinicReplacement), currentShift, currentIndex),
+                      _officerChoices(dialogContext, DutyRosterCatalog.officersFor('B', clinicReplacement: clinicReplacement), currentShift, currentIndex),
+                      _officerChoices(dialogContext, DutyRosterCatalog.officersFor('C', clinicReplacement: clinicReplacement), currentShift, currentIndex),
                     ],
                   ),
                 ),
@@ -578,69 +578,220 @@ class _DutyRosterScreenState extends State<DutyRosterScreen> with SingleTickerPr
     catch (_) { msg('تعذر حذف الكشف.'); }
   }
 
+  Widget _actionButton({
+    required String label,
+    required IconData icon,
+    required VoidCallback? onPressed,
+    bool primary = false,
+    Color? foreground,
+  }) {
+    final style = primary
+        ? FilledButton.styleFrom(
+            backgroundColor: teal,
+            foregroundColor: Colors.white,
+            minimumSize: const Size(150, 50),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+          )
+        : OutlinedButton.styleFrom(
+            foregroundColor: foreground ?? navy,
+            minimumSize: const Size(150, 50),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            side: BorderSide(color: (foreground ?? navy).withOpacity(0.45)),
+            textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+          );
+    return primary
+        ? FilledButton.icon(onPressed: onPressed, icon: Icon(icon, size: 20), label: Text(label), style: style)
+        : OutlinedButton.icon(onPressed: onPressed, icon: Icon(icon, size: 20), label: Text(label), style: style);
+  }
+
+  Widget _sectionTitle(String title, {IconData? icon}) => Padding(
+    padding: const EdgeInsets.only(bottom: 10),
+    child: Row(
+      children: [
+        if (icon != null) ...[
+          Icon(icon, color: navy, size: 21),
+          const SizedBox(width: 9),
+        ],
+        Expanded(child: Text(title, style: const TextStyle(
+          color: navy, fontSize: 17, fontWeight: FontWeight.w800,
+        ))),
+      ],
+    ),
+  );
+
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('جدول المناوبات والوظائف'), backgroundColor: navy, foregroundColor: Colors.white),
+    appBar: AppBar(
+      title: const Text('جدول المناوبات والوظائف', style: TextStyle(fontWeight: FontWeight.w700)),
+      backgroundColor: navy,
+      foregroundColor: Colors.white,
+    ),
     body: StreamBuilder<DocumentSnapshot<Map<String,dynamic>>>(
       stream: db.collection('daily_duty_rosters').doc(keyDay).snapshots(),
       builder: (context, snap) {
         final data = snap.data?.data();
         final blocks = Map<String,dynamic>.from(data?['shifts'] ?? {});
         final published = data?['status'] == 'published';
-        return ListView(padding: const EdgeInsets.all(14), children: [
-          Container(padding: const EdgeInsets.all(15), decoration: BoxDecoration(color: navy, borderRadius: BorderRadius.circular(16)),
-            child: Column(children: [
-              const Text('كشف الوظائف اليومي', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 7), Text(DateFormat('yyyy/MM/dd').format(day), style: const TextStyle(color: Colors.white70)),
-              OutlinedButton.icon(onPressed: _pickDate, icon: const Icon(Icons.calendar_month), label: const Text('اختيار التاريخ / الأرشيف'),
-                style: OutlinedButton.styleFrom(foregroundColor: Colors.white)),
-              if (published) const Chip(label: Text('كشف منشور ومعتمد')),
-              if (admin && copiedFromDateKey != null)
-                Padding(
-                  padding: const EdgeInsets.only(top: 6),
-                  child: Text(
-                    'هذا الكشف مُعد بالاستناد إلى كشف اليوم المناظر في الأسبوع السابق: $copiedFromDateKey. سيبقى الكشف السابق محفوظاً دون تغيير.',
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(color: Colors.white70, fontSize: 11),
-                  ),
+        return ListView(
+          padding: const EdgeInsets.fromLTRB(14, 14, 14, 30),
+          children: [
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(18),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF0A3767), Color(0xFF14527A)],
+                  begin: Alignment.topRight,
+                  end: Alignment.bottomLeft,
                 ),
-            ])),
-          if (admin) OutlinedButton.icon(
-            onPressed: busy ? null : _chooseEditTarget,
-            icon: const Icon(Icons.tune),
-            label: const Text('تحديد نوع التعديل'),
-          ),
-          if (admin) Row(children: [
-            Expanded(child: OutlinedButton.icon(onPressed: busy ? null : _save, icon: const Icon(Icons.save), label: const Text('حفظ مسودة'))),
-            const SizedBox(width: 8),
-            Expanded(child: FilledButton.icon(onPressed: busy ? null : _publish, icon: const Icon(Icons.send), label: Text(published ? 'معاينة وإعادة إرسال' : 'معاينة واعتماد'))),
-          ]),
-          if (admin && data != null) Align(alignment: Alignment.centerLeft,
-            child: TextButton.icon(onPressed: _delete, icon: const Icon(Icons.delete_outline), label: const Text('حذف الكشف'))),
-          if (data != null && (admin || published)) Row(children: [
-            Expanded(child: FilledButton.icon(onPressed: () => _sharePdf(data), icon: const Icon(Icons.share), label: const Text('مشاركة PDF'))),
-            const SizedBox(width: 8),
-            Expanded(child: OutlinedButton.icon(onPressed: () => _savePdf(data), icon: const Icon(Icons.download), label: const Text('حفظ / طباعة PDF'))),
-          ]),
-          if (admin) DropdownButtonFormField<String>(
-            value: DutyRosterCatalog.siteManagers.contains(siteManager) ? siteManager : null,
-            isExpanded: true,
-            decoration: const InputDecoration(labelText: 'مدير الموقع'),
-            items: DutyRosterCatalog.siteManagers.map((v) => DropdownMenuItem(value: v, child: Text(v))).toList(),
-            onChanged: (v) => setState(() => siteManager = v),
-          ),
-          TabBar(controller: tabs, labelColor: navy, indicatorColor: teal, tabs: const [Tab(text: 'A'),Tab(text: 'B'),Tab(text: 'C')]),
-          const SizedBox(height: 12),
-          _editor(shift, blocks[shift], readOnly: !admin),
-          if (admin) ...[
-            const SizedBox(height: 12), const Text('ملاحظة المشرف الإداري', style: TextStyle(fontWeight: FontWeight.bold, color: navy)),
-            TextFormField(key: ValueKey('note-' + shift + keyDay), initialValue: notes[shift], maxLines: 2,
-              decoration: const InputDecoration(hintText: 'ملاحظة خاصة بهذه المناوبة'), onChanged: (v) => notes[shift] = v),
+                borderRadius: BorderRadius.circular(18),
+              ),
+              child: Column(
+                children: [
+                  const Text('كشف الوظائف اليومي', textAlign: TextAlign.center,
+                    style: TextStyle(color: Colors.white, fontSize: 21, fontWeight: FontWeight.w800)),
+                  const SizedBox(height: 8),
+                  Text(DateFormat('EEEE  yyyy/MM/dd', 'ar').format(day),
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 14),
+                  _actionButton(
+                    label: 'اختيار التاريخ / الأرشيف',
+                    icon: Icons.calendar_month,
+                    onPressed: _pickDate,
+                    foreground: Colors.white,
+                  ),
+                  if (published) ...[
+                    const SizedBox(height: 10),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)),
+                      child: const Text('كشف منشور ومعتمد',
+                        style: TextStyle(color: Color(0xFF176B50), fontWeight: FontWeight.w800)),
+                    ),
+                  ],
+                  if (admin && copiedFromDateKey != null) ...[
+                    const SizedBox(height: 12),
+                    Text(
+                      'أُعد هذا الكشف بالاستناد إلى كشف اليوم المناظر في الأسبوع السابق ($copiedFromDateKey). النسخة التاريخية محفوظة دون تغيير.',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(color: Colors.white, fontSize: 12, height: 1.5),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            const SizedBox(height: 18),
+            if (admin) ...[
+              _sectionTitle('إجراءات الإدارة', icon: Icons.admin_panel_settings_outlined),
+              Wrap(
+                spacing: 10,
+                runSpacing: 10,
+                alignment: WrapAlignment.start,
+                children: [
+                  _actionButton(label: 'تحديد نوع التعديل', icon: Icons.tune,
+                    onPressed: busy ? null : _chooseEditTarget),
+                  _actionButton(label: 'حفظ مسودة', icon: Icons.save_outlined,
+                    onPressed: busy ? null : _save),
+                  _actionButton(label: published ? 'معاينة وإعادة إرسال' : 'معاينة واعتماد',
+                    icon: Icons.send_rounded, onPressed: busy ? null : _publish, primary: true),
+                  if (data != null)
+                    _actionButton(label: 'حذف الكشف', icon: Icons.delete_outline,
+                      onPressed: busy ? null : _delete, foreground: Colors.red.shade700),
+                ],
+              ),
+              const SizedBox(height: 16),
+              const Divider(height: 1, thickness: 1),
+              const SizedBox(height: 16),
+            ],
+            if (data != null && (admin || published)) ...[
+              _sectionTitle('ملف الكشف PDF', icon: Icons.picture_as_pdf_outlined),
+              Wrap(
+                spacing: 10,
+                runSpacing: 10,
+                children: [
+                  _actionButton(label: 'مشاركة PDF', icon: Icons.share,
+                    onPressed: () => _sharePdf(data), primary: true),
+                  _actionButton(label: 'حفظ / طباعة PDF', icon: Icons.download,
+                    onPressed: () => _savePdf(data)),
+                ],
+              ),
+              const SizedBox(height: 16),
+              const Divider(height: 1, thickness: 1),
+              const SizedBox(height: 16),
+            ],
+            if (admin) ...[
+              _sectionTitle('بيانات الكشف', icon: Icons.assignment_ind_outlined),
+              DropdownButtonFormField<String>(
+                value: DutyRosterCatalog.siteManagers.contains(siteManager) ? siteManager : null,
+                isExpanded: true,
+                decoration: const InputDecoration(
+                  labelText: 'مدير الموقع',
+                  border: OutlineInputBorder(),
+                  contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 16),
+                ),
+                items: DutyRosterCatalog.siteManagers.map((v) => DropdownMenuItem(value: v, child: Text(v))).toList(),
+                onChanged: (v) => setState(() => siteManager = v),
+              ),
+              const SizedBox(height: 16),
+              const Divider(height: 1, thickness: 1),
+              const SizedBox(height: 14),
+            ],
+            _sectionTitle('تفاصيل المناوبات', icon: Icons.calendar_view_week_outlined),
+            Container(
+              decoration: BoxDecoration(
+                color: const Color(0xFFF1F5F9),
+                borderRadius: BorderRadius.circular(13),
+                border: Border.all(color: const Color(0xFFD5DEE8)),
+              ),
+              child: TabBar(
+                controller: tabs,
+                labelColor: Colors.white,
+                unselectedLabelColor: navy,
+                indicator: BoxDecoration(color: navy, borderRadius: BorderRadius.circular(10)),
+                indicatorSize: TabBarIndicatorSize.tab,
+                dividerColor: Colors.transparent,
+                labelStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800),
+                tabs: const [Tab(text: 'الشفت A'), Tab(text: 'الشفت B'), Tab(text: 'الشفت C')],
+              ),
+            ),
+            const SizedBox(height: 16),
+            _editor(shift, blocks[shift], readOnly: !admin),
+            if (admin) ...[
+              const SizedBox(height: 18),
+              const Divider(height: 1, thickness: 1),
+              const SizedBox(height: 16),
+              _sectionTitle('ملاحظة المشرف الإداري', icon: Icons.sticky_note_2_outlined),
+              TextFormField(
+                key: ValueKey('note-' + shift + keyDay),
+                initialValue: notes[shift],
+                maxLines: 3,
+                style: const TextStyle(fontSize: 15, height: 1.5),
+                decoration: const InputDecoration(
+                  hintText: 'اكتب ملاحظة خاصة بهذه المناوبة',
+                  border: OutlineInputBorder(),
+                  alignLabelWithHint: true,
+                  contentPadding: EdgeInsets.all(14),
+                ),
+                onChanged: (v) => notes[shift] = v,
+              ),
+            ],
+            if (!admin && data == null)
+              const Padding(padding: EdgeInsets.all(22),
+                child: Text('لا يوجد كشف منشور لهذا التاريخ.', textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600))),
+            if (!admin && data != null && !published)
+              const Padding(padding: EdgeInsets.only(top: 12),
+                child: Text('هذا الكشف لم يُنشر بعد.', style: TextStyle(fontSize: 14))),
+            if (busy) const Padding(
+              padding: EdgeInsets.only(top: 18),
+              child: Center(child: CircularProgressIndicator()),
+            ),
           ],
-          if (!admin && data == null) const Padding(padding: EdgeInsets.all(20), child: Text('لا يوجد كشف منشور لهذا التاريخ.', textAlign: TextAlign.center)),
-          if (!admin && data != null && !published) const Text('هذا الكشف لم يُنشر بعد.'),
-        ]);
-      }),
+        );
+      },
+    ),
   );
 
   Widget _editor(String s, dynamic saved, {required bool readOnly}) {
@@ -659,7 +810,8 @@ class _DutyRosterScreenState extends State<DutyRosterScreen> with SingleTickerPr
       if (!readOnly) DropdownButtonFormField<String>(
         value: DutyRosterCatalog.supervisorsFor(s).contains(supervisors[s]) ? supervisors[s] : null,
         isExpanded: true,
-        decoration: const InputDecoration(labelText: 'المشرف'),
+        decoration: const InputDecoration(labelText: 'المشرف', border: OutlineInputBorder(),
+          contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 15)),
         items: DutyRosterCatalog.supervisorsFor(s).map((v) => DropdownMenuItem(value: v, child: Text(v))).toList(),
         onChanged: (v) => setState(() => supervisors[s] = v),
       ) else if ((b['supervisorName'] ?? '').toString().isNotEmpty)
@@ -669,7 +821,12 @@ class _DutyRosterScreenState extends State<DutyRosterScreen> with SingleTickerPr
           textAlign: TextAlign.center, style: const TextStyle(color: navy, fontWeight: FontWeight.bold))),
       ...List.generate(list.length, (i) {
         final r = list[i]; final n = (r['officer'] ?? '').toString(); final l = (r['location'] ?? '').toString();
-        return Card(child: Padding(padding: const EdgeInsets.all(8), child: Column(children: [
+        return Card(
+          margin: const EdgeInsets.only(bottom: 14),
+          elevation: 1.5,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(13),
+            side: const BorderSide(color: Color(0xFFDCE4EC))),
+          child: Padding(padding: const EdgeInsets.all(13), child: Column(children: [
           Row(children: [
             CircleAvatar(radius: 13, child: Text((i+1).toString())),
             const SizedBox(width: 8),
@@ -698,14 +855,17 @@ class _DutyRosterScreenState extends State<DutyRosterScreen> with SingleTickerPr
             if (!readOnly) IconButton(onPressed: () => setState(() => rows[s]!.removeAt(i)), icon: const Icon(Icons.delete_outline, color: Colors.red)),
           ]),
           DropdownButtonFormField<String>(value: DutyRosterCatalog.locations.contains(l) ? l : null, isExpanded: true,
-            decoration: const InputDecoration(labelText: 'اختيار الموقع / الوظيفة'),
+            decoration: const InputDecoration(labelText: 'اختيار الموقع / الوظيفة',
+              border: OutlineInputBorder(), contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 15)),
             items: DutyRosterCatalog.locations.map((v) => DropdownMenuItem(value: v, child: Text(v))).toList(),
             onChanged: readOnly ? null : (v) => setState(() => r['location'] = v)),
         ])));
       }),
       if (!readOnly) OutlinedButton.icon(onPressed: () => setState(() => rows[s]!.add({'officer': null, 'location': null})),
         icon: const Icon(Icons.add), label: const Text('إضافة ضابط ووظيفة')),
-      const SizedBox(height: 10), const Text('المجازون OFF', style: TextStyle(fontWeight: FontWeight.bold, color: navy)),
+      const SizedBox(height: 10), const Padding(padding: EdgeInsets.only(top: 14, bottom: 8),
+        child: Divider(height: 1, thickness: 1)),
+      const Text('المجازون OFF', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: navy)),
       if (readOnly) Wrap(children: (b['offNames'] as List? ?? []).map((n) => Chip(label: Text(n.toString()))).toList())
       else ...[
         Wrap(spacing: 5, children: offs[s]!.map((n) => InputChip(label: Text(n), onDeleted: () => setState(() => offs[s]!.remove(n)))).toList()),
@@ -748,7 +908,7 @@ class _DutyRosterScreenState extends State<DutyRosterScreen> with SingleTickerPr
                       tooltip: 'استبدال موظف العيادة',
                       icon: const Icon(Icons.swap_horiz, color: navy),
                       onPressed: () async {
-                        final selected = await _pickOfficer(-1, 'A');
+                        final selected = await _pickOfficer(-1, 'A', clinicReplacement: true);
                         if (selected == null || !mounted) return;
                         final other = _otherAssignments(selected, 'A', -1);
                         if (other.isNotEmpty) {
@@ -780,7 +940,9 @@ class _DutyRosterScreenState extends State<DutyRosterScreen> with SingleTickerPr
           textAlign: TextAlign.center, style: TextStyle(color: Colors.black54)),
       ],
       const SizedBox(height: 10),
-      const Text('قائمة سوات', style: TextStyle(fontWeight: FontWeight.bold, color: navy)),
+      const Padding(padding: EdgeInsets.only(top: 14, bottom: 8),
+        child: Divider(height: 1, thickness: 1)),
+      const Text('قائمة سوات', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: navy)),
       if (readOnly) Wrap(children: (b['specialNames'] as List? ?? []).map((n) => Chip(label: Text(n.toString()))).toList())
       else ...[
         Wrap(spacing: 5, children: specials[s]!.map((n) => InputChip(label: Text(n), onDeleted: () => setState(() => specials[s]!.remove(n)))).toList()),
