@@ -85,7 +85,7 @@ class DashboardHeader extends StatelessWidget {
                   ),
                 ),
                 Positioned(
-                  left: 8,
+                  right: 8,
                   bottom: 7,
                   child: _headerAction(
                     tooltip: 'تسجيل الخروج',
