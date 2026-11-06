@@ -38,6 +38,8 @@ class DutyRosterPdf {
       ));
       widgets.add(pw.Text('المجازون OFF: ' + ((block['offNames'] as List? ?? []).join('، ')),
         style: pw.TextStyle(font: regular, fontSize: 9)));
+      widgets.add(pw.Text('سنوية / سوات: ' + ((block['specialNames'] as List? ?? []).join('، ')),
+        style: pw.TextStyle(font: regular, fontSize: 9)));
       if ((block['adminNote'] ?? '').toString().isNotEmpty) {
         widgets.add(pw.Text('ملاحظة الإدارة: ' + block['adminNote'].toString(),
           style: pw.TextStyle(font: regular, fontSize: 9)));
