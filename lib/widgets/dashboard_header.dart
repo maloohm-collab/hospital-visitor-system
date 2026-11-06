@@ -120,7 +120,7 @@ class DashboardHeader extends StatelessWidget {
                   alignment: Alignment.center,
                   child: SizedBox(
                     width: MediaQuery.of(context).size.width - 92,
-                    child: const FittedBox(
+                    child: FittedBox(
                       fit: BoxFit.scaleDown,
                       child: RichText(
                         maxLines: 1,
