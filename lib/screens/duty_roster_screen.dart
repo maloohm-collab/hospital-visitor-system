@@ -2,7 +2,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:share_plus/share_plus.dart';
+import 'package:printing/printing.dart';
+import '../data/duty_roster_pdf.dart';
 import '../data/duty_roster_catalog.dart';
 
 class DutyRosterScreen extends StatefulWidget {
@@ -131,6 +132,22 @@ class _DutyRosterScreenState extends State<DutyRosterScreen> with SingleTickerPr
     return out.toString();
   }
 
+  Future<void> _sharePdf(Map<String,dynamic> data) async {
+    try {
+      final blocks = Map<String,dynamic>.from(data['shifts'] ?? {});
+      final bytes = await DutyRosterPdf.build(date: keyDay, shifts: blocks);
+      await Printing.sharePdf(bytes: bytes, filename: 'daily_roster_' + keyDay + '.pdf');
+    } catch (_) { msg('تعذر تجهيز ملف PDF للمشاركة.'); }
+  }
+
+  Future<void> _savePdf(Map<String,dynamic> data) async {
+    try {
+      final blocks = Map<String,dynamic>.from(data['shifts'] ?? {});
+      final bytes = await DutyRosterPdf.build(date: keyDay, shifts: blocks);
+      await Printing.layoutPdf(onLayout: (_) async => bytes, name: 'daily_roster_' + keyDay + '.pdf');
+    } catch (_) { msg('تعذر تجهيز ملف PDF للحفظ أو الطباعة.'); }
+  }
+
   Future<void> _delete() async {
     final a = await _confirm('حذف الكشف', 'هل تريد حذف كشف ' + keyDay + '؟');
     if (a != 2) return;
@@ -162,10 +179,14 @@ class _DutyRosterScreenState extends State<DutyRosterScreen> with SingleTickerPr
             Expanded(child: FilledButton.icon(onPressed: busy ? null : _publish, icon: const Icon(Icons.send), label: const Text('اعتماد ونشر'))),
           ]),
           if (admin && data != null) Row(children: [
-            Expanded(child: TextButton.icon(onPressed: () => Share.share(_text(data)), icon: const Icon(Icons.share), label: const Text('مشاركة'))),
+            Expanded(child: TextButton.icon(onPressed: () => _sharePdf(data), icon: const Icon(Icons.share), label: const Text('مشاركة PDF'))),
             Expanded(child: TextButton.icon(onPressed: _delete, icon: const Icon(Icons.delete_outline), label: const Text('حذف'))),
           ]),
-          if (!admin && published && data != null) FilledButton.icon(onPressed: () => Share.share(_text(data)), icon: const Icon(Icons.share), label: const Text('مشاركة الكشف')),
+          if (data != null && (admin || published)) Row(children: [
+            Expanded(child: FilledButton.icon(onPressed: () => _sharePdf(data), icon: const Icon(Icons.share), label: const Text('مشاركة PDF'))),
+            const SizedBox(width: 8),
+            Expanded(child: OutlinedButton.icon(onPressed: () => _savePdf(data), icon: const Icon(Icons.download), label: const Text('حفظ / طباعة PDF'))),
+          ]),
           TabBar(controller: tabs, labelColor: navy, indicatorColor: teal, tabs: const [Tab(text: 'A'),Tab(text: 'B'),Tab(text: 'C')]),
           const SizedBox(height: 12),
           _editor(shift, blocks[shift], readOnly: !admin),
