@@ -887,7 +887,7 @@ service cloud.firestore {
 
     // Daily duty rosters: all active users can read; only administration can manage and publish.
     match /daily_duty_rosters/{dateKey} {
-      allow get, list: if isActiveUser();
+      allow get, list: if isActiveUser() && (isActiveAdmin() || resource.data.status == 'published');
       allow create, update: if isActiveAdmin()
         && request.resource.data.dateKey == dateKey
         && request.resource.data.status in ['draft', 'approved', 'published']
