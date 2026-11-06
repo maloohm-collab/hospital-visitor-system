@@ -7,6 +7,11 @@ class DutyRosterCatalog {
 
   static List<String> supervisorsFor(String shift) => shift == 'A' ? supervisorsA : supervisorsBC;
 
+  static const List<String> siteManagers = ['ياسر الشديفات'];
+  static const List<String> supervisorsA = ['فراس الشرعة'];
+  static const List<String> supervisorsBC = ['أيمن بدارنه'];
+  static List<String> supervisorsFor(String shift) => shift == 'A' ? supervisorsA : supervisorsBC;
+
   static const List<String> locations = [
     'كراج الكادر A','الأشعة','CCU','جراحة / رجال A','جراحة / نساء',
     'باطني / نساء','باطني / رجال A','الجراحات التخصصية','الأطفال',
