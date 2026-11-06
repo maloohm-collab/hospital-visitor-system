@@ -64,9 +64,19 @@ class DutyRosterCatalog {
   static List<String> get allOfficers {
     final values = <String>{...shiftA, ...shiftB, ...shiftC};
     final result = values.toList();
+    result.removeAll([
+      'ايمن بدارنه', 'فراس الشرعه', 'باسم حماد', 'احمد قاسم محمد عقله',
+    ]);
     result.sort((a, b) => a.compareTo(b));
     return result;
   }
+
+  static const List<String> specialA = <String>[];
+  static const List<String> specialB = <String>[];
+  static const List<String> specialC = <String>[];
+  static List<String> specialFor(String shift) => switch (shift) {
+    'A' => specialA, 'B' => specialB, _ => specialC,
+  };
 
   static const List<String> offA = <String>[];
   static const List<String> offB = <String>[];
@@ -86,7 +96,7 @@ class DutyRosterCatalog {
     'كراج الشرعي','كراج الطوارئ','كراج الطوارئ + شارع الخدمات',
     'مقص الطوارئ','مدخل العيادات','مدخل الكلى','مسؤول طوارئ',
     'طوارئ باب الزوار','طوارئ تصنيف الحالات','طوارئ قاعة الباطني',
-    'طوارئ قاعة العظام','طوارئ الحالات الحرجة','تأهيل',
+    'طوارئ قاعة العظام','طوارئ الحالات الحرجة',
   ];
 
   static const List<String> clinicOfficers = [
