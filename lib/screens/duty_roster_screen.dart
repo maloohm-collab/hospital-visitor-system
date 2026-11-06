@@ -315,7 +315,13 @@ class _DutyRosterScreenState extends State<DutyRosterScreen> with SingleTickerPr
 
     // اعرض نسخة PDF النهائية للإدارة أولاً، ولا يتم الاعتماد أو الإرسال
     // إلا بعد اختيار أحد الإجراءين من نافذة المعاينة.
-    final previewData = await _data('draft');
+    Map<String, dynamic> previewData;
+    try {
+      previewData = await _data('draft');
+    } catch (_) {
+      msg('تعذر تجهيز معاينة الكشف.');
+      return;
+    }
     final previewBlocks = Map<String, dynamic>.from(previewData['shifts'] ?? {});
     final choice = await showDialog<int>(
       context: context,
@@ -474,7 +480,7 @@ class _DutyRosterScreenState extends State<DutyRosterScreen> with SingleTickerPr
           if (admin) Row(children: [
             Expanded(child: OutlinedButton.icon(onPressed: busy ? null : _save, icon: const Icon(Icons.save), label: const Text('حفظ مسودة'))),
             const SizedBox(width: 8),
-            Expanded(child: FilledButton.icon(onPressed: busy ? null : _publish, icon: const Icon(Icons.send), label: Text(published ? 'إعادة إرسال للجميع' : 'اعتماد ونشر'))),
+            Expanded(child: FilledButton.icon(onPressed: busy ? null : _publish, icon: const Icon(Icons.send), label: Text(published ? 'معاينة وإعادة إرسال' : 'معاينة واعتماد'))),
           ]),
           if (admin && data != null) Align(alignment: Alignment.centerLeft,
             child: TextButton.icon(onPressed: _delete, icon: const Icon(Icons.delete_outline), label: const Text('حذف الكشف'))),
