@@ -16,6 +16,7 @@ import 'notifications_screen.dart';
 import 'emergency_duty_screen.dart';
 import 'work_location_screen.dart';
 import 'duty_roster_screen.dart';
+import 'founder_screen.dart';
 
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({super.key, this.userRole = 'security_officer'});
@@ -45,6 +46,10 @@ class DashboardScreen extends StatelessWidget {
             Navigator.push(context, MaterialPageRoute(
               builder: (_) => const DirectContactScreen(),
             ));
+          } else if (index == 4) {
+            Navigator.push(context, MaterialPageRoute(
+              builder: (_) => const FounderScreen(),
+            ));
           }
         },
         destinations: const [
@@ -52,6 +57,7 @@ class DashboardScreen extends StatelessWidget {
           NavigationDestination(icon: Icon(Icons.meeting_room_outlined), label: 'الزيارات'),
           NavigationDestination(icon: Icon(Icons.account_circle_outlined), label: 'حسابي'),
           NavigationDestination(icon: Icon(Icons.contact_phone_rounded), label: 'تواصل مباشر'),
+        NavigationDestination(icon: Icon(Icons.info_outline_rounded), label: 'عن التطبيق'),
         ],
       ),
       body: SafeArea(
@@ -181,6 +187,13 @@ class DashboardScreen extends StatelessWidget {
       onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => DutyRosterScreen(userRole: userRole))),
     ));
 
+    actions.add(_AdminAction(
+      icon: Icons.info_outline_rounded,
+      title: 'عن التطبيق والمؤسس',
+      color: const Color(0xFF14558A),
+      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const FounderScreen())),
+    ));
+
     actions.addAll([
       _AdminAction(
         icon: Icons.notifications_active_rounded,
@@ -301,6 +314,12 @@ class DashboardScreen extends StatelessWidget {
                 title: 'جدول المناوبات',
                 color: const Color(0xFF087E78),
                 onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => DutyRosterScreen(userRole: userRole))),
+              ),
+              _AdminAction(
+                icon: Icons.info_outline_rounded,
+                title: 'عن التطبيق والمؤسس',
+                color: const Color(0xFF14558A),
+                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const FounderScreen())),
               ),
               _AdminAction(
                 icon: Icons.sticky_note_2_rounded,
