@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -163,7 +164,7 @@ class _DutyRosterScreenState extends State<DutyRosterScreen> with SingleTickerPr
   Future<void> _sharePdf(Map<String,dynamic> data) async {
     try {
       final blocks = Map<String,dynamic>.from(data['shifts'] ?? {});
-      final bytes = await DutyRosterPdf.build(date: keyDay, shifts: blocks);
+      final bytes = Uint8List.fromList(await DutyRosterPdf.build(date: keyDay, shifts: blocks));
       await Printing.sharePdf(bytes: bytes, filename: 'daily_roster_' + keyDay + '.pdf');
     } catch (_) { msg('تعذر تجهيز ملف PDF للمشاركة.'); }
   }
@@ -171,7 +172,7 @@ class _DutyRosterScreenState extends State<DutyRosterScreen> with SingleTickerPr
   Future<void> _savePdf(Map<String,dynamic> data) async {
     try {
       final blocks = Map<String,dynamic>.from(data['shifts'] ?? {});
-      final bytes = await DutyRosterPdf.build(date: keyDay, shifts: blocks);
+      final bytes = Uint8List.fromList(await DutyRosterPdf.build(date: keyDay, shifts: blocks));
       await Printing.layoutPdf(onLayout: (_) async => bytes, name: 'daily_roster_' + keyDay + '.pdf');
     } catch (_) { msg('تعذر تجهيز ملف PDF للحفظ أو الطباعة.'); }
   }
