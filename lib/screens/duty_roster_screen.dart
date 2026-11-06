@@ -231,7 +231,8 @@ class _DutyRosterScreenState extends State<DutyRosterScreen> with SingleTickerPr
       // or alter the historical source document.
       final currentSnap = await db.collection('daily_duty_rosters').doc(keyDay).get();
       Map<String, dynamic>? data = currentSnap.data();
-      if (data == null) {
+      final todayKey = DateFormat('yyyy-MM-dd').format(DateTime.now());
+      if (data == null && keyDay == todayKey) {
         final sourceDate = day.subtract(const Duration(days: 7));
         final sourceKey = DateFormat('yyyy-MM-dd').format(sourceDate);
         final sourceSnap = await db.collection('daily_duty_rosters').doc(sourceKey).get();
@@ -242,7 +243,7 @@ class _DutyRosterScreenState extends State<DutyRosterScreen> with SingleTickerPr
           data = sourceData;
           copiedFromDateKey = sourceKey;
         }
-      } else {
+      } else if (data != null) {
         copiedFromDateKey = data['copiedFromDateKey']?.toString();
       }
 
