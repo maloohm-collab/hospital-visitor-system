@@ -652,7 +652,7 @@ class _DutyRosterScreenState extends State<DutyRosterScreen> with SingleTickerPr
                   const Text('كشف الوظائف اليومي', textAlign: TextAlign.center,
                     style: TextStyle(color: Colors.white, fontSize: 21, fontWeight: FontWeight.w800)),
                   const SizedBox(height: 8),
-                  Text(DateFormat('EEEE  yyyy/MM/dd', 'ar').format(day),
+                  Text(DateFormat('yyyy/MM/dd').format(day),
                     textAlign: TextAlign.center,
                     style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w600)),
                   const SizedBox(height: 14),
