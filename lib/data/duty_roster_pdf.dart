@@ -38,6 +38,30 @@ class DutyRosterPdf {
         cellAlignment: pw.Alignment.center,
         border: pw.TableBorder.all(color: PdfColors.grey500, width: .4),
       ));
+      if (code == 'A') {
+        final clinics = (block['clinicAssignments'] as List? ?? []);
+        if (clinics.isNotEmpty) {
+          widgets.add(pw.SizedBox(height: 5));
+          widgets.add(pw.Text('وظائف العيادات — شفت A',
+            style: pw.TextStyle(font: bold, fontSize: 10)));
+          final clinicRows = clinics.map((value) {
+            final item = Map<String, dynamic>.from(value);
+            return [
+              (item['officer'] ?? '').toString(),
+              (item['location'] ?? '').toString(),
+            ];
+          }).toList();
+          widgets.add(pw.TableHelper.fromTextArray(
+            headers: ['الموظف', 'موقع العيادة'],
+            data: clinicRows,
+            headerStyle: pw.TextStyle(font: bold, color: PdfColors.white, fontSize: 8),
+            cellStyle: pw.TextStyle(font: regular, fontSize: 8),
+            headerDecoration: const pw.BoxDecoration(color: PdfColor.fromInt(0xFF087E78)),
+            cellAlignment: pw.Alignment.center,
+            border: pw.TableBorder.all(color: PdfColors.grey500, width: .4),
+          ));
+        }
+      }
       widgets.add(pw.Text('المجازون OFF: ' + ((block['offNames'] as List? ?? []).join('، ')),
         style: pw.TextStyle(font: regular, fontSize: 9)));
       widgets.add(pw.Text('سنوية / سوات: ' + ((block['specialNames'] as List? ?? []).join('، ')),
