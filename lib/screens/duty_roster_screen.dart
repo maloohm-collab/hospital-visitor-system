@@ -511,11 +511,12 @@ class _DutyRosterScreenState extends State<DutyRosterScreen> with SingleTickerPr
               const Text('تعمل العيادات من الأحد إلى الخميس. يمكن استبدال الموظف عند الإجازة أو الطوارئ مع بقاء موقع العيادة ثابتاً.',
                 style: TextStyle(fontSize: 12, color: Colors.black54)),
               const SizedBox(height: 8),
+              final savedClinicRows = (b['clinicAssignments'] as List? ?? clinicRows);
               ...List.generate(readOnly
-                  ? ((b['clinicAssignments'] as List? ?? []).length)
+                  ? savedClinicRows.length
                   : clinicRows.length, (index) {
                 final clinic = readOnly
-                    ? Map<String, dynamic>.from((b['clinicAssignments'] as List)[index])
+                    ? Map<String, dynamic>.from(savedClinicRows[index])
                     : clinicRows[index];
                 final officer = (clinic['officer'] ?? '').toString();
                 final location = (clinic['location'] ?? '').toString();
