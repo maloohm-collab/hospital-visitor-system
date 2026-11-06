@@ -10,40 +10,70 @@ class DutyRosterPdf {
     final regular = await PdfGoogleFonts.cairoRegular();
     final bold = await PdfGoogleFonts.cairoBold();
     final doc = pw.Document();
-    final widgets = <pw.Widget>[
-      pw.Text('مستشفى الزرقاء الحكومي', style: pw.TextStyle(font: bold, fontSize: 18)),
-      pw.Text('شركة الصخرة للخدمات والاستشارات الأمنية', style: pw.TextStyle(font: bold, fontSize: 13)),
-      pw.Text('كشف الوظائف اليومي — ' + date, style: pw.TextStyle(font: bold, fontSize: 16)),
-      pw.Text('مدير الموقع: ' + (Map<String, dynamic>.from(shifts['A'] ?? {})['siteManager'] ?? '').toString(), style: pw.TextStyle(font: regular, fontSize: 10)),
-      pw.SizedBox(height: 12),
-    ];
+    final pageFormat = PdfPageFormat.a4;
+
+    // كل مناوبة لها صفحة A4 مستقلة. يتم تصغير محتوى الصفحة بشكل متناسب
+    // عند الحاجة حتى لا ينتقل أي جزء من الكشف إلى صفحة أخرى.
     for (final code in ['A', 'B', 'C']) {
       final block = Map<String, dynamic>.from(shifts[code] ?? {});
-      final rows = <List<String>>[];
+      final assignmentRows = <List<String>>[];
       var number = 1;
       for (final value in (block['assignments'] as List? ?? [])) {
         final row = Map<String, dynamic>.from(value);
-        rows.add([number.toString(), (row['officer'] ?? '').toString(), (row['location'] ?? '').toString()]);
+        assignmentRows.add([
+          number.toString(),
+          (row['officer'] ?? '').toString(),
+          (row['location'] ?? '').toString(),
+        ]);
         number++;
       }
-      widgets.add(pw.Text('المشرف: ' + (block['supervisorName'] ?? '').toString(), style: pw.TextStyle(font: regular, fontSize: 9)));
-      widgets.add(pw.Text('المناوبة ' + code + ' — ' + (block['hours'] ?? '').toString(),
-        style: pw.TextStyle(font: bold, fontSize: 13)));
-      widgets.add(pw.TableHelper.fromTextArray(
-        headers: ['ت', 'الموظف', 'الوظيفة'],
-        data: rows,
-        headerStyle: pw.TextStyle(font: bold, color: PdfColors.white, fontSize: 9),
-        cellStyle: pw.TextStyle(font: regular, fontSize: 8),
-        headerDecoration: const pw.BoxDecoration(color: PdfColor.fromInt(0xFF082B55)),
-        cellAlignment: pw.Alignment.center,
-        border: pw.TableBorder.all(color: PdfColors.grey500, width: .4),
-      ));
+
+      final content = <pw.Widget>[
+        pw.Text('مستشفى الزرقاء الحكومي',
+            style: pw.TextStyle(font: bold, fontSize: 17)),
+        pw.SizedBox(height: 2),
+        pw.Text('شركة الصخرة للخدمات والاستشارات الأمنية',
+            style: pw.TextStyle(font: bold, fontSize: 12)),
+        pw.SizedBox(height: 3),
+        pw.Text('كشف الوظائف اليومي — $date',
+            style: pw.TextStyle(font: bold, fontSize: 14)),
+        pw.SizedBox(height: 4),
+        pw.Text('مدير الموقع: ${(block['siteManager'] ?? Map<String, dynamic>.from(shifts['A'] ?? {})['siteManager'] ?? '').toString()}',
+            style: pw.TextStyle(font: regular, fontSize: 9)),
+        pw.Text('المشرف: ${(block['supervisorName'] ?? '').toString()}',
+            style: pw.TextStyle(font: regular, fontSize: 9)),
+        pw.SizedBox(height: 4),
+        pw.Container(
+          width: double.infinity,
+          padding: const pw.EdgeInsets.symmetric(vertical: 5, horizontal: 8),
+          color: const PdfColor.fromInt(0xFF082B55),
+          child: pw.Text(
+            'المناوبة $code — ${(block['hours'] ?? '').toString()}',
+            textAlign: pw.TextAlign.center,
+            style: pw.TextStyle(font: bold, color: PdfColors.white, fontSize: 12),
+          ),
+        ),
+        pw.SizedBox(height: 4),
+        pw.TableHelper.fromTextArray(
+          headers: ['ت', 'الموظف', 'الوظيفة'],
+          data: assignmentRows,
+          headerStyle: pw.TextStyle(font: bold, color: PdfColors.white, fontSize: 8),
+          cellStyle: pw.TextStyle(font: regular, fontSize: 7),
+          headerDecoration: const pw.BoxDecoration(color: PdfColor.fromInt(0xFF164A78)),
+          cellAlignment: pw.Alignment.center,
+          border: pw.TableBorder.all(color: PdfColors.grey500, width: .35),
+          cellPadding: const pw.EdgeInsets.symmetric(vertical: 2, horizontal: 3),
+          columnWidths: {
+            0: const pw.FixedColumnWidth(25),
+            1: const pw.FlexColumnWidth(2),
+            2: const pw.FlexColumnWidth(3),
+          },
+        ),
+      ];
+
       if (code == 'A') {
         final clinics = (block['clinicAssignments'] as List? ?? []);
         if (clinics.isNotEmpty) {
-          widgets.add(pw.SizedBox(height: 5));
-          widgets.add(pw.Text('وظائف العيادات — شفت A',
-            style: pw.TextStyle(font: bold, fontSize: 10)));
           final clinicRows = clinics.map((value) {
             final item = Map<String, dynamic>.from(value);
             return [
@@ -51,28 +81,63 @@ class DutyRosterPdf {
               (item['location'] ?? '').toString(),
             ];
           }).toList();
-          widgets.add(pw.TableHelper.fromTextArray(
-            headers: ['الموظف', 'موقع العيادة'],
-            data: clinicRows,
-            headerStyle: pw.TextStyle(font: bold, color: PdfColors.white, fontSize: 8),
-            cellStyle: pw.TextStyle(font: regular, fontSize: 8),
-            headerDecoration: const pw.BoxDecoration(color: PdfColor.fromInt(0xFF087E78)),
-            cellAlignment: pw.Alignment.center,
-            border: pw.TableBorder.all(color: PdfColors.grey500, width: .4),
-          ));
+          content.addAll([
+            pw.SizedBox(height: 5),
+            pw.Text('وظائف العيادات — شفت A',
+                style: pw.TextStyle(font: bold, fontSize: 9)),
+            pw.TableHelper.fromTextArray(
+              headers: ['الموظف', 'موقع العيادة'],
+              data: clinicRows,
+              headerStyle: pw.TextStyle(font: bold, color: PdfColors.white, fontSize: 7),
+              cellStyle: pw.TextStyle(font: regular, fontSize: 7),
+              headerDecoration: const pw.BoxDecoration(color: PdfColor.fromInt(0xFF087E78)),
+              cellAlignment: pw.Alignment.center,
+              border: pw.TableBorder.all(color: PdfColors.grey500, width: .35),
+              cellPadding: const pw.EdgeInsets.symmetric(vertical: 2, horizontal: 3),
+            ),
+          ]);
         }
       }
-      widgets.add(pw.Text('المجازون OFF: ' + ((block['offNames'] as List? ?? []).join('، ')),
-        style: pw.TextStyle(font: regular, fontSize: 9)));
-      widgets.add(pw.Text('سنوية / سوات: ' + ((block['specialNames'] as List? ?? []).join('، ')),
-        style: pw.TextStyle(font: regular, fontSize: 9)));
-      if ((block['adminNote'] ?? '').toString().isNotEmpty) {
-        widgets.add(pw.Text('ملاحظة الإدارة: ' + block['adminNote'].toString(),
-          style: pw.TextStyle(font: regular, fontSize: 9)));
+
+      content.addAll([
+        pw.SizedBox(height: 5),
+        pw.Text('المجازون OFF: ${((block['offNames'] as List? ?? []).join('، '))}',
+            style: pw.TextStyle(font: regular, fontSize: 8)),
+        pw.SizedBox(height: 2),
+        pw.Text('قائمة سوات: ${((block['specialNames'] as List? ?? []).join('، '))}',
+            style: pw.TextStyle(font: regular, fontSize: 8)),
+      ]);
+      if ((block['adminNote'] ?? '').toString().trim().isNotEmpty) {
+        content.addAll([
+          pw.SizedBox(height: 3),
+          pw.Text('ملاحظة الإدارة: ${block['adminNote']}',
+              style: pw.TextStyle(font: regular, fontSize: 8)),
+        ]);
       }
-      widgets.add(pw.SizedBox(height: 10));
+
+      doc.addPage(pw.Page(
+        pageFormat: pageFormat,
+        margin: const pw.EdgeInsets.all(20),
+        build: (_) => pw.Center(
+          child: pw.FittedBox(
+            fit: pw.BoxFit.scaleDown,
+            child: pw.Container(
+              width: 555,
+              child: pw.Directionality(
+                textDirection: pw.TextDirection.rtl,
+                child: pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.stretch,
+                  mainAxisSize: pw.MainAxisSize.min,
+                  children: content,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ));
     }
-    widgets.add(pw.Text('التعليمات الثابتة', style: pw.TextStyle(font: bold, fontSize: 13)));
+
+    // التعليمات الثابتة في صفحة مستقلة حتى لا تؤثر على صفحات A وB وC.
     const fixedRules = [
       'يمنع ترك مكان الوظيفة إلا بوجود بديل وبعد الاتصال مع المشرف ولأي سبب كان، والتعامل مع الجمهور بلباقة وحسن تصرف وبدون تصادم.',
       'يمنع تجمع الوظائف والالتزام التام بموقع الوظيفة، ويمنع وجود الكراسي في مكان الوظيفة، ويمنع استخدام الهاتف أثناء الوظيفة.',
@@ -82,16 +147,27 @@ class DutyRosterPdf {
       'تمرير أي ملاحظة كانت صغيرة أو كبيرة، وتفعيل الحس الأمني، ويمنع مراجعة إدارة المستشفى إلا بواجب رسمي وبالأمر.',
       'عند الحصول على إجازة مرضية يجب أن تكون مختومة من السجل الطبي أو ختم وتوقيع المناوب الإداري عندما يكون السجل مغلقاً وإلا لن تعتمد.',
     ];
-    for (final line in fixedRules) {
-      widgets.add(pw.Bullet(text: line, style: pw.TextStyle(font: regular, fontSize: 8)));
-    }
-    doc.addPage(pw.MultiPage(
-      pageFormat: PdfPageFormat.a4,
-      theme: pw.ThemeData.withFont(base: regular, bold: bold),
-      build: (_) => [pw.Directionality(
+    doc.addPage(pw.Page(
+      pageFormat: pageFormat,
+      margin: const pw.EdgeInsets.all(28),
+      build: (_) => pw.Directionality(
         textDirection: pw.TextDirection.rtl,
-        child: pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.stretch, children: widgets),
-      )],
+        child: pw.Column(
+          crossAxisAlignment: pw.CrossAxisAlignment.stretch,
+          children: [
+            pw.Text('التعليمات الثابتة',
+                style: pw.TextStyle(font: bold, fontSize: 16)),
+            pw.SizedBox(height: 12),
+            ...fixedRules.map((line) => pw.Padding(
+              padding: const pw.EdgeInsets.only(bottom: 8),
+              child: pw.Bullet(
+                text: line,
+                style: pw.TextStyle(font: regular, fontSize: 10),
+              ),
+            )),
+          ],
+        ),
+      ),
     ));
     return doc.save();
   }
