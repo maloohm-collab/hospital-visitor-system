@@ -63,13 +63,13 @@ class DutyRosterCatalog {
   /// توحيد اختلافات كتابة الاسم العربي قبل المقارنة لمنع تكرار الأشخاص.
   static String normalizeName(String value) {
     return value
-        .replaceAll(RegExp(r'[\\u064B-\\u065F\\u0670\\u0640]'), '')
+        .replaceAll(RegExp(r'[\u064B-\u065F\u0670\u0640]'), '')
         .replaceAll('أ', 'ا')
         .replaceAll('إ', 'ا')
         .replaceAll('آ', 'ا')
         .replaceAll('ى', 'ي')
         .replaceAll('ة', 'ه')
-        .replaceAll(RegExp(r'\\s+'), '')
+        .replaceAll(RegExp(r'\s+'), '')
         .trim();
   }
 
