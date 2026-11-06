@@ -29,6 +29,7 @@ class _DutyRosterScreenState extends State<DutyRosterScreen> with SingleTickerPr
   String? siteManager = 'ياسر الشديفات';
   final Map<String, String?> supervisors = {'A': 'فراس الشرعة', 'B': 'أيمن بدارنه', 'C': 'أيمن بدارنه'};
   bool busy = false;
+  String? copiedFromDateKey;
   bool get admin => widget.userRole == 'admin';
   String get keyDay => DateFormat('yyyy-MM-dd').format(day);
   String get shift => ['A', 'B', 'C'][tabs.index];
@@ -191,72 +192,114 @@ class _DutyRosterScreenState extends State<DutyRosterScreen> with SingleTickerPr
   Future<void> _load() async {
     try {
       recentAssignments.clear();
-      for (var offset = 1; offset <= 1; offset++) {
-        final previousDay = day.subtract(Duration(days: offset));
-        final previousKey = DateFormat('yyyy-MM-dd').format(previousDay);
-        final previousSnap = await db.collection('daily_duty_rosters').doc(previousKey).get();
-        final previousData = previousSnap.data();
-        final previousShifts = Map<String, dynamic>.from(previousData?['shifts'] ?? {});
-        for (final code in ['A', 'B', 'C']) {
-          final block = Map<String, dynamic>.from(previousShifts[code] ?? {});
-          for (final value in (block['assignments'] as List? ?? [])) {
+      copiedFromDateKey = null;
+
+      // Keep the existing two-day assignment warning based on yesterday.
+      final previousDay = day.subtract(const Duration(days: 1));
+      final previousKey = DateFormat('yyyy-MM-dd').format(previousDay);
+      final previousSnap = await db.collection('daily_duty_rosters').doc(previousKey).get();
+      final previousData = previousSnap.data();
+      final previousShifts = Map<String, dynamic>.from(previousData?['shifts'] ?? {});
+      for (final code in ['A', 'B', 'C']) {
+        final block = Map<String, dynamic>.from(previousShifts[code] ?? {});
+        for (final value in (block['assignments'] as List? ?? [])) {
+          final assignment = Map<String, dynamic>.from(value);
+          final name = (assignment['officer'] ?? '').toString();
+          final location = (assignment['location'] ?? '').toString();
+          if (name.isNotEmpty) {
+            recentAssignments.putIfAbsent(name, () => []).add(
+              '$previousKey • $code • $location',
+            );
+          }
+        }
+        if (code == 'A') {
+          for (final value in (block['clinicAssignments'] as List? ?? [])) {
             final assignment = Map<String, dynamic>.from(value);
             final name = (assignment['officer'] ?? '').toString();
             final location = (assignment['location'] ?? '').toString();
             if (name.isNotEmpty) {
               recentAssignments.putIfAbsent(name, () => []).add(
-                '$previousKey • $code • $location',
+                '$previousKey • عيادات • $location',
               );
-            }
-          }
-          if (code == 'A') {
-            for (final value in (block['clinicAssignments'] as List? ?? [])) {
-              final assignment = Map<String, dynamic>.from(value);
-              final name = (assignment['officer'] ?? '').toString();
-              final location = (assignment['location'] ?? '').toString();
-              if (name.isNotEmpty) {
-                recentAssignments.putIfAbsent(name, () => []).add(
-                  '$previousKey • عيادات • $location',
-                );
-              }
             }
           }
         }
       }
-      final snap = await db.collection('daily_duty_rosters').doc(keyDay).get();
-      final data = snap.data();
+
+      // Daily review cycle: when today's roster does not exist yet, prepare
+      // today's draft from the same weekday one week earlier. Never write to
+      // or alter the historical source document.
+      final currentSnap = await db.collection('daily_duty_rosters').doc(keyDay).get();
+      Map<String, dynamic>? data = currentSnap.data();
       if (data == null) {
-        if (admin && mounted) setState(() {
-          for (final s in ['A','B','C']) { rows[s] = []; offs[s] = []; specials[s] = []; notes[s] = ''; }
-          if (isClinicDay) { _setDefaultClinicRows(); } else { clinicRows.clear(); }
-        });
+        final sourceDate = day.subtract(const Duration(days: 7));
+        final sourceKey = DateFormat('yyyy-MM-dd').format(sourceDate);
+        final sourceSnap = await db.collection('daily_duty_rosters').doc(sourceKey).get();
+        final sourceData = sourceSnap.data();
+        final sourceShifts = Map<String, dynamic>.from(sourceData?['shifts'] ?? {});
+        if (sourceData != null &&
+            ['A', 'B', 'C'].every((code) => sourceShifts[code] is Map)) {
+          data = sourceData;
+          copiedFromDateKey = sourceKey;
+        }
+      } else {
+        copiedFromDateKey = data['copiedFromDateKey']?.toString();
+      }
+
+      if (data == null) {
+        if (admin && mounted) {
+          setState(() {
+            for (final s in ['A', 'B', 'C']) {
+              rows[s] = [];
+              offs[s] = [];
+              specials[s] = [];
+              notes[s] = '';
+            }
+            if (isClinicDay) {
+              _setDefaultClinicRows();
+            } else {
+              clinicRows.clear();
+            }
+          });
+        }
         return;
       }
+
       final shifts = Map<String, dynamic>.from(data['shifts'] ?? {});
       siteManager = data['siteManager']?.toString() ?? siteManager;
       if (!mounted) return;
-      setState(() { for (final s in ['A','B','C']) {
-        final b = Map<String, dynamic>.from(shifts[s] ?? {});
-        rows[s] = (b['assignments'] as List? ?? []).map((e) { final m = Map<String,dynamic>.from(e); return <String,String?>{'officer': m['officer']?.toString(), 'location': m['location']?.toString()}; }).toList();
-        offs[s] = List<String>.from(b['offNames'] ?? const []);
-        specials[s] = List<String>.from(b['specialNames'] ?? const []);
-        notes[s] = (b['adminNote'] ?? '').toString();
-        supervisors[s] = b['supervisorName']?.toString() ?? supervisors[s];
-      }
-      final savedClinics = (Map<String, dynamic>.from(shifts['A'] ?? {})['clinicAssignments'] as List? ?? []);
-      clinicRows
-        ..clear()
-        ..addAll(savedClinics.map((value) {
-          final item = Map<String, dynamic>.from(value);
-          return <String, String?>{
-            'officer': item['officer']?.toString(),
-            'location': item['location']?.toString(),
-          };
-        }));
-      if (clinicRows.isEmpty && isClinicDay) _setDefaultClinicRows();
-      if (!isClinicDay) clinicRows.clear();
+      setState(() {
+        for (final s in ['A', 'B', 'C']) {
+          final b = Map<String, dynamic>.from(shifts[s] ?? {});
+          rows[s] = (b['assignments'] as List? ?? []).map((e) {
+            final m = Map<String, dynamic>.from(e);
+            return <String, String?>{
+              'officer': m['officer']?.toString(),
+              'location': m['location']?.toString(),
+            };
+          }).toList();
+          offs[s] = List<String>.from(b['offNames'] ?? const []);
+          specials[s] = List<String>.from(b['specialNames'] ?? const []);
+          notes[s] = (b['adminNote'] ?? '').toString();
+          supervisors[s] = b['supervisorName']?.toString() ?? supervisors[s];
+        }
+        final savedClinics =
+            (Map<String, dynamic>.from(shifts['A'] ?? {})['clinicAssignments'] as List? ?? []);
+        clinicRows
+          ..clear()
+          ..addAll(savedClinics.map((value) {
+            final item = Map<String, dynamic>.from(value);
+            return <String, String?>{
+              'officer': item['officer']?.toString(),
+              'location': item['location']?.toString(),
+            };
+          }));
+        if (clinicRows.isEmpty && isClinicDay) _setDefaultClinicRows();
+        if (!isClinicDay) clinicRows.clear();
       });
-    } catch (_) { msg('تعذر تحميل الكشف.'); }
+    } catch (_) {
+      msg('تعذر تحميل الكشف.');
+    }
   }
 
   Future<void> _pickDate() async {
@@ -280,6 +323,7 @@ class _DutyRosterScreenState extends State<DutyRosterScreen> with SingleTickerPr
       };
     }
     return {'dateKey': keyDay, 'siteManager': siteManager, 'shifts': blocks, 'status': status, 'updatedAt': FieldValue.serverTimestamp(), 'updatedBy': u?.uid, 'updatedByName': display,
+      if (copiedFromDateKey != null) 'copiedFromDateKey': copiedFromDateKey,
       if (status == 'approved') 'approvedAt': FieldValue.serverTimestamp(),
       if (status == 'published') 'publishedAt': FieldValue.serverTimestamp()};
   }
@@ -365,14 +409,10 @@ class _DutyRosterScreenState extends State<DutyRosterScreen> with SingleTickerPr
                       onPressed: () => Navigator.pop(dialogContext, 0),
                       child: const Text('رجوع للتعديل'),
                     ),
-                    FilledButton.tonal(
-                      onPressed: () => Navigator.pop(dialogContext, 1),
-                      child: const Text('اعتماد دون إرسال'),
-                    ),
                     FilledButton.icon(
                       onPressed: () => Navigator.pop(dialogContext, 2),
-                      icon: const Icon(Icons.send),
-                      label: const Text('اعتماد وإرسال'),
+                      icon: const Icon(Icons.arrow_forward),
+                      label: const Text('متابعة إلى التأكيد'),
                     ),
                   ],
                 ),
@@ -382,7 +422,19 @@ class _DutyRosterScreenState extends State<DutyRosterScreen> with SingleTickerPr
         ),
       ),
     );
-    if (choice == null || choice == 0) return;
+    if (choice != 2) return;
+
+    final firstConfirmation = await _confirm(
+      'تأكيد اعتماد الكشف',
+      'هل تؤكد اعتماد النسخة الحالية من كشوفات الشفتات A وB وC بتاريخ $keyDay؟',
+    );
+    if (firstConfirmation != 2 || !mounted) return;
+
+    final finalConfirmation = await _confirm(
+      'تأكيد الإرسال النهائي',
+      'هذا هو التأكيد الأخير. سيتم حفظ النسخة المعتمدة وإرسالها إلى جميع المستخدمين النشطين، مع الاحتفاظ بأي نسخة سابقة في الأرشيف. هل تريد الإرسال الآن؟',
+    );
+    if (finalConfirmation != 2 || !mounted) return;
 
     setState(() => busy = true);
     try {
@@ -396,13 +448,6 @@ class _DutyRosterScreenState extends State<DutyRosterScreen> with SingleTickerPr
           'archivedAt': FieldValue.serverTimestamp(),
           'archivedBy': FirebaseAuth.instance.currentUser?.uid,
         });
-      }
-
-      if (choice == 1) {
-        batch.set(roster, await _data('approved'), SetOptions(merge: true));
-        await batch.commit();
-        msg('تم اعتماد الكشف بعد معاينته، دون إرساله للمستخدمين.');
-        return;
       }
 
       final users = await db.collection('users')
@@ -476,6 +521,15 @@ class _DutyRosterScreenState extends State<DutyRosterScreen> with SingleTickerPr
               OutlinedButton.icon(onPressed: _pickDate, icon: const Icon(Icons.calendar_month), label: const Text('اختيار التاريخ / الأرشيف'),
                 style: OutlinedButton.styleFrom(foregroundColor: Colors.white)),
               if (published) const Chip(label: Text('كشف منشور ومعتمد')),
+              if (admin && copiedFromDateKey != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 6),
+                  child: Text(
+                    'مسودة هذا اليوم مسترجعة من كشف اليوم المناظر في الأسبوع السابق: $copiedFromDateKey. سيبقى الكشف السابق محفوظاً دون تغيير.',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(color: Colors.white70, fontSize: 11),
+                  ),
+                ),
             ])),
           if (admin) Row(children: [
             Expanded(child: OutlinedButton.icon(onPressed: busy ? null : _save, icon: const Icon(Icons.save), label: const Text('حفظ مسودة'))),
