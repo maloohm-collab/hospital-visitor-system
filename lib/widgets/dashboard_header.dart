@@ -55,7 +55,9 @@ class DashboardHeader extends StatelessWidget {
         SizedBox(
           width: double.infinity,
           height: 82,
-          child: DecoratedBox(
+          child: ClipPath(
+            clipper: const _OceanWaveClipper(),
+            child: DecoratedBox(
             decoration: const BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.centerRight,
@@ -80,7 +82,7 @@ class DashboardHeader extends StatelessWidget {
                   height: 7,
                   child: IgnorePointer(
                     child: CustomPaint(
-                      painter: _OceanWaveBorderPainter(),
+                      painter: _OceanWaveEdgePainter(),
                     ),
                   ),
                 ),
@@ -94,7 +96,7 @@ class DashboardHeader extends StatelessWidget {
                 ),
                 Positioned(
                   right: 8,
-                  bottom: 7,
+                  top: 7,
                   child: _headerAction(
                     tooltip: 'تسجيل الخروج',
                     child: IconButton(
@@ -140,12 +142,8 @@ class DashboardHeader extends StatelessWidget {
                           ),
                           children: [
                             TextSpan(
-                              text: 'الصخرة ',
+                              text: 'الصخرة للخدمات والاستشارات الأمنية',
                               style: TextStyle(color: Color(0xFFFFE5A0)),
-                            ),
-                            TextSpan(
-                              text: 'للخدمات والاستشارات الأمنية',
-                              style: TextStyle(color: Colors.white),
                             ),
                           ],
                         ),
@@ -154,6 +152,7 @@ class DashboardHeader extends StatelessWidget {
                   ),
                 ),
               ],
+            ),
             ),
           ),
         ),
@@ -392,17 +391,39 @@ class DashboardHeader extends StatelessWidget {
 
 
 
-/// Thin gold wave along the bottom edge of the dashboard header.
-class _OceanWaveBorderPainter extends CustomPainter {
-  const _OceanWaveBorderPainter();
+/// Clips the header background itself into a soft ocean-wave bottom edge.
+class _OceanWaveClipper extends CustomClipper<Path> {
+  const _OceanWaveClipper();
+
+  @override
+  Path getClip(Size size) {
+    final path = Path()..moveTo(0, 0)..lineTo(size.width, 0)..lineTo(size.width, size.height);
+    const cycles = 2.0;
+    const amplitude = 2.0;
+    final baseY = size.height - 3.5;
+    for (var i = 100; i >= 0; i--) {
+      final x = size.width * i / 100;
+      final phase = (i / 100) * cycles * 2 * math.pi;
+      final y = baseY + math.sin(phase) * amplitude;
+      path.lineTo(x, y);
+    }
+    return path..close();
+  }
+
+  @override
+  bool shouldReclip(covariant _OceanWaveClipper oldClipper) => false;
+}
+
+/// A fine gold finish drawn exactly on the clipped lower edge, not inside the header.
+class _OceanWaveEdgePainter extends CustomPainter {
+  const _OceanWaveEdgePainter();
 
   @override
   void paint(Canvas canvas, Size size) {
     final path = Path();
     const cycles = 2.0;
     const amplitude = 2.0;
-    final centerY = size.height / 2;
-
+    const centerY = 3.5;
     for (var i = 0; i <= 100; i++) {
       final x = size.width * i / 100;
       final phase = (i / 100) * cycles * 2 * math.pi;
@@ -413,7 +434,6 @@ class _OceanWaveBorderPainter extends CustomPainter {
         path.lineTo(x, y);
       }
     }
-
     canvas.drawPath(
       path,
       Paint()
@@ -426,5 +446,7 @@ class _OceanWaveBorderPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant _OceanWaveBorderPainter oldDelegate) => false;
+  bool shouldRepaint(covariant _OceanWaveEdgePainter oldDelegate) => false;
 }
+
+
