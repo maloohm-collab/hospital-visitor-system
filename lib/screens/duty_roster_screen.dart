@@ -37,6 +37,53 @@ class _DutyRosterScreenState extends State<DutyRosterScreen> with SingleTickerPr
   void dispose() { tabs.dispose(); super.dispose(); }
   void msg(String s) { if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(s))); }
 
+  /// المواقع التي أُسند إليها الضابط مسبقاً في كشف اليوم نفسه.
+  List<String> _otherAssignments(String officer, String currentShift, int currentIndex) {
+    final result = <String>[];
+    for (final code in ['A', 'B', 'C']) {
+      for (var index = 0; index < rows[code]!.length; index++) {
+        if (code == currentShift && index == currentIndex) continue;
+        final row = rows[code]![index];
+        if (row['officer'] == officer) {
+          final location = (row['location'] ?? '').trim();
+          result.add('$code • ${location.isEmpty ? 'موقع غير محدد' : location}');
+        }
+      }
+    }
+    return result;
+  }
+
+  Future<void> _selectOfficer(String code, int index, String? officer) async {
+    if (officer == null) return;
+    final previous = _otherAssignments(officer, code, index);
+    if (previous.isNotEmpty) {
+      final accepted = await showDialog<bool>(
+        context: context,
+        barrierDismissible: false,
+        builder: (dialogContext) => AlertDialog(
+          title: const Text('الضابط مسجل مسبقاً'),
+          content: Text(
+            'ضابط الأمن ($officer) تم اختياره مسبقاً في الموقع التالي:'
+            '\\n${previous.join('\\n')}'
+            '\\n\\nهل أنت متأكد من إضافته إلى موقع آخر أيضاً؟',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: const Text('لا، إلغاء'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(dialogContext, true),
+              child: const Text('نعم، أضفه أيضاً'),
+            ),
+          ],
+        ),
+      );
+      if (accepted != true || !mounted) return;
+    }
+    setState(() => rows[code]![index]['officer'] = officer);
+  }
+
   Future<void> _load() async {
     try {
       final snap = await db.collection('daily_duty_rosters').doc(keyDay).get();
@@ -242,8 +289,26 @@ class _DutyRosterScreenState extends State<DutyRosterScreen> with SingleTickerPr
             const SizedBox(width: 8),
             Expanded(child: DropdownButtonFormField<String>(value: names.contains(n) ? n : null, isExpanded: true,
               decoration: const InputDecoration(labelText: 'اختيار ضابط الأمن'),
-              items: names.toSet().map((v) => DropdownMenuItem(value: v, child: Text(v, overflow: TextOverflow.ellipsis))).toList(),
-              onChanged: readOnly ? null : (v) => setState(() => r['officer'] = v))),
+              items: names.toSet().map((v) {
+                final otherSites = _otherAssignments(v, s, i);
+                final selectedElsewhere = otherSites.isNotEmpty;
+                return DropdownMenuItem<String>(
+                  value: v,
+                  child: Row(children: [
+                    if (selectedElsewhere) const Icon(Icons.warning_amber_rounded, color: Colors.deepOrange, size: 17),
+                    if (selectedElsewhere) const SizedBox(width: 5),
+                    Expanded(child: Text(
+                      selectedElsewhere ? '$v — مختار في ${otherSites.join('، ')}' : v,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: selectedElsewhere ? Colors.deepOrange.shade700 : null,
+                        fontWeight: selectedElsewhere ? FontWeight.w600 : FontWeight.normal,
+                      ),
+                    )),
+                  ]),
+                );
+              }).toList(),
+              onChanged: readOnly ? null : (v) => _selectOfficer(s, i, v))),
             if (!readOnly) IconButton(onPressed: () => setState(() => rows[s]!.removeAt(i)), icon: const Icon(Icons.delete_outline, color: Colors.red)),
           ]),
           DropdownButtonFormField<String>(value: DutyRosterCatalog.locations.contains(l) ? l : null, isExpanded: true,
