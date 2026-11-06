@@ -144,23 +144,6 @@ class _DutyRosterScreenState extends State<DutyRosterScreen> with SingleTickerPr
     finally { if (mounted) setState(() => busy = false); }
   }
 
-  String _text(Map<String,dynamic> data) {
-    final out = StringBuffer('كشف الوظائف اليومي – ' + keyDay + '\n');
-    final blocks = Map<String,dynamic>.from(data['shifts'] ?? {});
-    for (final s in ['A','B','C']) {
-      final b = Map<String,dynamic>.from(blocks[s] ?? {});
-      out.writeln('\nالمناوبة ' + s + ' (' + (b['hours'] ?? '').toString() + ')');
-      var i = 1;
-      for (final item in (b['assignments'] as List? ?? [])) {
-        final r = Map<String,dynamic>.from(item);
-        out.writeln(i.toString() + '. ' + (r['officer'] ?? '').toString() + ' — ' + (r['location'] ?? '').toString()); i++;
-      }
-      out.writeln('المجازون: ' + ((b['offNames'] as List? ?? []).join('، ')));
-      if ((b['adminNote'] ?? '').toString().isNotEmpty) out.writeln('ملاحظة الإدارة: ' + b['adminNote'].toString());
-    }
-    return out.toString();
-  }
-
   Future<void> _sharePdf(Map<String,dynamic> data) async {
     try {
       final blocks = Map<String,dynamic>.from(data['shifts'] ?? {});
