@@ -302,6 +302,79 @@ class _DutyRosterScreenState extends State<DutyRosterScreen> with SingleTickerPr
     }
   }
 
+  Future<void> _chooseEditTarget() async {
+    final category = await showDialog<String>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('ما الذي تريد تعديله في الكشف؟'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.people_alt_outlined),
+              title: const Text('اسم موظف أو موقع وظيفي'),
+              onTap: () => Navigator.pop(dialogContext, 'الأسماء والمواقع'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.event_busy_outlined),
+              title: const Text('المجازون OFF'),
+              onTap: () => Navigator.pop(dialogContext, 'المجازون OFF'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.shield_outlined),
+              title: const Text('قائمة سوات'),
+              onTap: () => Navigator.pop(dialogContext, 'قائمة سوات'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.notes_outlined),
+              title: const Text('ملاحظات المشرف الإداري'),
+              onTap: () => Navigator.pop(dialogContext, 'الملاحظات'),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('إلغاء'),
+          ),
+        ],
+      ),
+    );
+    if (category == null || !mounted) return;
+
+    final targetShift = await showDialog<String>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => AlertDialog(
+        title: Text('اختر الشفت لتعديل $category'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            for (final code in ['A', 'B', 'C'])
+              ListTile(
+                leading: const Icon(Icons.schedule),
+                title: Text('الشفت $code'),
+                subtitle: Text(code == 'A'
+                    ? '08:00–16:00'
+                    : code == 'B' ? '16:00–00:00' : '00:00–08:00'),
+                onTap: () => Navigator.pop(dialogContext, code),
+              ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('إلغاء'),
+          ),
+        ],
+      ),
+    );
+    if (targetShift == null || !mounted) return;
+    setState(() => tabs.index = ['A', 'B', 'C'].indexOf(targetShift));
+    msg('تم فتح الشفت $targetShift. عدّل $category ثم راجع الكشف قبل اعتماده.');
+  }
+
   Future<void> _pickDate() async {
     final d = await showDatePicker(context: context, initialDate: day, firstDate: DateTime(2024), lastDate: DateTime(2035));
     if (d == null) return; setState(() => day = d); await _load();
@@ -531,6 +604,11 @@ class _DutyRosterScreenState extends State<DutyRosterScreen> with SingleTickerPr
                   ),
                 ),
             ])),
+          if (admin) OutlinedButton.icon(
+            onPressed: busy ? null : _chooseEditTarget,
+            icon: const Icon(Icons.tune),
+            label: const Text('تحديد نوع التعديل'),
+          ),
           if (admin) Row(children: [
             Expanded(child: OutlinedButton.icon(onPressed: busy ? null : _save, icon: const Icon(Icons.save), label: const Text('حفظ مسودة'))),
             const SizedBox(width: 8),
