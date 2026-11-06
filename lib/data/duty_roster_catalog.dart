@@ -146,5 +146,4 @@ class DutyRosterCatalog {
     'اشرف عبد الله محمد الخزاعلة': 'ايكو',
   };
 
-  static List<String> officersFor(String shift) => allOfficers;
 }
