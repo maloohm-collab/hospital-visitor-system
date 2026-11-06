@@ -885,6 +885,17 @@ service cloud.firestore {
       allow update: if false;
     }
 
+    // Daily duty rosters: all active users can read; only administration can manage and publish.
+    match /daily_duty_rosters/{dateKey} {
+      allow get, list: if isActiveUser();
+      allow create, update: if isActiveAdmin()
+        && request.resource.data.dateKey == dateKey
+        && request.resource.data.status in ['draft', 'approved', 'published']
+        && request.resource.data.shifts is map
+        && request.resource.data.shifts.keys().hasAll(['A', 'B', 'C']);
+      allow delete: if isActiveAdmin();
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }
