@@ -911,6 +911,19 @@ class _DutyRosterScreenState extends State<DutyRosterScreen>
       return '<tr><td>${entry.key + 1}</td><td>${esc((item['officer'] ?? '').toString())}</td><td>${esc((item['location'] ?? '').toString())}</td></tr>';
     }).join();
     String list(String title, List values) => '<h3>$title</h3><p>${values.map((v) => esc(v.toString())).join('　 •　 ')}</p>';
+    final clinicRows = (block['clinicAssignments'] as List? ?? []).map((value) {
+      final clinic = Map<String, dynamic>.from(value);
+      return '<tr><td>${esc((clinic['officer'] ?? '').toString())}</td><td>${esc((clinic['location'] ?? '').toString())}</td></tr>';
+    }).join();
+    const rules = [
+      'يمنع ترك مكان الوظيفة إلا بوجود بديل وبعد الاتصال مع المشرف ولأي سبب كان، والتعامل مع الجمهور بلباقة وحسن تصرف وبدون تصادم.',
+      'يمنع تجمع الوظائف والالتزام التام بموقع الوظيفة، ويمنع وجود الكراسي في مكان الوظيفة، ويمنع استخدام الهاتف أثناء الوظيفة.',
+      'الاهتمام بالنظافة والهندام من ناحية حلاقة الذقن، وارتداء لباس الشركة كاملاً وارتداء الباج وشعار الشركة.',
+      'يمنع توجيه أي مواطن لمراجعة المناوب الإداري، ويمنع عمل علاقات مع الكوادر سواء أطباء أو ممرضين أو شركات أخرى.',
+      'يمنع إنجاز أي معاملة طبية من قبل موظفينا، ويمنع أخذ أي وجه من أي مراجع أو زائر أو موظفي الشركات الأخرى وتعتبر تحت بند الرشوة.',
+      'تمرير أي ملاحظة كانت صغيرة أو كبيرة، وتفعيل الحس الأمني، ويمنع مراجعة إدارة المستشفى إلا بواجب رسمي وبالأمر.',
+      'عند الحصول على إجازة مرضية يجب أن تكون مختومة من السجل الطبي أو ختم وتوقيع المناوب الإداري عندما يكون السجل مغلقاً وإلا لن تعتمد.',
+    ];
     final html = '''
 <!DOCTYPE html><html><head><meta charset="utf-8"><style>
 @page{size:A4 landscape;margin:12mm}body{font-family:Arial;direction:rtl;text-align:right}
@@ -924,9 +937,9 @@ td,th{border:1px solid #777;padding:6px;font-size:11pt}th{background:#164a78;col
 ${list('المجازون OFF', block['offNames'] as List? ?? [])}
 ${list('المجازون سنوياً', block['annualNames'] as List? ?? [])}
 ${list('قائمة سوات', block['specialNames'] as List? ?? [])}
-${list('وظائف العيادات', block['clinicAssignments'] as List? ?? [])}
+<h3>وظائف العيادات</h3><table><tr><th>اسم الموظف</th><th>موقع العيادة</th></tr>$clinicRows</table>
 <h3>ملاحظات المشرف الإداري</h3><p>${esc((block['adminNote'] ?? 'لا توجد ملاحظات').toString())}</p>
-<p>التوقيع: ____________________</p></body></html>''';
+<p>التوقيع: ____________________</p><h3>التعليمات الثابتة</h3><ol>${rules.map((rule) => '<li>${esc(rule)}</li>').join()}</ol></body></html>''';
     return Uint8List.fromList([0xEF, 0xBB, 0xBF, ...utf8.encode(html)]);
   }
 
