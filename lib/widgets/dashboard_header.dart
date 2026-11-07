@@ -190,7 +190,7 @@ class DashboardHeader extends StatelessWidget {
                     padding: EdgeInsets.symmetric(horizontal: 7),
                     child: Text(
                       '•',
-                      style: TextStyle(color: Color(0xFF9AAABA), fontSize: 12),
+                      style: TextStyle(color: Color(0xFF65788A), fontSize: 12),
                     ),
                   ),
                   Flexible(
