@@ -142,15 +142,24 @@ class _StaffDutyHistoryScreenState extends State<StaffDutyHistoryScreen> {
         .where('dateKey', isLessThanOrEqualTo: end).get();
 
     final candidates = <_PublishedShift>[];
-    for (final doc in docs.docs) {
-      candidates.addAll(_extract(doc.id, doc.data(), false));
-      try {
-        final versions = await doc.reference.collection('versions').get();
+    // Read the small archive subcollections in bounded parallel batches.
+    for (var offset = 0; offset < docs.docs.length; offset += 8) {
+      final batch = docs.docs.skip(offset).take(8).toList();
+      final archives = await Future.wait(batch.map((doc) async {
+        try {
+          return await doc.reference.collection('versions').get();
+        } catch (_) {
+          return null;
+        }
+      }));
+      for (var index = 0; index < batch.length; index++) {
+        final doc = batch[index];
+        candidates.addAll(_extract(doc.id, doc.data(), false));
+        final versions = archives[index];
+        if (versions == null) continue;
         for (final version in versions.docs) {
           candidates.addAll(_extract(doc.id, version.data(), true));
         }
-      } catch (_) {
-        // Keep current published data if an old archive cannot be read.
       }
     }
 
@@ -211,7 +220,7 @@ class _StaffDutyHistoryScreenState extends State<StaffDutyHistoryScreen> {
         add(s, 'إجازة سنوية', 'إجازة سنوية', 'إجازة سنوية', false);
       }
       if ((b['specialNames'] as List? ?? const []).any((v) => _matches(v.toString(), name))) {
-        add(s, 'تكليف إشرافي / سوات', 'قائمة المشرفين وسوات', 'تكليف خاص', false);
+        add(s, 'تكليف إشرافي / سوات', 'قائمة المشرفين وسوات', 'تكليف خاص', true);
       }
       if (_matches((b['supervisorName'] ?? '').toString(), name)) {
         add(s, 'مشرف الشفت', 'الإشراف على الشفت ' + s.shift, 'تكليف إشرافي', true);
