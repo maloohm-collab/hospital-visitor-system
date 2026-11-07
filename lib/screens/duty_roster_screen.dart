@@ -908,17 +908,104 @@ class _DutyRosterScreenState extends State<DutyRosterScreen>
   Uint8List _wordBytes(Map<String, dynamic> data) {
     final blocks = Map<String, dynamic>.from(data['shifts'] ?? {});
     final block = Map<String, dynamic>.from(blocks[shift] ?? {});
-    String esc(String value) => const HtmlEscape().convert(value);
+    String rtf(String value) {
+      final out = StringBuffer();
+      for (final unit in value.codeUnits) {
+        if (unit == 92) {
+          out.write(r'\\');
+        } else if (unit == 123) {
+          out.write(r'\{');
+        } else if (unit == 125) {
+          out.write(r'\}');
+        } else if (unit >= 32 && unit <= 126) {
+          out.writeCharCode(unit);
+        } else {
+          final signed = unit > 32767 ? unit - 65536 : unit;
+          out.write(r'\u');
+          out.write(signed);
+          out.write('?');
+        }
+      }
+      return out.toString();
+    }
+
+    String paragraph(String value, {int size = 22, bool bold = false, bool centered = false}) {
+      return r'{\pard\rtlpar' +
+          (centered ? r'\qc' : r'\qr') +
+          r'\f0\fs' + size.toString() +
+          (bold ? r'\b ' : r'\b0 ') +
+          rtf(value) + r'\par}';
+    }
+
+    String cell(String value, int width, {bool header = false}) {
+      return r'\clvertalc\clbrdrt\brdrs\brdrw8\clbrdrl\brdrs\brdrw8' +
+          r'\clbrdrb\brdrs\brdrw8\clbrdrr\brdrs\brdrw8\cellx' +
+          width.toString() +
+          r'{\pard\intbl\rtlpar\qc\f0\fs' +
+          (header ? '22\\b ' : '22\\b0 ') +
+          rtf(value) + r'\cell}';
+    }
+
+    String tableRow(List<String> values, List<int> widths, {bool header = false}) {
+      final row = StringBuffer(r'{\trowd\trgaph100\trleft0\trkeep\trqc');
+      var edge = 0;
+      for (var i = 0; i < values.length; i++) {
+        edge += widths[i];
+        row.write(cell(values[i], edge, header: header));
+      }
+      row.write(r'\row}');
+      return row.toString();
+    }
+
+    final output = StringBuffer(
+      r'{\rtf1\ansi\ansicpg1256\uc1\deff0'
+      r'{\fonttbl{\f0\fnil\fcharset178 Tahoma;}}'
+      r'\viewkind4\lang1025\widowctrl'
+      r'\paperw16838\paperh11906\landscape\margl680\margr680\margt560\margb560'
+    );
+    output.write(paragraph('مستشفى الزرقاء الحكومي', size: 30, bold: true, centered: true));
+    output.write(paragraph('شركة الصخرة للخدمات والاستشارات الأمنية', size: 26, bold: true, centered: true));
+    output.write(paragraph('كشف الوظائف اليومي — \${rosterDateKey} — الشفت \${shift}', size: 26, bold: true, centered: true));
+    output.write(paragraph('مدير الموقع: \${(block['siteManager'] ?? '').toString()}     المشرف: \${(block['supervisorName'] ?? '').toString()}     \${(block['hours'] ?? '').toString()}', size: 21, bold: true));
+
+    const widths = [700, 6500, 6500];
+    output.write(tableRow(['ت', 'اسم ضابط الأمن', 'الموقع / الوظيفة'], widths, header: true));
     final assignments = (block['assignments'] as List? ?? []);
-    final rows = assignments.asMap().entries.map((entry) {
-      final item = Map<String, dynamic>.from(entry.value);
-      return '<tr><td>${entry.key + 1}</td><td>${esc((item['officer'] ?? '').toString())}</td><td>${esc((item['location'] ?? '').toString())}</td></tr>';
-    }).join();
-    String list(String title, List values) => '<h3>$title</h3><p>${values.map((v) => esc(v.toString())).join('　 •　 ')}</p>';
-    final clinicRows = (block['clinicAssignments'] as List? ?? []).map((value) {
-      final clinic = Map<String, dynamic>.from(value);
-      return '<tr><td>${esc((clinic['officer'] ?? '').toString())}</td><td>${esc((clinic['location'] ?? '').toString())}</td></tr>';
-    }).join();
+    for (var i = 0; i < assignments.length; i++) {
+      final item = Map<String, dynamic>.from(assignments[i]);
+      output.write(tableRow([
+        (i + 1).toString(),
+        (item['officer'] ?? '').toString(),
+        (item['location'] ?? '').toString(),
+      ], widths));
+    }
+
+    void addNames(String title, List values) {
+      output.write(paragraph(title, size: 23, bold: true));
+      output.write(paragraph(values.isEmpty ? 'لا يوجد' : values.map((v) => v.toString()).join('     •     '), size: 21, bold: true));
+    }
+    addNames('المجازون OFF', block['offNames'] as List? ?? []);
+    addNames('المجازون سنوياً', block['annualNames'] as List? ?? []);
+    addNames('قائمة سوات', block['specialNames'] as List? ?? []);
+
+    final clinics = (block['clinicAssignments'] as List? ?? []);
+    if (clinics.isNotEmpty) {
+      output.write(paragraph('وظائف العيادات', size: 23, bold: true));
+      const clinicWidths = [7000, 6700];
+      output.write(tableRow(['اسم الموظف', 'موقع العيادة'], clinicWidths, header: true));
+      for (final value in clinics) {
+        final item = Map<String, dynamic>.from(value);
+        output.write(tableRow([
+          (item['officer'] ?? '').toString(),
+          (item['location'] ?? '').toString(),
+        ], clinicWidths));
+      }
+    }
+    output.write(paragraph('ملاحظات المشرف الإداري', size: 23, bold: true));
+    final note = (block['adminNote'] ?? '').toString().trim();
+    output.write(paragraph(note.isEmpty ? 'لا توجد ملاحظات' : note, size: 21));
+    output.write(paragraph('التوقيع: ____________________', size: 21, bold: true));
+
     const rules = [
       'يمنع ترك مكان الوظيفة إلا بوجود بديل وبعد الاتصال مع المشرف ولأي سبب كان، والتعامل مع الجمهور بلباقة وحسن تصرف وبدون تصادم.',
       'يمنع تجمع الوظائف والالتزام التام بموقع الوظيفة، ويمنع وجود الكراسي في مكان الوظيفة، ويمنع استخدام الهاتف أثناء الوظيفة.',
@@ -928,38 +1015,16 @@ class _DutyRosterScreenState extends State<DutyRosterScreen>
       'تمرير أي ملاحظة كانت صغيرة أو كبيرة، وتفعيل الحس الأمني، ويمنع مراجعة إدارة المستشفى إلا بواجب رسمي وبالأمر.',
       'عند الحصول على إجازة مرضية يجب أن تكون مختومة من السجل الطبي أو ختم وتوقيع المناوب الإداري عندما يكون السجل مغلقاً وإلا لن تعتمد.',
     ];
-    final html = '''
-<!DOCTYPE html><html><head><meta charset="utf-8"><style>
-@page{size:A4 landscape;margin:12mm}
-body{font-family:Tahoma,Arial,sans-serif;direction:rtl;text-align:right;color:#24384b;font-size:11pt;line-height:1.5}
-h1,h2,h3{text-align:center;color:#123b60;font-family:Tahoma,Arial,sans-serif}
-h1{font-size:18pt;font-weight:700;margin:4px 0}
-h2{font-size:14pt;font-weight:700;margin:4px 0}
-h3{font-size:12pt;font-weight:700;margin:7px 0 4px}
-p{margin:5px 0}
-table{width:100%;border-collapse:collapse;table-layout:fixed;margin:5px 0 9px}
-td,th{border:1px solid #8795a3;padding:6px;font-size:10.5pt;vertical-align:middle;word-wrap:break-word}
-th{background:#164a78;color:#fff;font-weight:700;text-align:center}
-td{background:#fff;color:#24384b}
-ol{margin:4px 0;padding-right:24px}
-li{font-size:9.5pt;line-height:1.45;margin:3px 0}
-
-</style></head><body>
-<h1>مستشفى الزرقاء الحكومي</h1><h2>شركة الصخرة للخدمات والاستشارات الأمنية</h2>
-<h2>كشف الوظائف اليومي — $rosterDateKey — الشفت $shift</h2>
-<p>مدير الموقع: ${esc((block['siteManager'] ?? '').toString())}　 المشرف: ${esc((block['supervisorName'] ?? '').toString())}　 ${esc((block['hours'] ?? '').toString())}</p>
-<table><tr><th>ت</th><th>اسم ضابط الأمن</th><th>الموقع / الوظيفة</th></tr>$rows</table>
-${list('المجازون OFF', block['offNames'] as List? ?? [])}
-${list('المجازون سنوياً', block['annualNames'] as List? ?? [])}
-${list('قائمة سوات', block['specialNames'] as List? ?? [])}
-<h3>وظائف العيادات</h3><table><tr><th>اسم الموظف</th><th>موقع العيادة</th></tr>$clinicRows</table>
-<h3>ملاحظات المشرف الإداري</h3><p>${esc((block['adminNote'] ?? 'لا توجد ملاحظات').toString())}</p>
-<p>التوقيع: ____________________</p><h3>التعليمات الثابتة</h3><ol>${rules.map((rule) => '<li>${esc(rule)}</li>').join()}</ol></body></html>''';
-    return Uint8List.fromList([0xEF, 0xBB, 0xBF, ...utf8.encode(html)]);
+    output.write(paragraph('التعليمات الثابتة', size: 23, bold: true));
+    for (var i = 0; i < rules.length; i++) {
+      output.write(paragraph('\${i + 1}. \${rules[i]}', size: 18));
+    }
+    output.write('}');
+    return Uint8List.fromList(utf8.encode(output.toString()));
   }
 
   Future<void> _exportRoster(Map<String, dynamic> data, String format, bool share) async {
-    final extension = format == 'صورة' ? 'png' : format == 'Word' ? 'doc' : 'pdf';
+    final extension = format == 'صورة' ? 'png' : format == 'Word' ? 'rtf' : 'pdf';
     final filename = '${_exportBaseName()}.$extension';
     try {
       final blocks = Map<String, dynamic>.from(data['shifts'] ?? {});
