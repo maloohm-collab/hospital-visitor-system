@@ -965,8 +965,8 @@ class _DutyRosterScreenState extends State<DutyRosterScreen>
     );
     output.write(paragraph('مستشفى الزرقاء الحكومي', size: 30, bold: true, centered: true));
     output.write(paragraph('شركة الصخرة للخدمات والاستشارات الأمنية', size: 26, bold: true, centered: true));
-    output.write(paragraph('كشف الوظائف اليومي — \${rosterDateKey} — الشفت \${shift}', size: 26, bold: true, centered: true));
-    output.write(paragraph('مدير الموقع: \${(block['siteManager'] ?? '').toString()}     المشرف: \${(block['supervisorName'] ?? '').toString()}     \${(block['hours'] ?? '').toString()}', size: 21, bold: true));
+    output.write(paragraph('كشف الوظائف اليومي — ${rosterDateKey} — الشفت ${shift}', size: 26, bold: true, centered: true));
+    output.write(paragraph('مدير الموقع: ${(block['siteManager'] ?? '').toString()}     المشرف: ${(block['supervisorName'] ?? '').toString()}     ${(block['hours'] ?? '').toString()}', size: 21, bold: true));
 
     const widths = [700, 6500, 6500];
     output.write(tableRow(['ت', 'اسم ضابط الأمن', 'الموقع / الوظيفة'], widths, header: true));
@@ -1017,7 +1017,7 @@ class _DutyRosterScreenState extends State<DutyRosterScreen>
     ];
     output.write(paragraph('التعليمات الثابتة', size: 23, bold: true));
     for (var i = 0; i < rules.length; i++) {
-      output.write(paragraph('\${i + 1}. \${rules[i]}', size: 18));
+      output.write(paragraph('${i + 1}. ${rules[i]}', size: 18));
     }
     output.write('}');
     return Uint8List.fromList(utf8.encode(output.toString()));
@@ -1064,6 +1064,7 @@ class _DutyRosterScreenState extends State<DutyRosterScreen>
           child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             const Text('حفظ وإرسال الكشف', textAlign: TextAlign.center,
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+            const Text('صيغة Word متوافقة (RTF) تفتح مباشرة في Microsoft Word ويمكن حفظها لاحقاً بصيغة DOCX.', textAlign: TextAlign.center, style: TextStyle(fontSize: 12, color: Colors.black54)),
             const SizedBox(height: 14),
             for (final format in ['صورة', 'Word', 'PDF']) ...[
               Text(format, style: const TextStyle(fontWeight: FontWeight.w800, color: navy)),
