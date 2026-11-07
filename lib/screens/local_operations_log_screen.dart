@@ -559,7 +559,7 @@ class _LocalOperationsLogScreenState extends State<LocalOperationsLogScreen> {
     final filteredRecordIndexes = <int>[];
     for (var i = 0; i < _records.length; i++) {
       final record = _records[i];
-      if (matchesSearchText(_recordSearchTerm, [record['patientName'], record['name'], record['department'], record['room'], record['site'], record['notes'], record['responsiblePerson'], record['movementType'], record['material'], record['date'], record['time']])) {
+      if (matchesSearchText(_recordSearchTerm, record.values)) {
         filteredRecordIndexes.add(i);
       }
     }
