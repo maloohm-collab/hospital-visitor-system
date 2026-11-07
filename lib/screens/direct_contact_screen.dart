@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import '../widgets/app_search_field.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 /// دليل التواصل المباشر بين الموظفين النشطين.
@@ -135,15 +136,14 @@ class _DirectContactScreenState extends State<DirectContactScreen> {
             if (snapshot.connectionState == ConnectionState.waiting) {
               return const Center(child: CircularProgressIndicator());
             }
-            final query = _searchController.text.trim().toLowerCase();
+            final query = normalizeSearchText(_searchController.text);
             final staff = (snapshot.data?.docs ?? []).where((doc) {
               final data = doc.data();
-              final name = (data['displayName'] ?? '').toString().trim().toLowerCase();
               return doc.id != currentUid &&
                   data['status'] == 'active' &&
                   ['admin', 'supervisor', 'security_officer']
                       .contains(data['role']) &&
-                  (query.isEmpty || name.contains(query));
+                  matchesSearchText(query, [data['displayName'], data['phone'], data['email'], data['role']]);
             }).toList()
               ..sort((a, b) {
                 final aName = (a.data()['displayName'] ?? '').toString();
