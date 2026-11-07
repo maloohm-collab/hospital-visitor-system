@@ -18,8 +18,15 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   String? recipientUid;
   bool sending = false;
   String _searchTerm = '';
+  late final Stream<QuerySnapshot<Map<String, dynamic>>> _notificationsStream;
   bool get admin => widget.userRole == 'admin';
   String get uid => FirebaseAuth.instance.currentUser?.uid ?? '';
+  @override
+  void initState() {
+    super.initState();
+    _notificationsStream = FirebaseFirestore.instance.collection('notifications')
+        .where('recipientUid', isEqualTo: uid).snapshots();
+  }
   @override
   void dispose() { title.dispose(); body.dispose(); super.dispose(); }
   void message(String s) { if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(s))); }
@@ -128,7 +135,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     floatingActionButton: admin ? FloatingActionButton.extended(onPressed: compose, icon: const Icon(Icons.send_rounded),
       label: const Text('إشعار الوظائف اليومية'), backgroundColor: teal, foregroundColor: Colors.white) : null,
     body: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-      stream: FirebaseFirestore.instance.collection('notifications').where('recipientUid', isEqualTo: uid).snapshots(),
+      stream: _notificationsStream,
       builder: (context, snap) {
         if (snap.hasError) return const Center(child: Padding(padding: EdgeInsets.all(24), child: Text('تعذر تحميل الإشعارات. تحقق من قواعد Firestore والفهارس.', textAlign: TextAlign.center)));
         if (snap.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
