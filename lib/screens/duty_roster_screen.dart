@@ -209,6 +209,62 @@ class _DutyRosterScreenState extends State<DutyRosterScreen> with SingleTickerPr
     });
   }
 
+  Future<String?> _pickLocation(String? current) async {
+    final controller = TextEditingController();
+    var query = '';
+    final selected = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          final filtered = DutyRosterCatalog.locations
+              .where((site) => matchesSearchText(query, [site])).toList();
+          return AlertDialog(
+            title: const Text('اختيار الموقع / الوظيفة', style: TextStyle(color: navy)),
+            content: SizedBox(
+              width: double.maxFinite,
+              height: MediaQuery.of(context).size.height * 0.58,
+              child: Column(children: [
+                TextField(
+                  controller: controller,
+                  autofocus: true,
+                  textDirection: TextDirection.rtl,
+                  style: const TextStyle(color: Color(0xFF173653)),
+                  decoration: const InputDecoration(
+                    hintText: 'ابحث باسم الموقع...',
+                    prefixIcon: Icon(Icons.search_rounded),
+                  ),
+                  onChanged: (value) => setDialogState(() => query = value),
+                ),
+                const SizedBox(height: 8),
+                Expanded(
+                  child: filtered.isEmpty
+                      ? const Center(child: Text('لا يوجد موقع مطابق للبحث.'))
+                      : ListView.separated(
+                          itemCount: filtered.length,
+                          separatorBuilder: (_, __) => const Divider(height: 1),
+                          itemBuilder: (context, index) => ListTile(
+                            title: Text(filtered[index], style: const TextStyle(color: navy)),
+                            trailing: filtered[index] == current
+                                ? const Icon(Icons.check_circle, color: teal)
+                                : null,
+                            onTap: () => Navigator.pop(dialogContext, filtered[index]),
+                          ),
+                        ),
+                ),
+              ]),
+            ),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(dialogContext),
+                  child: const Text('إلغاء')),
+            ],
+          );
+        },
+      ),
+    );
+    controller.dispose();
+    return selected;
+  }
+
   Future<void> _load() async {
     try {
       recentAssignments.clear();
@@ -876,11 +932,29 @@ class _DutyRosterScreenState extends State<DutyRosterScreen> with SingleTickerPr
             if (!readOnly) IconButton(onPressed: () => setState(() => rows[s]!.removeAt(i)), icon: const Icon(Icons.delete_outline, color: Colors.red)),
           ]),
           const SizedBox(height: 10),
-          DropdownButtonFormField<String>(value: DutyRosterCatalog.locations.contains(l) ? l : null, isExpanded: true,
-            decoration: const InputDecoration(labelText: 'اختيار الموقع / الوظيفة',
-              border: OutlineInputBorder(), contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 15)),
-            items: DutyRosterCatalog.locations.map((v) => DropdownMenuItem(value: v, child: Text(v))).toList(),
-            onChanged: readOnly ? null : (v) => setState(() => r['location'] = v)),
+          if (readOnly)
+            InputDecorator(
+              decoration: const InputDecoration(labelText: 'اختيار الموقع / الوظيفة'),
+              child: Text(l.isEmpty ? 'غير محدد' : l,
+                  style: const TextStyle(color: navy, fontWeight: FontWeight.w600)),
+            )
+          else
+            OutlinedButton.icon(
+              onPressed: () async {
+                final selected = await _pickLocation(l);
+                if (selected != null && mounted) setState(() => r['location'] = selected);
+              },
+              icon: const Icon(Icons.location_searching_rounded),
+              label: Align(
+                alignment: Alignment.centerRight,
+                child: Text(l.isEmpty ? 'ابحث واختر الموقع / الوظيفة' : l,
+                    maxLines: 2, overflow: TextOverflow.ellipsis),
+              ),
+              style: OutlinedButton.styleFrom(
+                alignment: Alignment.centerRight,
+                minimumSize: const Size.fromHeight(52),
+              ),
+            ),
         ])));
       }),
       if (!readOnly) OutlinedButton.icon(onPressed: () => setState(() => rows[s]!.add({'officer': null, 'location': null})),
