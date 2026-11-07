@@ -12,7 +12,14 @@ class StaffManagementScreen extends StatefulWidget {
 
 class _StaffManagementScreenState extends State<StaffManagementScreen> {
   String _searchTerm = '';
+  late final Stream<QuerySnapshot<Map<String, dynamic>>> _staffStream;
   static const navy = Color(0xFF082B55);
+
+  @override
+  void initState() {
+    super.initState();
+    _staffStream = FirebaseFirestore.instance.collection('users').snapshots();
+  }
 
   String _role(String value) => value == 'supervisor' ? 'مشرف' : value == 'admin' ? 'مسؤول النظام' : 'ضابط أمن';
   String _status(String value) => value == 'active' ? 'نشط' : value == 'suspended' ? 'معلّق' : value == 'blocked' ? 'محظور' : value;
@@ -66,7 +73,7 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
     return Scaffold(
       appBar: AppBar(title: const Text('إدارة الموظفين')),
       body: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-        stream: FirebaseFirestore.instance.collection('users').snapshots(),
+        stream: _staffStream,
         builder: (context, snapshot) {
           if (snapshot.hasError) return const Center(child: Padding(
             padding: EdgeInsets.all(24),
