@@ -13,7 +13,7 @@ String normalizeSearchText(Object? value) {
       .replaceAll(RegExp('[أإآٱ]'), 'ا')
       .replaceAll('ى', 'ي')
       .replaceAll('ة', 'ه')
-      .replaceAll(RegExp(r'\\s+'), ' ');
+      .replaceAll(RegExp(r'\s+'), ' ');
 }
 
 bool matchesSearchText(String query, Iterable<Object?> values) {
