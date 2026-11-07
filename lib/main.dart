@@ -184,9 +184,20 @@ class AuthGate extends StatelessWidget {
             final status = data?['status'] as String?;
             const allowedRoles = {'security_officer', 'supervisor', 'admin'};
 
-            if (profileSnapshot.hasError ||
-                !profileSnapshot.hasData ||
-                !profileSnapshot.data!.exists ||
+            if (profileSnapshot.hasError || !profileSnapshot.hasData) {
+              return const Scaffold(
+                body: Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(24),
+                    child: Text(
+                      'تعذر الاتصال للتحقق من الحساب. تحقق من الإنترنت ثم أعد فتح التطبيق؛ ستبقى جلستك محفوظة.',
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ),
+              );
+            }
+            if (!profileSnapshot.data!.exists ||
                 status != 'active' ||
                 role == null ||
                 !allowedRoles.contains(role)) {
@@ -200,7 +211,7 @@ class AuthGate extends StatelessWidget {
                   child: Padding(
                     padding: EdgeInsets.all(24),
                     child: Text(
-                      'تعذر التحقق من صلاحية الحساب. يرجى تسجيل الدخول مجددًا أو مراجعة الإدارة.',
+                      'الحساب غير معتمد أو لم تعد صلاحيته فعالة. يرجى مراجعة الإدارة.',
                       textAlign: TextAlign.center,
                     ),
                   ),
