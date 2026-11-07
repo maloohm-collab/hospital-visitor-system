@@ -16,6 +16,7 @@ import 'notifications_screen.dart';
 import 'emergency_duty_screen.dart';
 import 'work_location_screen.dart';
 import 'duty_roster_screen.dart';
+import 'staff_duty_history_screen.dart';
 import 'founder_screen.dart';
 
 class DashboardScreen extends StatelessWidget {
@@ -308,6 +309,12 @@ class DashboardScreen extends StatelessWidget {
                 title: 'الإحصاءات',
                 color: const Color(0xFFB7791F),
                 onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => VisitorReportsScreen(userRole: userRole))),
+              ),
+              _AdminAction(
+                icon: Icons.manage_search_rounded,
+                title: 'سجل الموظفين والتقارير',
+                color: const Color(0xFF8053A6),
+                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const StaffDutyHistoryScreen())),
               ),
               _AdminAction(
                 icon: Icons.calendar_month_rounded,
