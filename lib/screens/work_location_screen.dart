@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import '../data/duty_roster_catalog.dart';
+import '../widgets/app_search_field.dart';
 
 class WorkLocationScreen extends StatefulWidget {
   const WorkLocationScreen({super.key, required this.userRole});
@@ -21,6 +22,7 @@ class _WorkLocationScreenState extends State<WorkLocationScreen> {
   final note = TextEditingController();
   final recipients = <String>{};
   String? location;
+  String _searchTerm = '';
   bool busy = false;
   Timer? expiryTimer;
   String? expiryShiftId;
@@ -429,15 +431,20 @@ class _WorkLocationScreenState extends State<WorkLocationScreen> {
     builder: (context, snap) {
       if (snap.hasError) return const Center(child: Text('تعذر تحميل مواقع ضباط الأمن الحالية.'));
       if (snap.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
-      final docs = (snap.data?.docs ?? []).toList()
+      final docs = (snap.data?.docs ?? []).where((doc) {
+        final d = doc.data();
+        return matchesSearchText(_searchTerm, [d['officerName'], d['officerUid'], d['activeLocationName'], d['shiftId']]);
+      }).toList()
         ..sort((a, b) {
           final x = a.data()['startedAt'];
           final y = b.data()['startedAt'];
           if (x is Timestamp && y is Timestamp) return x.compareTo(y);
           return 0;
         });
-      if (docs.isEmpty) return const Center(child: Text('لا توجد مناوبات مباشرة حاليًا.'));
-      return ListView.builder(
+      if (docs.isEmpty) return Center(child: Text(_searchTerm.isEmpty ? 'لا توجد مناوبات مباشرة حاليًا.' : 'لا توجد نتائج مطابقة للبحث.'));
+      return Column(children: [
+        Padding(padding: const EdgeInsets.fromLTRB(16, 12, 16, 4), child: AppSearchField(hint: 'ابحث باسم الضابط أو الموقع...', onChanged: (v) => setState(() => _searchTerm = v))),
+        Expanded(child: ListView.builder(
         padding: const EdgeInsets.all(16),
         itemCount: docs.length,
         itemBuilder: (context, index) {
@@ -487,7 +494,8 @@ class _WorkLocationScreenState extends State<WorkLocationScreen> {
             ),
           );
         },
-      );
+      )),
+      ]);
     },
   );
 
@@ -496,13 +504,18 @@ class _WorkLocationScreenState extends State<WorkLocationScreen> {
     builder: (context, snap) {
       if (snap.hasError) return const Center(child: Text('تعذر تحميل الملاحظات الواردة.'));
       if (snap.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
-      final docs = (snap.data?.docs ?? []).toList()..sort((a, b) {
+      final docs = (snap.data?.docs ?? []).where((doc) {
+        final d = doc.data();
+        return matchesSearchText(_searchTerm, [d['officerName'], d['officerUid'], d['locationName'], d['body'], d['forwardedByName']]);
+      }).toList()..sort((a, b) {
         final x = a.data()['createdAt']; final y = b.data()['createdAt'];
         if (x is Timestamp && y is Timestamp) return y.compareTo(x);
         return 0;
       });
-      if (docs.isEmpty) return const Center(child: Text('لا توجد ملاحظات واردة حاليًا.'));
-      return ListView.builder(padding: const EdgeInsets.all(16), itemCount: docs.length,
+      if (docs.isEmpty) return Center(child: Text(_searchTerm.isEmpty ? 'لا توجد ملاحظات واردة حاليًا.' : 'لا توجد نتائج مطابقة للبحث.'));
+      return Column(children: [
+        Padding(padding: const EdgeInsets.fromLTRB(16, 12, 16, 4), child: AppSearchField(hint: 'ابحث باسم الضابط أو الموقع أو نص الملاحظة...', onChanged: (v) => setState(() => _searchTerm = v))),
+        Expanded(child: ListView.builder(padding: const EdgeInsets.all(16), itemCount: docs.length,
         itemBuilder: (context, i) {
           final d = docs[i].data();
           return Card(color: Colors.white, child: Padding(padding: const EdgeInsets.all(15),
@@ -522,7 +535,8 @@ class _WorkLocationScreenState extends State<WorkLocationScreen> {
               const Divider(height: 16),
               _noteActions(docs[i].id, d),
             ])));
-        });
+        })),
+      ]);
     },
   );
 
