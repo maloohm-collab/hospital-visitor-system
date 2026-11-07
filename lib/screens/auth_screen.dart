@@ -73,7 +73,6 @@ class _AuthScreenState extends State<AuthScreen> {
           password: _password.text,
         );
         final user = credential.user;
-        if (user != null) await _clearLocalLock(user.uid);
         if (user == null) throw FirebaseAuthException(code: 'user-not-found');
 
         final firestore = FirebaseFirestore.instance;
@@ -136,6 +135,7 @@ class _AuthScreenState extends State<AuthScreen> {
           return;
         }
 
+        await _clearLocalLock(user.uid);
         if (!mounted) return;
         Navigator.of(context).pushAndRemoveUntil(
           MaterialPageRoute(builder: (_) => DashboardScreen(userRole: role)),
