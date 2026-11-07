@@ -215,7 +215,7 @@ class _DutyRosterScreenState extends State<DutyRosterScreen> with SingleTickerPr
     required List<String> candidates,
     required List<String> selectedNames,
   }) async {
-    final selected = selectedNames.toSet();
+    final selected = selectedNames.where(candidates.contains).toSet();
     var query = '';
     return showDialog<List<String>>(
       context: context,
@@ -1073,7 +1073,7 @@ class _DutyRosterScreenState extends State<DutyRosterScreen> with SingleTickerPr
           onPressed: () async {
             final result = await _pickNames(
               title: 'اختيار المجازين — المتبقي من شفت $s',
-              candidates: [...offs[s]!, ..._availableOfficers(s)].toSet().toList(),
+              candidates: _availableOfficers(s),
               selectedNames: offs[s]!,
             );
             if (result != null && mounted) setState(() => offs[s]!..clear()..addAll(result));
@@ -1093,7 +1093,7 @@ class _DutyRosterScreenState extends State<DutyRosterScreen> with SingleTickerPr
           onPressed: () async {
             final result = await _pickNames(
               title: 'اختيار المجازين سنوياً — شفت $s',
-              candidates: [...annuals[s]!, ..._availableOfficers(s)].toSet().toList(),
+              candidates: _availableOfficers(s),
               selectedNames: annuals[s]!,
             );
             if (result != null && mounted) setState(() => annuals[s]!..clear()..addAll(result));
