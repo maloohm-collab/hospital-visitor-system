@@ -926,9 +926,20 @@ class _DutyRosterScreenState extends State<DutyRosterScreen>
     ];
     final html = '''
 <!DOCTYPE html><html><head><meta charset="utf-8"><style>
-@page{size:A4 landscape;margin:12mm}body{font-family:Arial;direction:rtl;text-align:right}
-h1,h2,h3{text-align:center;color:#123b60}table{width:100%;border-collapse:collapse}
-td,th{border:1px solid #777;padding:6px;font-size:11pt}th{background:#164a78;color:white}
+@page{size:A4 landscape;margin:12mm}
+body{font-family:Tahoma,Arial,sans-serif;direction:rtl;text-align:right;color:#24384b;font-size:11pt;line-height:1.5}
+h1,h2,h3{text-align:center;color:#123b60;font-family:Tahoma,Arial,sans-serif}
+h1{font-size:18pt;font-weight:700;margin:4px 0}
+h2{font-size:14pt;font-weight:700;margin:4px 0}
+h3{font-size:12pt;font-weight:700;margin:7px 0 4px}
+p{margin:5px 0}
+table{width:100%;border-collapse:collapse;table-layout:fixed;margin:5px 0 9px}
+td,th{border:1px solid #8795a3;padding:6px;font-size:10.5pt;vertical-align:middle;word-wrap:break-word}
+th{background:#164a78;color:#fff;font-weight:700;text-align:center}
+td{background:#fff;color:#24384b}
+ol{margin:4px 0;padding-right:24px}
+li{font-size:9.5pt;line-height:1.45;margin:3px 0}
+
 </style></head><body>
 <h1>مستشفى الزرقاء الحكومي</h1><h2>شركة الصخرة للخدمات والاستشارات الأمنية</h2>
 <h2>كشف الوظائف اليومي — $keyDay — الشفت $shift</h2>
