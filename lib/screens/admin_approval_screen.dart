@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import '../widgets/app_search_field.dart';
 
 class AdminApprovalScreen extends StatefulWidget {
   const AdminApprovalScreen({super.key});
@@ -14,6 +15,7 @@ class _AdminApprovalScreenState extends State<AdminApprovalScreen> {
   
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   late Future<List<Map<String, dynamic>>> _requests;
+  String _searchTerm = '';
 
   @override
   void initState() {
@@ -215,12 +217,13 @@ class _AdminApprovalScreenState extends State<AdminApprovalScreen> {
                 ),
               );
             }
-            final requests = snapshot.data ?? const [];
+            final allRequests = snapshot.data ?? const [];
+            final requests = allRequests.where((r) => matchesSearchText(_searchTerm, [r['displayName'], r['phone'], r['email'], r['requestedRole'], r['uid']])).toList();
             if (requests.isEmpty) {
               return const _StatusPanel(
                 icon: Icons.inbox_outlined,
-                title: 'لا توجد طلبات معلّقة',
-                message: 'ستظهر هنا طلبات ضباط الأمن والمشرفين الجديدة بانتظار المراجعة.',
+                title: _searchTerm.isEmpty ? 'لا توجد طلبات معلّقة' : 'لا توجد نتائج مطابقة',
+                message: _searchTerm.isEmpty ? 'ستظهر هنا طلبات ضباط الأمن والمشرفين الجديدة بانتظار المراجعة.' : 'جرّب البحث باسم مختلف أو رقم الهاتف.',
               );
             }
             return RefreshIndicator(
@@ -228,6 +231,8 @@ class _AdminApprovalScreenState extends State<AdminApprovalScreen> {
               child: ListView(
                 padding: const EdgeInsets.all(16),
                 children: [
+                  AppSearchField(hint: 'ابحث باسم مقدم الطلب أو الهاتف أو البريد...', onChanged: (v) => setState(() => _searchTerm = v)),
+                  const SizedBox(height: 14),
                   Container(
                     padding: const EdgeInsets.all(18),
                     decoration: BoxDecoration(
