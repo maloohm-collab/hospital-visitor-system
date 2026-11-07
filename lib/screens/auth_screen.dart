@@ -23,6 +23,11 @@ class _AuthScreenState extends State<AuthScreen> {
   String _role = 'security_officer';
   static const _navy = Color(0xFF082B55);
   static const _secureStorage = FlutterSecureStorage();
+  static const _lockKey = 'hospital_visitor_local_lock_';
+
+  Future<void> _clearLocalLock(String uid) async {
+    await _secureStorage.delete(key: '$_lockKey$uid');
+  }
 
   @override
   void dispose() {
@@ -68,6 +73,7 @@ class _AuthScreenState extends State<AuthScreen> {
           password: _password.text,
         );
         final user = credential.user;
+        if (user != null) await _clearLocalLock(user.uid);
         if (user == null) throw FirebaseAuthException(code: 'user-not-found');
 
         final firestore = FirebaseFirestore.instance;
@@ -237,6 +243,7 @@ class _AuthScreenState extends State<AuthScreen> {
         _message('الحساب غير مفعّل. راجع مسؤول النظام.');
         return;
       }
+      await _clearLocalLock(user.uid);
       if (!mounted) return;
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(builder: (_) => DashboardScreen(userRole: role)),
