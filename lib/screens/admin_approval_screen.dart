@@ -219,11 +219,11 @@ class _AdminApprovalScreenState extends State<AdminApprovalScreen> {
             }
             final allRequests = snapshot.data ?? const [];
             final requests = allRequests.where((r) => matchesSearchText(_searchTerm, [r['displayName'], r['phone'], r['email'], r['requestedRole'], r['uid']])).toList();
-            if (requests.isEmpty) {
+            if (allRequests.isEmpty) {
               return const _StatusPanel(
                 icon: Icons.inbox_outlined,
-                title: _searchTerm.isEmpty ? 'لا توجد طلبات معلّقة' : 'لا توجد نتائج مطابقة',
-                message: _searchTerm.isEmpty ? 'ستظهر هنا طلبات ضباط الأمن والمشرفين الجديدة بانتظار المراجعة.' : 'جرّب البحث باسم مختلف أو رقم الهاتف.',
+                title: 'لا توجد طلبات معلّقة',
+                message: 'ستظهر هنا طلبات ضباط الأمن والمشرفين الجديدة بانتظار المراجعة.',
               );
             }
             return RefreshIndicator(
@@ -258,6 +258,8 @@ class _AdminApprovalScreenState extends State<AdminApprovalScreen> {
                     ),
                   ),
                   const SizedBox(height: 16),
+                  if (requests.isEmpty)
+                    const Padding(padding: EdgeInsets.all(24), child: Text('لا توجد نتائج مطابقة. جرّب اسمًا أو رقم هاتف آخر.', textAlign: TextAlign.center, style: TextStyle(color: _navy)))
                   for (final request in requests)
                     _RequestCard(
                       request: request,
