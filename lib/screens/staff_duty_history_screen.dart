@@ -588,8 +588,9 @@ class _StaffDutyHistoryScreenState extends State<StaffDutyHistoryScreen> {
               icon: const Icon(Icons.ios_share_rounded), label: const Text('مشاركة صورة'))),
           ]),
         ],
+        ],
       ],
-    )),
+    ),
   );
 }
 
