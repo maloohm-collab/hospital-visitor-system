@@ -22,8 +22,8 @@ class DutyRosterPdf {
 
       // تقليل المسافات تلقائياً عند كثرة الأسماء للمحافظة على صفحة واحدة.
       final compact = assignments.length > 34;
-      final rowFontSize = compact ? 9.0 : 10.0;
-      final rowVerticalPadding = compact ? 1.2 : 2.4;
+      final rowFontSize = compact ? 10.0 : 11.0;
+      final rowVerticalPadding = compact ? 1.8 : 3.0;
       // صف أفقي واحد يحتوي مجموعتين: تسلسل/اسم/موقع ثم فاصل ثم المجموعة التالية.
       final pairedRows = <List<String>>[];
       for (var i = 0; i < assignments.length; i += 2) {
@@ -54,11 +54,11 @@ class DutyRosterPdf {
               headers: ['الاسم'],
               data: names,
               headerStyle: pw.TextStyle(font: bold, fontSize: 8, color: PdfColors.white),
-              cellStyle: pw.TextStyle(font: regular, fontSize: compact ? 7.5 : 8.5),
+              cellStyle: pw.TextStyle(font: bold, fontSize: compact ? 9.0 : 10.0),
               headerDecoration: pw.BoxDecoration(color: color),
-              cellAlignment: pw.Alignment.centerRight,
+              cellAlignment: pw.Alignment.center,
               border: pw.TableBorder.all(color: PdfColors.grey500, width: .4),
-              cellPadding: pw.EdgeInsets.symmetric(vertical: compact ? 1 : 2, horizontal: 4),
+              cellPadding: pw.EdgeInsets.symmetric(vertical: compact ? 2 : 3, horizontal: 4),
             ),
           ],
         );
@@ -102,18 +102,18 @@ class DutyRosterPdf {
           headers: ['ت', 'اسم ضابط الأمن', 'الموقع / الوظيفة', 'ت', 'اسم ضابط الأمن', 'الموقع / الوظيفة'],
           data: pairedRows,
           headerStyle: pw.TextStyle(font: bold, color: PdfColors.white, fontSize: 8),
-          cellStyle: pw.TextStyle(font: regular, fontSize: rowFontSize),
+          cellStyle: pw.TextStyle(font: bold, fontSize: rowFontSize),
           headerDecoration: const pw.BoxDecoration(color: PdfColor.fromInt(0xFF164A78)),
-          cellAlignment: pw.Alignment.centerRight,
+          cellAlignment: pw.Alignment.center,
           border: pw.TableBorder.all(color: PdfColors.grey600, width: .45),
           cellPadding: pw.EdgeInsets.symmetric(vertical: rowVerticalPadding, horizontal: 3),
           columnWidths: {
             0: const pw.FixedColumnWidth(20),
-            1: const pw.FlexColumnWidth(1.35),
-            2: const pw.FlexColumnWidth(1.05),
+            1: const pw.FlexColumnWidth(1.1),
+            2: const pw.FlexColumnWidth(0.9),
             3: const pw.FixedColumnWidth(20),
-            4: const pw.FlexColumnWidth(1.35),
-            5: const pw.FlexColumnWidth(1.05),
+            4: const pw.FlexColumnWidth(1.1),
+            5: const pw.FlexColumnWidth(0.9),
           },
             ),
           ),
@@ -135,7 +135,7 @@ class DutyRosterPdf {
               headers: ['اسم الموظف', 'موقع العيادة'],
               data: clinicRows,
               headerStyle: pw.TextStyle(font: bold, color: PdfColors.white, fontSize: 8),
-              cellStyle: pw.TextStyle(font: regular, fontSize: compact ? 7.5 : 8.5),
+              cellStyle: pw.TextStyle(font: bold, fontSize: compact ? 9.0 : 10.0),
               headerDecoration: const pw.BoxDecoration(color: PdfColor.fromInt(0xFF087E78)),
               cellAlignment: pw.Alignment.center,
               border: pw.TableBorder.all(color: PdfColors.grey500, width: .4),
@@ -218,7 +218,7 @@ class DutyRosterPdf {
           child: pw.Text(
             '• $text',
             textAlign: pw.TextAlign.right,
-            style: pw.TextStyle(font: regular, fontSize: 7.4,
+            style: pw.TextStyle(font: bold, fontSize: 8.0,
               color: const PdfColor.fromInt(0xFF24384B), lineSpacing: 1.2),
           ),
         );
