@@ -16,7 +16,8 @@ class DutyRosterScreen extends StatefulWidget {
   State<DutyRosterScreen> createState() => _DutyRosterScreenState();
 }
 
-class _DutyRosterScreenState extends State<DutyRosterScreen> with SingleTickerProviderStateMixin {
+class _DutyRosterScreenState extends State<DutyRosterScreen>
+    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   static const navy = Color(0xFF082B55);
   static const teal = Color(0xFF087E78);
   final db = FirebaseFirestore.instance;
@@ -52,10 +53,39 @@ class _DutyRosterScreenState extends State<DutyRosterScreen> with SingleTickerPr
   }
 
   @override
-  void initState() { super.initState(); tabs = TabController(length: 3, vsync: this)..addListener(() { if (mounted) setState(() {}); }); _load(); }
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    tabs = TabController(length: 3, vsync: this)
+      ..addListener(() { if (mounted) setState(() {}); });
+    _load();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.paused ||
+        state == AppLifecycleState.detached) {
+      _flushPendingAutosaves();
+    }
+  }
+
+  Future<void> _flushPendingAutosaves() async {
+    final pendingShifts = _autosaveTimers.keys.toList();
+    for (final timer in _autosaveTimers.values) {
+      timer.cancel();
+    }
+    _autosaveTimers.clear();
+    for (final code in pendingShifts) {
+      await _persistShiftDraft(code, silent: true);
+    }
+  }
+
   @override
   void dispose() {
-    _autosaveTimers[shift]?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
+    _flushPendingAutosaves();
+    _autosaveTimers.clear();
     tabs.dispose();
     super.dispose();
   }
@@ -70,7 +100,7 @@ class _DutyRosterScreenState extends State<DutyRosterScreen> with SingleTickerPr
     final targetShift = shift;
     final targetDate = keyDay;
     _autosaveTimers[targetShift]?.cancel();
-    _autosaveTimers[targetShift] = Timer(const Duration(milliseconds: 700), () {
+    _autosaveTimers[targetShift] = Timer(const Duration(milliseconds: 400), () {
       _autosaveTimers.remove(targetShift);
       if (!mounted || !_loaded || !admin || targetDate != keyDay) return;
       _persistShiftDraft(targetShift, silent: true);
@@ -640,9 +670,8 @@ class _DutyRosterScreenState extends State<DutyRosterScreen> with SingleTickerPr
   Future<void> _pickDate() async {
     final d = await showDatePicker(context: context, initialDate: day, firstDate: DateTime(2024), lastDate: DateTime(2035));
     if (d == null) return;
+    await _flushPendingAutosaves();
     _loaded = false;
-    for (final timer in _autosaveTimers.values) { timer.cancel(); }
-    _autosaveTimers.clear();
     setState(() => day = d);
     await _load();
   }
