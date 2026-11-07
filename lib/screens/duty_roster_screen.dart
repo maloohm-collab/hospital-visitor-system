@@ -33,6 +33,7 @@ class _DutyRosterScreenState extends State<DutyRosterScreen> with SingleTickerPr
   final Map<String, String?> supervisors = {'A': 'فراس الشرعة', 'B': 'أيمن بدارنه', 'C': 'أيمن بدارنه'};
   bool busy = false;
   bool _loaded = false;
+  bool _publishing = false;
   Timer? _autosaveTimer;
   String? copiedFromDateKey;
   bool get admin => widget.userRole == 'admin';
@@ -62,7 +63,7 @@ class _DutyRosterScreenState extends State<DutyRosterScreen> with SingleTickerPr
   @override
   void setState(VoidCallback fn) {
     super.setState(fn);
-    if (admin && _loaded && mounted) _scheduleAutosave();
+    if (admin && _loaded && mounted && !_publishing) _scheduleAutosave();
   }
 
   void _scheduleAutosave() {
@@ -599,7 +600,11 @@ class _DutyRosterScreenState extends State<DutyRosterScreen> with SingleTickerPr
 
   Future<void> _pickDate() async {
     final d = await showDatePicker(context: context, initialDate: day, firstDate: DateTime(2024), lastDate: DateTime(2035));
-    if (d == null) return; setState(() => day = d); await _load();
+    if (d == null) return;
+    _loaded = false;
+    _autosaveTimer?.cancel();
+    setState(() => day = d);
+    await _load();
   }
 
   Future<Map<String,dynamic>> _data(String status) async {
@@ -728,6 +733,7 @@ class _DutyRosterScreenState extends State<DutyRosterScreen> with SingleTickerPr
     );
     if (finalConfirmation != 2 || !mounted) return;
 
+    _publishing = true;
     setState(() => busy = true);
     try {
       final roster = db.collection('daily_duty_rosters').doc(keyDay);
@@ -779,6 +785,7 @@ class _DutyRosterScreenState extends State<DutyRosterScreen> with SingleTickerPr
       msg('تعذر اعتماد أو نشر الكشف. لم يتم تأكيد العملية.');
     } finally {
       if (mounted) setState(() => busy = false);
+      _publishing = false;
     }
   }
 
@@ -820,6 +827,7 @@ class _DutyRosterScreenState extends State<DutyRosterScreen> with SingleTickerPr
         }
       }
     });
+    _autosaveTimer?.cancel();
     await _persistShiftDraft(code);
     msg('تم مسح بيانات الشفت $code وإعادة تعيينه فقط.');
   }
