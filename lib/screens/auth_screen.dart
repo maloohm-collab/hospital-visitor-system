@@ -149,6 +149,62 @@ class _AuthScreenState extends State<AuthScreen> {
     }
   }
 
+
+  Future<void> _sendPasswordReset() async {
+    final email = _email.text.trim();
+    if (!email.contains('@') || !email.contains('.')) {
+      _message('أدخل بريدك الإلكتروني أولًا لإرسال رابط إعادة تعيين كلمة المرور.');
+      return;
+    }
+    setState(() => _loading = true);
+    try {
+      await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
+      _message('إذا كان البريد مرتبطًا بحساب، فسيصلك رابط آمن لإعادة تعيين كلمة المرور. تحقق أيضًا من البريد غير المرغوب فيه.');
+    } on FirebaseAuthException catch (error) {
+      _message(_authError(error.code));
+    } catch (_) {
+      _message('تعذر إرسال رابط الاستعادة. تحقق من الاتصال وحاول مجددًا.');
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  void _showForgotPinHelp() {
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('نسيت رمز الدخول السريع؟'),
+        content: const Text(
+          'رمز الدخول السريع محفوظ على هذا الجهاز فقط. سجّل الدخول بالبريد الإلكتروني وكلمة المرور، ثم افتح «حسابي» وأنشئ رمزًا جديدًا؛ وسيحل الرمز الجديد محل القديم.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('حسنًا'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showForgotEmailHelp() {
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('نسيت البريد الإلكتروني؟'),
+        content: const Text(
+          'لحماية الحسابات، لا يعرض التطبيق البريد الإلكتروني اعتمادًا على الاسم أو رقم الهاتف فقط. تواصل مع مسؤول النظام واطلب استعادة الحساب بعد التحقق من هويتك باستخدام اسمك الكامل ورقم الهاتف المسجل. لا ترسل كلمة المرور أو رمز الدخول لأي شخص.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('إغلاق'),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _submitPinLogin() async {
     final pin = _pin.text.trim();
     if (!RegExp(r'^[0-9]{4}$').hasMatch(pin)) {
@@ -441,6 +497,28 @@ class _AuthScreenState extends State<AuthScreen> {
                                   textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w900),
                                 ),
                               ),
+                              if (!_register) ...[
+                                const SizedBox(height: 8),
+                                Wrap(
+                                  alignment: WrapAlignment.center,
+                                  spacing: 4,
+                                  runSpacing: 0,
+                                  children: [
+                                    TextButton(
+                                      onPressed: _loading ? null : _sendPasswordReset,
+                                      child: const Text('نسيت كلمة المرور؟'),
+                                    ),
+                                    TextButton(
+                                      onPressed: _loading ? null : _showForgotEmailHelp,
+                                      child: const Text('نسيت البريد الإلكتروني؟'),
+                                    ),
+                                    TextButton(
+                                      onPressed: _loading ? null : _showForgotPinHelp,
+                                      child: const Text('نسيت الرمز؟'),
+                                    ),
+                                  ],
+                                ),
+                              ],
                               const SizedBox(height: 10),
                               TextButton(
                                 onPressed: _loading ? null : () => setState(() {
