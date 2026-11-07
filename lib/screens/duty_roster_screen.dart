@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import 'package:printing/printing.dart';
 import '../data/duty_roster_pdf.dart';
 import '../data/duty_roster_catalog.dart';
+import '../widgets/app_search_field.dart';
 
 class DutyRosterScreen extends StatefulWidget {
   const DutyRosterScreen({super.key, required this.userRole});
@@ -150,43 +151,62 @@ class _DutyRosterScreenState extends State<DutyRosterScreen> with SingleTickerPr
 
   Widget _officerChoices(BuildContext dialogContext, List<String> officers,
       String currentShift, int currentIndex) {
-    return ListView.separated(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      itemCount: officers.length,
-      separatorBuilder: (_, __) => const Divider(height: 1),
-      itemBuilder: (context, index) {
-        final officer = officers[index];
-        final otherSites = _otherAssignments(officer, currentShift, currentIndex);
-        final recentSites = recentAssignments[officer] ?? const <String>[];
-        final allRecentSites = [
-          ...recentSites,
-          ...otherSites.map((site) => '${keyDay} • اليوم • $site'),
-        ];
-        final repeatedWithinTwoDays = allRecentSites.length >= 2;
-        final note = repeatedWithinTwoDays
-            ? 'تم اختيار ضابط الأمن أكثر من مرة خلال آخر يومين في المواقع التالية: ${allRecentSites.join('، ')}'
-            : (otherSites.isNotEmpty
-                ? 'مسجل أيضاً اليوم في: ${otherSites.join('، ')}'
-                : null);
-        return ListTile(
-          dense: true,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 8),
-          title: Text(officer, style: const TextStyle(fontWeight: FontWeight.w600)),
-          subtitle: note == null ? null : Text(note,
-              style: TextStyle(
-                color: repeatedWithinTwoDays ? Colors.deepOrange : Colors.black54,
-                fontSize: 11,
-                fontWeight: repeatedWithinTwoDays ? FontWeight.w600 : FontWeight.normal,
-              )),
-          trailing: repeatedWithinTwoDays
-              ? const Icon(Icons.info_outline, color: Colors.deepOrange)
-              : (otherSites.isEmpty
-                  ? const Icon(Icons.person_outline, color: navy)
-                  : const Icon(Icons.warning_amber_rounded, color: Colors.deepOrange)),
-          onTap: () => Navigator.pop(dialogContext, officer),
-        );
-      },
-    );
+    var searchTerm = '';
+    return StatefulBuilder(builder: (context, setLocalState) {
+      final visibleOfficers = officers
+          .where((officer) => matchesSearchText(searchTerm, [officer]))
+          .toList();
+      return Column(children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(12, 10, 12, 4),
+          child: AppSearchField(
+            hint: 'ابحث باسم ضابط الأمن...',
+            onChanged: (value) => setLocalState(() => searchTerm = value),
+          ),
+        ),
+        Expanded(
+          child: visibleOfficers.isEmpty
+              ? const Center(child: Text('لا يوجد اسم مطابق للبحث.'))
+              : ListView.separated(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  itemCount: visibleOfficers.length,
+                  separatorBuilder: (_, __) => const Divider(height: 1),
+                  itemBuilder: (context, index) {
+                    final officer = visibleOfficers[index];
+                    final otherSites = _otherAssignments(officer, currentShift, currentIndex);
+                    final recentSites = recentAssignments[officer] ?? const <String>[];
+                    final allRecentSites = [
+                      ...recentSites,
+                      ...otherSites.map((site) => '${keyDay} • اليوم • $site'),
+                    ];
+                    final repeatedWithinTwoDays = allRecentSites.length >= 2;
+                    final note = repeatedWithinTwoDays
+                        ? 'تم اختيار ضابط الأمن أكثر من مرة خلال آخر يومين في المواقع التالية: ${allRecentSites.join('، ')}'
+                        : (otherSites.isNotEmpty
+                            ? 'مسجل أيضاً اليوم في: ${otherSites.join('، ')}'
+                            : null);
+                    return ListTile(
+                      dense: true,
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+                      title: Text(officer, style: const TextStyle(fontWeight: FontWeight.w600, color: navy)),
+                      subtitle: note == null ? null : Text(note,
+                          style: TextStyle(
+                            color: repeatedWithinTwoDays ? Colors.deepOrange : const Color(0xFF526579),
+                            fontSize: 11,
+                            fontWeight: repeatedWithinTwoDays ? FontWeight.w600 : FontWeight.normal,
+                          )),
+                      trailing: repeatedWithinTwoDays
+                          ? const Icon(Icons.info_outline, color: Colors.deepOrange)
+                          : (otherSites.isEmpty
+                              ? const Icon(Icons.person_outline, color: navy)
+                              : const Icon(Icons.warning_amber_rounded, color: Colors.deepOrange)),
+                      onTap: () => Navigator.pop(dialogContext, officer),
+                    );
+                  },
+                ),
+        ),
+      ]);
+    });
   }
 
   Future<void> _load() async {
