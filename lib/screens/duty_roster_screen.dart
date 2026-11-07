@@ -128,7 +128,9 @@ class _DutyRosterScreenState extends State<DutyRosterScreen>
         final existingShifts = Map<String, dynamic>.from(existingData['shifts'] ?? {});
         final existingBlock = Map<String, dynamic>.from(existingShifts[code] ?? {});
         final existingStatus = (existingBlock['status'] ?? '').toString();
-        if (existingStatus == 'published' || existingStatus == 'approved') {
+        final legacyPublished = existingStatus.isEmpty &&
+            (existingData['status'] == 'published' || existingData['status'] == 'approved');
+        if (existingStatus == 'published' || existingStatus == 'approved' || legacyPublished) {
           final versionRef = rosterRef.collection('versions').doc();
           await versionRef.set({
             ...existingData,
