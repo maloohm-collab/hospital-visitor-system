@@ -7,6 +7,7 @@ import 'screens/auth_screen.dart';
 import 'screens/dashboard_screen.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -158,67 +159,75 @@ class HospitalVisitorApp extends StatelessWidget {
 class AuthGate extends StatelessWidget {
   const AuthGate({super.key});
 
+  static const _storage = FlutterSecureStorage();
+  static const _lockKey = 'hospital_visitor_local_lock_';
+
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<User?>(
       stream: FirebaseAuth.instance.authStateChanges(),
       builder: (context, authSnapshot) {
         if (authSnapshot.connectionState == ConnectionState.waiting) {
-          return const Scaffold(
-            body: Center(child: CircularProgressIndicator()),
-          );
+          return const Scaffold(body: Center(child: CircularProgressIndicator()));
         }
         final user = authSnapshot.data;
         if (user == null) return const WelcomeScreen();
 
-        return FutureBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-          future: FirebaseFirestore.instance.collection('users').doc(user.uid).get(),
-          builder: (context, profileSnapshot) {
-            if (profileSnapshot.connectionState == ConnectionState.waiting) {
-              return const Scaffold(
-                body: Center(child: CircularProgressIndicator()),
-              );
+        return FutureBuilder<bool>(
+          future: _storage.read(key: '$_lockKey${user.uid}').then((value) => value == 'locked'),
+          builder: (context, lockSnapshot) {
+            if (lockSnapshot.connectionState == ConnectionState.waiting) {
+              return const Scaffold(body: Center(child: CircularProgressIndicator()));
             }
-            final data = profileSnapshot.data?.data();
-            final role = data?['role'] as String?;
-            final status = data?['status'] as String?;
-            const allowedRoles = {'security_officer', 'supervisor', 'admin'};
+            if (lockSnapshot.data == true) return const AuthScreen();
 
-            if (profileSnapshot.hasError || !profileSnapshot.hasData) {
-              return const Scaffold(
-                body: Center(
-                  child: Padding(
-                    padding: EdgeInsets.all(24),
-                    child: Text(
-                      'تعذر الاتصال للتحقق من الحساب. تحقق من الإنترنت ثم أعد فتح التطبيق؛ ستبقى جلستك محفوظة.',
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                ),
-              );
-            }
-            if (!profileSnapshot.data!.exists ||
-                status != 'active' ||
-                role == null ||
-                !allowedRoles.contains(role)) {
-              WidgetsBinding.instance.addPostFrameCallback((_) {
-                if (FirebaseAuth.instance.currentUser?.uid == user.uid) {
-                  FirebaseAuth.instance.signOut();
+            return FutureBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+              future: FirebaseFirestore.instance.collection('users').doc(user.uid).get(),
+              builder: (context, profileSnapshot) {
+                if (profileSnapshot.connectionState == ConnectionState.waiting) {
+                  return const Scaffold(body: Center(child: CircularProgressIndicator()));
                 }
-              });
-              return const Scaffold(
-                body: Center(
-                  child: Padding(
-                    padding: EdgeInsets.all(24),
-                    child: Text(
-                      'الحساب غير معتمد أو لم تعد صلاحيته فعالة. يرجى مراجعة الإدارة.',
-                      textAlign: TextAlign.center,
+                if (profileSnapshot.hasError || !profileSnapshot.hasData) {
+                  return const Scaffold(
+                    body: Center(
+                      child: Padding(
+                        padding: EdgeInsets.all(24),
+                        child: Text(
+                          'تعذر الاتصال للتحقق من الحساب. تحقق من الإنترنت ثم أعد المحاولة؛ ستبقى جلستك محفوظة.',
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
                     ),
-                  ),
-                ),
-              );
-            }
-            return DashboardScreen(userRole: role);
+                  );
+                }
+                final data = profileSnapshot.data?.data();
+                final role = data?['role'] as String?;
+                final status = data?['status'] as String?;
+                const allowedRoles = {'security_officer', 'supervisor', 'admin'};
+                if (!profileSnapshot.data!.exists ||
+                    status != 'active' ||
+                    role == null ||
+                    !allowedRoles.contains(role)) {
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    if (FirebaseAuth.instance.currentUser?.uid == user.uid) {
+                      FirebaseAuth.instance.signOut();
+                    }
+                  });
+                  return const Scaffold(
+                    body: Center(
+                      child: Padding(
+                        padding: EdgeInsets.all(24),
+                        child: Text(
+                          'الحساب غير معتمد أو لم تعد صلاحيته فعالة. يرجى مراجعة الإدارة.',
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ),
+                  );
+                }
+                return DashboardScreen(userRole: role);
+              },
+            );
           },
         );
       },
