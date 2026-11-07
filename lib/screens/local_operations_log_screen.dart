@@ -11,6 +11,7 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import 'package:arabic_reshaper/arabic_reshaper.dart';
 import 'package:share_plus/share_plus.dart';
+import '../widgets/app_search_field.dart';
 
 enum LocalOperationsLogKind { cpr, emergency }
 
@@ -55,6 +56,7 @@ class _LocalOperationsLogScreenState extends State<LocalOperationsLogScreen> {
   List<Map<String, dynamic>> _records = [];
   String _outcome = 'نجح الإنعاش ولم تحدث وفاة';
   String _movementType = 'ملاحظة يومية';
+  String _recordSearchTerm = '';
 
   bool get _isCpr => widget.kind == LocalOperationsLogKind.cpr;
   String get _title => _isCpr ? 'توثيق حالات الإنعاش CPR' : 'سجل أمن الطوارئ';
@@ -554,6 +556,13 @@ class _LocalOperationsLogScreenState extends State<LocalOperationsLogScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final filteredRecordIndexes = <int>[];
+    for (var i = 0; i < _records.length; i++) {
+      final record = _records[i];
+      if (matchesSearchText(_recordSearchTerm, [record['patientName'], record['name'], record['department'], record['room'], record['site'], record['notes'], record['responsiblePerson'], record['movementType'], record['material'], record['date'], record['time']])) {
+        filteredRecordIndexes.add(i);
+      }
+    }
     return Scaffold(
       appBar: AppBar(
         title: Text(_title),
@@ -608,14 +617,20 @@ class _LocalOperationsLogScreenState extends State<LocalOperationsLogScreen> {
                     ],
                   ),
                   const SizedBox(height: 8),
+                  if (_records.isNotEmpty) ...[
+                    AppSearchField(hint: 'ابحث باسم المريض أو القسم أو الغرفة أو الموقع...', onChanged: (v) => setState(() => _recordSearchTerm = v)),
+                    const SizedBox(height: 10),
+                  ],
                   if (_records.isEmpty)
                     const Padding(
                       padding: EdgeInsets.all(22),
                       child: Text('لا توجد سجلات بعد. ستظهر السجلات التي تضيفها هنا.',
                           textAlign: TextAlign.center, style: TextStyle(color: _muted)),
                     )
+                  else if (filteredRecordIndexes.isEmpty)
+                    const Padding(padding: EdgeInsets.all(22), child: Text('لا توجد سجلات مطابقة للبحث.', textAlign: TextAlign.center, style: TextStyle(color: _muted)))
                   else
-                    for (var i = 0; i < _records.length; i++)
+                    for (final i in filteredRecordIndexes)
                       _buildRecordCard(_records[i], i),
                 ],
               ),
