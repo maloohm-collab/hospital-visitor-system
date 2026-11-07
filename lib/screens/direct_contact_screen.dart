@@ -159,9 +159,11 @@ class _DirectContactScreenState extends State<DirectContactScreen> {
                   controller: _searchController,
                   focusNode: _searchFocusNode,
                   textInputAction: TextInputAction.search,
+                  style: const TextStyle(color: Color(0xFF173653), fontSize: 15),
                   onChanged: (_) => setState(() {}),
                   decoration: InputDecoration(
-                    hintText: 'ابحث عن اسم الموظف...',
+                    hintText: 'ابحث بالاسم أو رقم الهاتف أو البريد الإلكتروني...',
+                    hintStyle: const TextStyle(color: Color(0xFF65788A), fontSize: 13),
                     prefixIcon: const Icon(Icons.search_rounded),
                     suffixIcon: _searchController.text.isEmpty
                         ? null
