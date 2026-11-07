@@ -937,21 +937,25 @@ class _DutyRosterScreenState extends State<DutyRosterScreen>
           rtf(value) + r'\par}';
     }
 
-    String cell(String value, int width, {bool header = false}) {
-      return r'\clvertalc\clbrdrt\brdrs\brdrw8\clbrdrl\brdrs\brdrw8' +
-          r'\clbrdrb\brdrs\brdrw8\clbrdrr\brdrs\brdrw8\cellx' +
-          width.toString() +
-          r'{\pard\intbl\rtlpar\qc\f0\fs' +
-          (header ? '22\\b ' : '22\\b0 ') +
-          rtf(value) + r'\cell}';
-    }
+    String cellDefinition(int edge) =>
+        r'\clvertalc\clbrdrt\brdrs\brdrw8\clbrdrl\brdrs\brdrw8' +
+        r'\clbrdrb\brdrs\brdrw8\clbrdrr\brdrs\brdrw8\cellx' +
+        edge.toString();
+
+    String cellContent(String value, {bool header = false}) =>
+        r'{\pard\intbl\rtlpar\qc\f0\fs' +
+        (header ? '22\\b ' : '22\\b0 ') +
+        rtf(value) + r'\cell}';
 
     String tableRow(List<String> values, List<int> widths, {bool header = false}) {
       final row = StringBuffer(r'{\trowd\trgaph100\trleft0\trkeep\trqc');
       var edge = 0;
-      for (var i = 0; i < values.length; i++) {
-        edge += widths[i];
-        row.write(cell(values[i], edge, header: header));
+      for (final width in widths) {
+        edge += width;
+        row.write(cellDefinition(edge));
+      }
+      for (final value in values) {
+        row.write(cellContent(value, header: header));
       }
       row.write(r'\row}');
       return row.toString();
