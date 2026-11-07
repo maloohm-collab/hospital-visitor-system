@@ -101,7 +101,7 @@ class DashboardHeader extends StatelessWidget {
                   right: 8,
                   top: 7,
                   child: _headerAction(
-                    tooltip: 'تسجيل الخروج',
+                    tooltip: 'قفل التطبيق',
                     child: IconButton(
                       tooltip: 'تسجيل الخروج',
                       visualDensity: VisualDensity.compact,
@@ -368,8 +368,8 @@ class DashboardHeader extends StatelessWidget {
     final shouldSignOut = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('تسجيل الخروج'),
-        content: const Text('هل أنت متأكد أنك تريد تسجيل الخروج؟'),
+        title: const Text('قفل التطبيق'),
+        content: const Text('سيُقفل التطبيق مع إبقاء جلسة الحساب محفوظة بأمان على هذا الجهاز، لتتمكن من العودة بالرمز السريع أو بالبريد الإلكتروني وكلمة المرور. لا يتم إنهاء جلسة Firebase بهذه الخطوة.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext, false),
@@ -377,7 +377,7 @@ class DashboardHeader extends StatelessWidget {
           ),
           FilledButton(
             onPressed: () => Navigator.pop(dialogContext, true),
-            child: const Text('تسجيل الخروج'),
+            child: const Text('قفل التطبيق'),
           ),
         ],
       ),
