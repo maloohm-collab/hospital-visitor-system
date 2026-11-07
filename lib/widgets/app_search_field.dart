@@ -51,9 +51,9 @@ class _AppSearchFieldState extends State<AppSearchField> {
     decoration: InputDecoration(
       hintText: widget.hint,
       prefixIcon: const Icon(Icons.search_rounded, color: Color(0xFF087E78)),
-      suffixIcon: IconButton(
+      suffixIcon: controller.text.isEmpty ? null : IconButton(
         tooltip: 'مسح البحث',
-        onPressed: controller.text.isEmpty ? null : () {
+        onPressed: () {
           controller.clear();
           widget.onChanged('');
           setState(() {});
