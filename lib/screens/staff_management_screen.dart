@@ -76,7 +76,7 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
           final docs = (snapshot.data?.docs ?? []).where((d) {
             if (d.id == currentUid) return false;
             final data = d.data();
-            return matchesSearchText(_searchTerm, [data['displayName'], data['phone'], data['email'], data['role'], data['status'], d.id]);
+            return matchesSearchText(_searchTerm, [data['displayName'], data['phone'], data['email'], _role(data['role'] as String? ?? ''), _status(data['status'] as String? ?? ''), data['role'], data['status'], d.id]);
           }).toList()
             ..sort((a, b) => ((a.data()['displayName'] as String? ?? '').toLowerCase())
                 .compareTo((b.data()['displayName'] as String? ?? '').toLowerCase()));
