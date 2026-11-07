@@ -510,10 +510,10 @@ class _WorkLocationScreenState extends State<WorkLocationScreen> {
           if (x is Timestamp && y is Timestamp) return x.compareTo(y);
           return 0;
         });
-      if (docs.isEmpty) return Center(child: Text(_searchTerm.isEmpty ? 'لا توجد مناوبات مباشرة حاليًا.' : 'لا توجد نتائج مطابقة للبحث.'));
       return Column(children: [
         Padding(padding: const EdgeInsets.fromLTRB(16, 12, 16, 4), child: AppSearchField(hint: 'ابحث باسم الضابط أو الموقع...', onChanged: (v) => setState(() => _searchTerm = v))),
-        Expanded(child: ListView.builder(
+        if (docs.isEmpty) Expanded(child: Center(child: Text(_searchTerm.isEmpty ? 'لا توجد مناوبات مباشرة حاليًا.' : 'لا توجد نتائج مطابقة للبحث.')))
+        else Expanded(child: ListView.builder(
         padding: const EdgeInsets.all(16),
         itemCount: docs.length,
         itemBuilder: (context, index) {
@@ -581,10 +581,10 @@ class _WorkLocationScreenState extends State<WorkLocationScreen> {
         if (x is Timestamp && y is Timestamp) return y.compareTo(x);
         return 0;
       });
-      if (docs.isEmpty) return Center(child: Text(_searchTerm.isEmpty ? 'لا توجد ملاحظات واردة حاليًا.' : 'لا توجد نتائج مطابقة للبحث.'));
       return Column(children: [
         Padding(padding: const EdgeInsets.fromLTRB(16, 12, 16, 4), child: AppSearchField(hint: 'ابحث باسم الضابط أو الموقع أو نص الملاحظة...', onChanged: (v) => setState(() => _searchTerm = v))),
-        Expanded(child: ListView.builder(padding: const EdgeInsets.all(16), itemCount: docs.length,
+        if (docs.isEmpty) Expanded(child: Center(child: Text(_searchTerm.isEmpty ? 'لا توجد ملاحظات واردة حاليًا.' : 'لا توجد نتائج مطابقة للبحث.')))
+        else Expanded(child: ListView.builder(padding: const EdgeInsets.all(16), itemCount: docs.length,
         itemBuilder: (context, i) {
           final d = docs[i].data();
           return Card(color: Colors.white, child: Padding(padding: const EdgeInsets.all(15),
