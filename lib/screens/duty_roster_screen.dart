@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:typed_data';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -31,6 +32,8 @@ class _DutyRosterScreenState extends State<DutyRosterScreen> with SingleTickerPr
   String? siteManager = 'ياسر الشديفات';
   final Map<String, String?> supervisors = {'A': 'فراس الشرعة', 'B': 'أيمن بدارنه', 'C': 'أيمن بدارنه'};
   bool busy = false;
+  bool _loaded = false;
+  Timer? _autosaveTimer;
   String? copiedFromDateKey;
   bool get admin => widget.userRole == 'admin';
   String get keyDay => DateFormat('yyyy-MM-dd').format(day);
@@ -50,7 +53,53 @@ class _DutyRosterScreenState extends State<DutyRosterScreen> with SingleTickerPr
   @override
   void initState() { super.initState(); tabs = TabController(length: 3, vsync: this)..addListener(() { if (mounted) setState(() {}); }); _load(); }
   @override
-  void dispose() { tabs.dispose(); super.dispose(); }
+  void dispose() {
+    _autosaveTimer?.cancel();
+    tabs.dispose();
+    super.dispose();
+  }
+
+  @override
+  void setState(VoidCallback fn) {
+    super.setState(fn);
+    if (admin && _loaded && mounted) _scheduleAutosave();
+  }
+
+  void _scheduleAutosave() {
+    _autosaveTimer?.cancel();
+    final targetShift = shift;
+    final targetDate = keyDay;
+    _autosaveTimer = Timer(const Duration(milliseconds: 700), () {
+      if (!mounted || !_loaded || !admin || targetDate != keyDay) return;
+      _persistShiftDraft(targetShift, silent: true);
+    });
+  }
+
+  Future<void> _persistShiftDraft(String code, {bool silent = false}) async {
+    if (!admin || !_loaded) return;
+    try {
+      final allData = await _data('draft');
+      final allBlocks = Map<String, dynamic>.from(allData['shifts'] ?? {});
+      final block = Map<String, dynamic>.from(allBlocks[code] ?? {});
+      block['status'] = 'draft';
+      block['managerConfirmed'] = false;
+      block.remove('publishedAt');
+      final payload = <String, dynamic>{
+        'dateKey': keyDay,
+        'siteManager': siteManager,
+        'shifts': {code: block},
+        'updatedAt': FieldValue.serverTimestamp(),
+        'updatedBy': FirebaseAuth.instance.currentUser?.uid,
+        'status': 'draft',
+        if (copiedFromDateKey != null) 'copiedFromDateKey': copiedFromDateKey,
+      };
+      await db.collection('daily_duty_rosters').doc(keyDay)
+          .set(payload, SetOptions(merge: true));
+    } catch (_) {
+      if (!silent) msg('تعذر حفظ مسودة الشفت $code.');
+    }
+  }
+
   void msg(String s) { if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(s))); }
 
   /// المواقع التي أُسند إليها الضابط مسبقاً في كشف اليوم نفسه.
@@ -426,6 +475,7 @@ class _DutyRosterScreenState extends State<DutyRosterScreen> with SingleTickerPr
             }
           });
         }
+        _loaded = true;
         return;
       }
 
@@ -462,7 +512,9 @@ class _DutyRosterScreenState extends State<DutyRosterScreen> with SingleTickerPr
         if (clinicRows.isEmpty && isClinicDay) _setDefaultClinicRows();
         if (!isClinicDay) clinicRows.clear();
       });
+      _loaded = true;
     } catch (_) {
+      _loaded = true;
       msg('تعذر تحميل الكشف.');
     }
   }
@@ -572,21 +624,15 @@ class _DutyRosterScreenState extends State<DutyRosterScreen> with SingleTickerPr
   }
 
   Future<void> _save() async {
-    if (!admin || busy) return; setState(() => busy = true);
+    if (!admin || busy) return;
+    _autosaveTimer?.cancel();
+    setState(() => busy = true);
     try {
-      final roster = db.collection('daily_duty_rosters').doc(keyDay);
-      final old = await roster.get();
-      final batch = db.batch();
-      if (old.exists) {
-        final version = roster.collection('versions').doc();
-        batch.set(version, {...old.data()!, 'archivedAt': FieldValue.serverTimestamp(),
-          'archivedBy': FirebaseAuth.instance.currentUser?.uid});
-      }
-      batch.set(roster, await _data('draft'), SetOptions(merge: true));
-      await batch.commit();
-      msg('تم حفظ المسودة مع الاحتفاظ بالإصدار السابق في الأرشيف.');
+      await _persistShiftDraft(shift);
+      msg('تم حفظ مسودة الشفت $shift فقط.');
+    } finally {
+      if (mounted) setState(() => busy = false);
     }
-    catch (_) { msg('تعذر حفظ المسودة.'); } finally { if (mounted) setState(() => busy = false); }
   }
 
   Future<int?> _confirm(String title, String body) => showDialog<int>(context: context, barrierDismissible: false, builder: (c) => AlertDialog(
@@ -599,6 +645,8 @@ class _DutyRosterScreenState extends State<DutyRosterScreen> with SingleTickerPr
 
   Future<void> _publish() async {
     if (!admin || busy) return;
+    _autosaveTimer?.cancel();
+    await _persistShiftDraft(shift, silent: true);
 
     // اعرض نسخة PDF النهائية للإدارة أولاً، ولا يتم الاعتماد أو الإرسال
     // إلا بعد اختيار أحد الإجراءين من نافذة المعاينة.
@@ -610,6 +658,7 @@ class _DutyRosterScreenState extends State<DutyRosterScreen> with SingleTickerPr
       return;
     }
     final previewBlocks = Map<String, dynamic>.from(previewData['shifts'] ?? {});
+    final selectedBlock = Map<String, dynamic>.from(previewBlocks[shift] ?? {});
     final choice = await showDialog<int>(
       context: context,
       barrierDismissible: false,
@@ -625,15 +674,15 @@ class _DutyRosterScreenState extends State<DutyRosterScreen> with SingleTickerPr
                 child: Text('معاينة كشف المناوبات قبل الاعتماد',
                   style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: navy)),
               ),
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                child: Text('راجع صفحات A وB وC والتعليمات قبل اعتماد الكشف أو إرساله.',
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                child: Text('راجع كشف الشفت $shift فقط قبل اعتماده وإرساله.',
                   textAlign: TextAlign.center, style: TextStyle(fontSize: 12, color: Colors.black54)),
               ),
               Expanded(
                 child: PdfPreview(
                   build: (_) async => Uint8List.fromList(
-                    await DutyRosterPdf.build(date: keyDay, shifts: previewBlocks),
+                    await DutyRosterPdf.build(date: keyDay, shifts: previewBlocks, onlyShift: shift),
                   ),
                   canChangeOrientation: false,
                   canChangePageFormat: false,
@@ -669,13 +718,13 @@ class _DutyRosterScreenState extends State<DutyRosterScreen> with SingleTickerPr
 
     final firstConfirmation = await _confirm(
       'تأكيد اعتماد الكشف',
-      'هل تؤكد اعتماد النسخة الحالية من كشوفات الشفتات A وB وC بتاريخ $keyDay؟',
+      'هل تؤكد اعتماد كشف الشفت $shift بتاريخ $keyDay؟',
     );
     if (firstConfirmation != 2 || !mounted) return;
 
     final finalConfirmation = await _confirm(
       'تأكيد الإرسال النهائي',
-      'هذا هو التأكيد الأخير. سيتم حفظ النسخة المعتمدة وإرسالها إلى جميع المستخدمين النشطين، مع الاحتفاظ بأي نسخة سابقة في الأرشيف. هل تريد الإرسال الآن؟',
+      'هذا هو التأكيد الأخير. سيتم اعتماد كشف الشفت $shift فقط وإرساله إلى المستخدمين النشطين. لن تتأثر كشوفات الشفتات الأخرى. هل تريد الإرسال الآن؟',
     );
     if (finalConfirmation != 2 || !mounted) return;
 
@@ -695,7 +744,16 @@ class _DutyRosterScreenState extends State<DutyRosterScreen> with SingleTickerPr
 
       final users = await db.collection('users')
           .where('status', isEqualTo: 'active').get();
-      batch.set(roster, await _data('published'), SetOptions(merge: true));
+      selectedBlock['status'] = 'published';
+      selectedBlock['managerConfirmed'] = true;
+      selectedBlock['publishedAt'] = FieldValue.serverTimestamp();
+      batch.set(roster, {
+        'dateKey': keyDay,
+        'shifts': {shift: selectedBlock},
+        'lastPublishedShift': shift,
+        'updatedAt': FieldValue.serverTimestamp(),
+        'updatedBy': FirebaseAuth.instance.currentUser?.uid,
+      }, SetOptions(merge: true));
       final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
       for (final user in users.docs) {
         if (user.id == uid) continue;
@@ -707,7 +765,7 @@ class _DutyRosterScreenState extends State<DutyRosterScreen> with SingleTickerPr
           'senderUid': uid,
           'senderEmail': FirebaseAuth.instance.currentUser?.email ?? '',
           'title': 'كشف الوظائف اليومي الجديد',
-          'body': 'تم اعتماد ونشر كشف المناوبات A وB وC بتاريخ $keyDay.',
+          'body': 'تم اعتماد ونشر كشف الشفت $shift بتاريخ $keyDay.',
           'priority': 'important',
           'read': false,
           'createdAt': FieldValue.serverTimestamp(),
@@ -716,7 +774,7 @@ class _DutyRosterScreenState extends State<DutyRosterScreen> with SingleTickerPr
         });
       }
       await batch.commit();
-      msg('تم اعتماد الكشف بعد معاينته ونشره وإرسال الإشعارات للمستخدمين النشطين.');
+      msg('تم اعتماد ونشر كشف الشفت $shift فقط وإرسال الإشعارات للمستخدمين النشطين.');
     } catch (_) {
       msg('تعذر اعتماد أو نشر الكشف. لم يتم تأكيد العملية.');
     } finally {
@@ -727,7 +785,7 @@ class _DutyRosterScreenState extends State<DutyRosterScreen> with SingleTickerPr
   Future<void> _sharePdf(Map<String,dynamic> data) async {
     try {
       final blocks = Map<String,dynamic>.from(data['shifts'] ?? {});
-      final bytes = Uint8List.fromList(await DutyRosterPdf.build(date: keyDay, shifts: blocks));
+      final bytes = Uint8List.fromList(await DutyRosterPdf.build(date: keyDay, shifts: blocks, onlyShift: shift));
       await Printing.sharePdf(bytes: bytes, filename: 'daily_roster_' + keyDay + '.pdf');
     } catch (_) { msg('تعذر تجهيز ملف PDF للمشاركة.'); }
   }
@@ -735,16 +793,35 @@ class _DutyRosterScreenState extends State<DutyRosterScreen> with SingleTickerPr
   Future<void> _savePdf(Map<String,dynamic> data) async {
     try {
       final blocks = Map<String,dynamic>.from(data['shifts'] ?? {});
-      final bytes = Uint8List.fromList(await DutyRosterPdf.build(date: keyDay, shifts: blocks));
+      final bytes = Uint8List.fromList(await DutyRosterPdf.build(date: keyDay, shifts: blocks, onlyShift: shift));
       await Printing.layoutPdf(onLayout: (_) async => bytes, name: 'daily_roster_' + keyDay + '.pdf');
     } catch (_) { msg('تعذر تجهيز ملف PDF للحفظ أو الطباعة.'); }
   }
 
-  Future<void> _delete() async {
-    final a = await _confirm('حذف الكشف', 'هل تريد حذف كشف ' + keyDay + '؟');
-    if (a != 2) return;
-    try { await db.collection('daily_duty_rosters').doc(keyDay).delete(); msg('تم حذف الكشف.'); await _load(); }
-    catch (_) { msg('تعذر حذف الكشف.'); }
+  Future<void> _resetCurrentShift() async {
+    final code = shift;
+    final answer = await _confirm(
+      'مسح معلومات الكشف وإعادة التعيين',
+      'سيتم مسح بيانات الشفت $code بتاريخ $keyDay فقط، ولن تتأثر الشفتات الأخرى. هل تريد المتابعة؟',
+    );
+    if (answer != 2 || !mounted) return;
+    _autosaveTimer?.cancel();
+    setState(() {
+      rows[code] = [];
+      offs[code] = [];
+      annuals[code] = [];
+      specials[code] = [];
+      notes[code] = '';
+      if (code == 'A') {
+        if (isClinicDay) {
+          _setDefaultClinicRows();
+        } else {
+          clinicRows.clear();
+        }
+      }
+    });
+    await _persistShiftDraft(code);
+    msg('تم مسح بيانات الشفت $code وإعادة تعيينه فقط.');
   }
 
   Widget _actionButton({
@@ -801,7 +878,9 @@ class _DutyRosterScreenState extends State<DutyRosterScreen> with SingleTickerPr
       builder: (context, snap) {
         final data = snap.data?.data();
         final blocks = Map<String,dynamic>.from(data?['shifts'] ?? {});
-        final published = data?['status'] == 'published';
+        final currentBlock = Map<String, dynamic>.from(blocks[shift] ?? {});
+        final published = currentBlock['status'] == 'published' ||
+            (currentBlock['status'] == null && data?['status'] == 'published');
         return ListView(
           padding: const EdgeInsets.fromLTRB(14, 14, 14, 30),
           children: [
@@ -863,11 +942,10 @@ class _DutyRosterScreenState extends State<DutyRosterScreen> with SingleTickerPr
                     onPressed: busy ? null : _chooseEditTarget),
                   _actionButton(label: 'حفظ مسودة', icon: Icons.save_outlined,
                     onPressed: busy ? null : _save),
-                  _actionButton(label: published ? 'معاينة وإعادة إرسال' : 'معاينة واعتماد',
+                  _actionButton(label: published ? 'معاينة وإعادة إرسال الشفت $shift' : 'معاينة واعتماد الشفت $shift',
                     icon: Icons.send_rounded, onPressed: busy ? null : _publish, primary: true),
-                  if (data != null)
-                    _actionButton(label: 'حذف الكشف', icon: Icons.delete_outline,
-                      onPressed: busy ? null : _delete, foreground: Colors.red.shade700),
+                  _actionButton(label: 'مسح معلومات الكشف وإعادة التعيين', icon: Icons.restart_alt,
+                    onPressed: busy ? null : _resetCurrentShift, foreground: Colors.red.shade700),
                 ],
               ),
               const SizedBox(height: 16),
@@ -880,9 +958,9 @@ class _DutyRosterScreenState extends State<DutyRosterScreen> with SingleTickerPr
                 spacing: 10,
                 runSpacing: 10,
                 children: [
-                  _actionButton(label: 'مشاركة PDF', icon: Icons.share,
+                  _actionButton(label: 'مشاركة PDF للشفت $shift', icon: Icons.share,
                     onPressed: () => _sharePdf(data), primary: true),
-                  _actionButton(label: 'حفظ / طباعة PDF', icon: Icons.download,
+                  _actionButton(label: 'حفظ / طباعة PDF للشفت $shift', icon: Icons.download,
                     onPressed: () => _savePdf(data)),
                 ],
               ),
@@ -943,7 +1021,7 @@ class _DutyRosterScreenState extends State<DutyRosterScreen> with SingleTickerPr
                   alignLabelWithHint: true,
                   contentPadding: EdgeInsets.all(14),
                 ),
-                onChanged: (v) => notes[shift] = v,
+                onChanged: (v) { notes[shift] = v; _scheduleAutosave(); },
               ),
             ],
             if (!admin && data == null)
@@ -952,7 +1030,7 @@ class _DutyRosterScreenState extends State<DutyRosterScreen> with SingleTickerPr
                   style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600))),
             if (!admin && data != null && !published)
               const Padding(padding: EdgeInsets.only(top: 12),
-                child: Text('هذا الكشف لم يُنشر بعد.', style: TextStyle(fontSize: 14))),
+                child: Text('هذا الشفت لم يُنشر بعد.', style: TextStyle(fontSize: 14))),
             if (busy) const Padding(
               padding: EdgeInsets.only(top: 18),
               child: Center(child: CircularProgressIndicator()),
