@@ -227,7 +227,7 @@ class _DutyRosterScreenState extends State<DutyRosterScreen> with SingleTickerPr
                 TextField(
                   controller: controller,
                   autofocus: true,
-                  textDirection: TextDirection.rtl,
+                  textDirection: Directionality.of(context),
                   style: const TextStyle(color: Color(0xFF173653)),
                   decoration: const InputDecoration(
                     hintText: 'ابحث باسم الموقع...',
