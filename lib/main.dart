@@ -95,7 +95,7 @@ class HospitalVisitorApp extends StatelessWidget {
           titleSmall: TextStyle(fontSize: 14, height: 1.4, fontWeight: FontWeight.w700, color: navy),
           bodyLarge: TextStyle(fontSize: 15, height: 1.65, color: Color(0xFF33485C)),
           bodyMedium: TextStyle(fontSize: 14, height: 1.6, color: Color(0xFF526579)),
-          bodySmall: TextStyle(fontSize: 12, height: 1.55, color: Color(0xFF65788A)),
+          bodySmall: TextStyle(fontSize: 12, height: 1.55, color: Color(0xFF526579)),
           labelLarge: TextStyle(fontSize: 14, fontWeight: FontWeight.w800),
           labelMedium: TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
         ),
@@ -111,7 +111,7 @@ class HospitalVisitorApp extends StatelessWidget {
           fillColor: Colors.white,
           contentPadding: const EdgeInsets.symmetric(horizontal: 15, vertical: 15),
           labelStyle: const TextStyle(color: Color(0xFF526579), fontWeight: FontWeight.w600),
-          hintStyle: const TextStyle(color: Color(0xFF8796A5), fontSize: 13),
+          hintStyle: const TextStyle(color: Color(0xFF65788A), fontSize: 13),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(13),
             borderSide: const BorderSide(color: Color(0xFFDCE5ED)),
