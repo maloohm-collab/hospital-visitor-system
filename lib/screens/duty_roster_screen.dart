@@ -1058,6 +1058,51 @@ class _DutyRosterScreenState extends State<DutyRosterScreen>
     }
   }
 
+  Future<void> _previewExportPdf(Map<String, dynamic> data) async {
+    final blocks = Map<String, dynamic>.from(data['shifts'] ?? {});
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => Dialog(
+        insetPadding: const EdgeInsets.all(10),
+        child: SizedBox(
+          width: MediaQuery.of(dialogContext).size.width * 0.97,
+          height: MediaQuery.of(dialogContext).size.height * 0.9,
+          child: Column(
+            children: [
+              const Padding(
+                padding: EdgeInsets.all(12),
+                child: Text('معاينة الكشف قبل الحفظ أو الإرسال',
+                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: navy)),
+              ),
+              Expanded(
+                child: PdfPreview(
+                  build: (_) async => Uint8List.fromList(
+                    await DutyRosterPdf.build(
+                      date: rosterDateKey,
+                      shifts: blocks,
+                      onlyShift: shift,
+                    ),
+                  ),
+                  canChangeOrientation: false,
+                  canChangePageFormat: false,
+                  allowPrinting: false,
+                  allowSharing: false,
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(10),
+                child: FilledButton(
+                  onPressed: () => Navigator.pop(dialogContext),
+                  child: const Text('إغلاق المعاينة'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Future<void> _showExportOptions(Map<String, dynamic> data) async {
     await showModalBottomSheet<void>(
       context: context,
@@ -1070,6 +1115,12 @@ class _DutyRosterScreenState extends State<DutyRosterScreen>
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
             const Text('صيغة Word متوافقة (RTF) تفتح مباشرة في Microsoft Word ويمكن حفظها لاحقاً بصيغة DOCX.', textAlign: TextAlign.center, style: TextStyle(fontSize: 12, color: Colors.black54)),
             const SizedBox(height: 14),
+            OutlinedButton.icon(
+              onPressed: () { Navigator.pop(sheetContext); _previewExportPdf(data); },
+              icon: const Icon(Icons.picture_as_pdf_outlined),
+              label: const Text('معاينة الكشف قبل الحفظ أو الإرسال'),
+            ),
+            const SizedBox(height: 10),
             for (final format in ['صورة', 'Word', 'PDF']) ...[
               Text(format, style: const TextStyle(fontWeight: FontWeight.w800, color: navy)),
               Row(children: [
