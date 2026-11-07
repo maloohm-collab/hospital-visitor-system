@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'emergency_duty_screen.dart';
+import '../widgets/app_search_field.dart';
 
 class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key, required this.userRole});
@@ -16,6 +17,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   String audience = 'all_staff', priority = 'normal';
   String? recipientUid;
   bool sending = false;
+  String _searchTerm = '';
   bool get admin => widget.userRole == 'admin';
   String get uid => FirebaseAuth.instance.currentUser?.uid ?? '';
   @override
@@ -130,15 +132,20 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       builder: (context, snap) {
         if (snap.hasError) return const Center(child: Padding(padding: EdgeInsets.all(24), child: Text('تعذر تحميل الإشعارات. تحقق من قواعد Firestore والفهارس.', textAlign: TextAlign.center)));
         if (snap.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
-        final docs = (snap.data?.docs ?? []).toList()..sort((a, b) {
+        final docs = (snap.data?.docs ?? []).where((doc) {
+          final d = doc.data();
+          return matchesSearchText(_searchTerm, [d['title'], d['body'], d['senderEmail'], d['senderName'], d['senderUid']]);
+        }).toList()..sort((a, b) {
           final at = a.data()['createdAt']; final bt = b.data()['createdAt'];
           if (at is Timestamp && bt is Timestamp) return bt.compareTo(at);
           return 0;
         });
-        if (docs.isEmpty) return const Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Icon(Icons.notifications_none_rounded, size: 56, color: Color(0xFF8796A5)), SizedBox(height: 12),
-          Text('لا توجد إشعارات جديدة', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: navy))]));
-        return ListView.builder(padding: const EdgeInsets.fromLTRB(16, 14, 16, 90), itemCount: docs.length, itemBuilder: (context, i) {
+        return Column(children: [
+          Padding(padding: const EdgeInsets.fromLTRB(16, 12, 16, 4), child: AppSearchField(hint: 'ابحث في عنوان الإشعار أو نصه أو المرسل...', onChanged: (v) => setState(() => _searchTerm = v))),
+          if (docs.isEmpty) Expanded(child: Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
+            Icon(Icons.notifications_none_rounded, size: 56, color: Color(0xFF8796A5)), SizedBox(height: 12),
+            Text(_searchTerm.isEmpty ? 'لا توجد إشعارات جديدة' : 'لا توجد إشعارات مطابقة للبحث', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: navy))])))
+          else Expanded(child: ListView.builder(padding: const EdgeInsets.fromLTRB(16, 14, 16, 90), itemCount: docs.length, itemBuilder: (context, i) {
           final doc = docs[i]; final d = doc.data(); final read = d['read'] == true;
           final created = d['createdAt'] is Timestamp ? (d['createdAt'] as Timestamp).toDate() : null;
           return Card(elevation: 0, margin: const EdgeInsets.only(bottom: 10),
@@ -154,7 +161,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                   if (created != null) Text(DateFormat('yyyy/MM/dd HH:mm').format(created), style: const TextStyle(fontSize: 11, color: Color(0xFF526579)))]),
                 if (!read) Align(alignment: Alignment.centerLeft, child: TextButton.icon(onPressed: () => markRead(doc), icon: const Icon(Icons.done_rounded), label: const Text('تحديد كمقروء'))),
               ]))));
-        });
+        })),
+        ]);
       }),
   );
 }
