@@ -2,10 +2,24 @@ import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import '../widgets/app_search_field.dart';
 
-class StaffManagementScreen extends StatelessWidget {
+class StaffManagementScreen extends StatefulWidget {
   const StaffManagementScreen({super.key});
+  @override
+  State<StaffManagementScreen> createState() => _StaffManagementScreenState();
+}
+
+class _StaffManagementScreenState extends State<StaffManagementScreen> {
+  String _searchTerm = '';
+  late final Stream<QuerySnapshot<Map<String, dynamic>>> _staffStream;
   static const navy = Color(0xFF082B55);
+
+  @override
+  void initState() {
+    super.initState();
+    _staffStream = FirebaseFirestore.instance.collection('users').snapshots();
+  }
 
   String _role(String value) => value == 'supervisor' ? 'مشرف' : value == 'admin' ? 'مسؤول النظام' : 'ضابط أمن';
   String _status(String value) => value == 'active' ? 'نشط' : value == 'suspended' ? 'معلّق' : value == 'blocked' ? 'محظور' : value;
@@ -59,14 +73,18 @@ class StaffManagementScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('إدارة الموظفين')),
       body: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-        stream: FirebaseFirestore.instance.collection('users').snapshots(),
+        stream: _staffStream,
         builder: (context, snapshot) {
           if (snapshot.hasError) return const Center(child: Padding(
             padding: EdgeInsets.all(24),
             child: Text('تعذر تحميل الموظفين. تحقق من صلاحيات الإدارة وقواعد Firestore.', textAlign: TextAlign.center),
           ));
           if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
-          final docs = (snapshot.data?.docs ?? []).where((d) => d.id != currentUid).toList()
+          final docs = (snapshot.data?.docs ?? []).where((d) {
+            if (d.id == currentUid) return false;
+            final data = d.data();
+            return matchesSearchText(_searchTerm, [data['displayName'], data['phone'], data['email'], _role(data['role'] as String? ?? ''), _status(data['status'] as String? ?? ''), data['role'], data['status'], d.id]);
+          }).toList()
             ..sort((a, b) => ((a.data()['displayName'] as String? ?? '').toLowerCase())
                 .compareTo((b.data()['displayName'] as String? ?? '').toLowerCase()));
           return ListView(padding: const EdgeInsets.all(16), children: [
@@ -77,7 +95,9 @@ class StaffManagementScreen extends StatelessWidget {
                 style: TextStyle(color: navy, height: 1.6)),
             ),
             const SizedBox(height: 14),
-            if (docs.isEmpty) const Padding(padding: EdgeInsets.all(24), child: Text('لا توجد ملفات موظفين أخرى.', textAlign: TextAlign.center)),
+            AppSearchField(hint: 'ابحث باسم الموظف أو الهاتف أو البريد أو الصفة...', onChanged: (v) => setState(() => _searchTerm = v)),
+            const SizedBox(height: 14),
+            if (docs.isEmpty) Padding(padding: const EdgeInsets.all(24), child: Text(_searchTerm.isEmpty ? 'لا توجد ملفات موظفين أخرى.' : 'لا توجد نتائج مطابقة للبحث.', textAlign: TextAlign.center)),
             for (final doc in docs) ...[
               _StaffCard(
                 data: doc.data(),

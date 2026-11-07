@@ -2,6 +2,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'emergency_duty_screen.dart';
+import '../widgets/app_search_field.dart';
 
 class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key, required this.userRole});
@@ -12,26 +14,34 @@ class NotificationsScreen extends StatefulWidget {
 class _NotificationsScreenState extends State<NotificationsScreen> {
   static const navy = Color(0xFF082B55), teal = Color(0xFF12B8B0);
   final title = TextEditingController(), body = TextEditingController();
-  String audience = 'supervisors', priority = 'normal';
+  String audience = 'all_staff', priority = 'normal';
   String? recipientUid;
   bool sending = false;
+  String _searchTerm = '';
+  late final Stream<QuerySnapshot<Map<String, dynamic>>> _notificationsStream;
   bool get admin => widget.userRole == 'admin';
   String get uid => FirebaseAuth.instance.currentUser?.uid ?? '';
+  @override
+  void initState() {
+    super.initState();
+    _notificationsStream = FirebaseFirestore.instance.collection('notifications')
+        .where('recipientUid', isEqualTo: uid).snapshots();
+  }
   @override
   void dispose() { title.dispose(); body.dispose(); super.dispose(); }
   void message(String s) { if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(s))); }
 
   Future<void> compose() async {
-    title.clear(); body.clear(); audience = 'supervisors'; priority = 'normal'; recipientUid = null;
+    title.clear(); body.clear(); audience = 'all_staff'; priority = 'normal'; recipientUid = null;
     final key = GlobalKey<FormState>();
     await showModalBottomSheet<void>(context: context, isScrollControlled: true, useSafeArea: true,
       builder: (sheet) => StatefulBuilder(builder: (ctx, refresh) => Padding(
         padding: EdgeInsets.fromLTRB(18, 18, 18, MediaQuery.of(ctx).viewInsets.bottom + 18),
         child: Form(key: key, child: SingleChildScrollView(child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          const Text('إرسال ملحوظة إدارية', style: TextStyle(fontSize: 21, fontWeight: FontWeight.w800, color: navy)),
+          const Text('إشعار إداري / الوظائف اليومية', style: TextStyle(fontSize: 21, fontWeight: FontWeight.w800, color: navy)),
           const SizedBox(height: 12),
           DropdownButtonFormField<String>(value: audience, decoration: const InputDecoration(labelText: 'جهة الإرسال'),
-            items: const [DropdownMenuItem(value: 'supervisors', child: Text('جميع المشرفين')), DropdownMenuItem(value: 'officers', child: Text('ضابط أمن محدد'))],
+            items: const [DropdownMenuItem(value: 'all_staff', child: Text('جميع ضباط الأمن والمشرفين')), DropdownMenuItem(value: 'supervisors', child: Text('جميع المشرفين')), DropdownMenuItem(value: 'officers', child: Text('ضابط أمن محدد'))],
             onChanged: (v) { if (v != null) refresh(() { audience = v; recipientUid = null; }); }),
           if (audience == 'officers') ...[
             const SizedBox(height: 12),
@@ -48,10 +58,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
               }),
           ],
           const SizedBox(height: 12),
-          TextFormField(controller: title, decoration: const InputDecoration(labelText: 'عنوان الملحوظة'),
+          TextFormField(controller: title, decoration: const InputDecoration(labelText: 'عنوان الإشعار / الوظيفة'),
             validator: (v) => v == null || v.trim().length < 3 ? 'أدخل عنوانًا واضحًا' : null),
           const SizedBox(height: 12),
-          TextFormField(controller: body, minLines: 3, maxLines: 7, decoration: const InputDecoration(labelText: 'نص الملحوظة والتعليمات'),
+          TextFormField(controller: body, minLines: 3, maxLines: 7, decoration: const InputDecoration(labelText: 'نص الإشعار والتعليمات'),
             validator: (v) => v == null || v.trim().length < 5 ? 'اكتب نص الملحوظة' : null),
           const SizedBox(height: 12),
           DropdownButtonFormField<String>(value: priority, decoration: const InputDecoration(labelText: 'الأولوية'),
@@ -65,7 +75,15 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
               final db = FirebaseFirestore.instance;
               final sender = FirebaseAuth.instance.currentUser;
               final targets = <String, Map<String, dynamic>>{};
-              if (audience == 'supervisors') {
+              if (audience == 'all_staff') {
+                final snap = await db.collection('users').where('status', isEqualTo: 'active').get();
+                for (final d in snap.docs) {
+                  final role = (d.data()['role'] ?? '').toString();
+                  if (role == 'security_officer' || role == 'supervisor') {
+                    targets[d.id] = d.data();
+                  }
+                }
+              } else if (audience == 'supervisors') {
                 final snap = await db.collection('users').where('role', isEqualTo: 'supervisor').where('status', isEqualTo: 'active').get();
                 for (final d in snap.docs) { targets[d.id] = d.data(); }
               } else if (recipientUid != null) {
@@ -82,12 +100,12 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
               }
               await batch.commit();
               if (ctx.mounted) Navigator.pop(sheet);
-              message('تم إرسال الملحوظة داخل التطبيق إلى ${targets.length} مستلم.');
+              message('تم إرسال الإشعار داخل التطبيق إلى ${targets.length} مستلم.');
             } on FirebaseException catch (e) {
               refresh(() => sending = false);
               message(e.code == 'permission-denied' ? 'قواعد Firestore تمنع الإرسال؛ انشر القواعد المحدّثة.' : 'تعذر إرسال الملحوظة (${e.code}).');
             } catch (_) { refresh(() => sending = false); message('تعذر الإرسال. تحقق من الاتصال.'); }
-          }, icon: const Icon(Icons.send_rounded), label: Text(sending ? 'جارٍ الإرسال...' : 'إرسال الملحوظة'),
+          }, icon: const Icon(Icons.send_rounded), label: Text(sending ? 'جارٍ الإرسال...' : 'إرسال الإشعار'),
             style: FilledButton.styleFrom(backgroundColor: teal, foregroundColor: Colors.white)),
         ]))),
       )),
@@ -100,30 +118,46 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     catch (_) { message('تعذر تحديث حالة الإشعار.'); }
   }
 
+  Future<void> openNotification(DocumentSnapshot<Map<String, dynamic>> doc) async {
+    await markRead(doc);
+    if (!mounted) return;
+    final kind = (doc.data()?['kind'] ?? '').toString();
+    if (kind.startsWith('emergency_')) {
+      await Navigator.push(context, MaterialPageRoute(
+        builder: (_) => const EmergencyDutyScreen(),
+      ));
+    }
+  }
+
   @override
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(title: Text(admin ? 'الإشعارات والملحوظات الإدارية' : 'الإشعارات')),
     floatingActionButton: admin ? FloatingActionButton.extended(onPressed: compose, icon: const Icon(Icons.send_rounded),
-      label: const Text('إرسال ملحوظة'), backgroundColor: teal, foregroundColor: Colors.white) : null,
+      label: const Text('إشعار الوظائف اليومية'), backgroundColor: teal, foregroundColor: Colors.white) : null,
     body: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-      stream: FirebaseFirestore.instance.collection('notifications').where('recipientUid', isEqualTo: uid).snapshots(),
+      stream: _notificationsStream,
       builder: (context, snap) {
         if (snap.hasError) return const Center(child: Padding(padding: EdgeInsets.all(24), child: Text('تعذر تحميل الإشعارات. تحقق من قواعد Firestore والفهارس.', textAlign: TextAlign.center)));
         if (snap.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
-        final docs = (snap.data?.docs ?? []).toList()..sort((a, b) {
+        final docs = (snap.data?.docs ?? []).where((doc) {
+          final d = doc.data();
+          return matchesSearchText(_searchTerm, [d['title'], d['body'], d['senderEmail'], d['senderName'], d['senderUid']]);
+        }).toList()..sort((a, b) {
           final at = a.data()['createdAt']; final bt = b.data()['createdAt'];
           if (at is Timestamp && bt is Timestamp) return bt.compareTo(at);
           return 0;
         });
-        if (docs.isEmpty) return const Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Icon(Icons.notifications_none_rounded, size: 56, color: Color(0xFF8796A5)), SizedBox(height: 12),
-          Text('لا توجد إشعارات جديدة', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: navy))]));
-        return ListView.builder(padding: const EdgeInsets.fromLTRB(16, 14, 16, 90), itemCount: docs.length, itemBuilder: (context, i) {
+        return Column(children: [
+          Padding(padding: const EdgeInsets.fromLTRB(16, 12, 16, 4), child: AppSearchField(hint: 'ابحث في عنوان الإشعار أو نصه أو المرسل...', onChanged: (v) => setState(() => _searchTerm = v))),
+          if (docs.isEmpty) Expanded(child: Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
+            Icon(Icons.notifications_none_rounded, size: 56, color: Color(0xFF8796A5)), SizedBox(height: 12),
+            Text(_searchTerm.isEmpty ? 'لا توجد إشعارات جديدة' : 'لا توجد إشعارات مطابقة للبحث', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: navy))])))
+          else Expanded(child: ListView.builder(padding: const EdgeInsets.fromLTRB(16, 14, 16, 90), itemCount: docs.length, itemBuilder: (context, i) {
           final doc = docs[i]; final d = doc.data(); final read = d['read'] == true;
           final created = d['createdAt'] is Timestamp ? (d['createdAt'] as Timestamp).toDate() : null;
           return Card(elevation: 0, margin: const EdgeInsets.only(bottom: 10),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: BorderSide(color: read ? const Color(0xFFDCE5ED) : teal.withOpacity(.55))),
-            child: InkWell(borderRadius: BorderRadius.circular(16), onTap: () => markRead(doc),
+            child: InkWell(borderRadius: BorderRadius.circular(16), onTap: () => openNotification(doc),
               child: Padding(padding: const EdgeInsets.all(15), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Row(children: [Icon(d['priority'] == 'urgent' ? Icons.priority_high_rounded : Icons.notifications_active_outlined, color: d['priority'] == 'urgent' ? Colors.red : teal),
                   const SizedBox(width: 9), Expanded(child: Text(d['title'] as String? ?? 'ملحوظة إدارية', style: TextStyle(fontSize: 16, fontWeight: read ? FontWeight.w600 : FontWeight.w800, color: navy))),
@@ -134,7 +168,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                   if (created != null) Text(DateFormat('yyyy/MM/dd HH:mm').format(created), style: const TextStyle(fontSize: 11, color: Color(0xFF526579)))]),
                 if (!read) Align(alignment: Alignment.centerLeft, child: TextButton.icon(onPressed: () => markRead(doc), icon: const Icon(Icons.done_rounded), label: const Text('تحديد كمقروء'))),
               ]))));
-        });
+        })),
+        ]);
       }),
   );
 }

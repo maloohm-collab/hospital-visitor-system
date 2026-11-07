@@ -11,6 +11,7 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import 'package:share_plus/share_plus.dart';
+import '../widgets/app_search_field.dart';
 
 /// تقارير المناوبة محلية فقط؛ لا تحفظ التقارير في Firestore ولا ترفع ملفات PDF.
 class DutyReportsScreen extends StatefulWidget {
@@ -25,6 +26,7 @@ class _DutyReportsScreenState extends State<DutyReportsScreen> {
   static const teal = Color(0xFF12B8B0);
   bool get supervisor => widget.userRole == 'supervisor';
   bool get admin => widget.userRole == 'admin';
+  String _archiveSearchTerm = '';
 
   String _typeLabel(String type) => switch (type) {
     'security_incident' => 'حادث أو ملاحظة أمنية',
@@ -84,7 +86,8 @@ class _DutyReportsScreenState extends State<DutyReportsScreen> {
           return const Padding(padding: EdgeInsets.all(18),
             child: Center(child: CircularProgressIndicator()));
         }
-        final files = snapshot.data ?? const <File>[];
+        final allFiles = snapshot.data ?? const <File>[];
+        final files = allFiles.where((file) => matchesSearchText(_archiveSearchTerm, [file.uri.pathSegments.isEmpty ? file.path : file.uri.pathSegments.last])).toList();
         return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           Row(children: [
             const Expanded(child: Text('أرشيف التقارير',
@@ -92,9 +95,15 @@ class _DutyReportsScreenState extends State<DutyReportsScreen> {
             IconButton(tooltip: 'تحديث الأرشيف', onPressed: () => setState(() {}),
               icon: const Icon(Icons.refresh_rounded)),
           ]),
-          if (files.isEmpty)
+          if (allFiles.isNotEmpty) ...[
+            AppSearchField(hint: 'ابحث باسم ملف التقرير...', onChanged: (v) => setState(() => _archiveSearchTerm = v)),
+            const SizedBox(height: 10),
+          ],
+          if (files.isEmpty && allFiles.isEmpty)
             _info(Icons.folder_open_rounded, 'لا توجد ملفات محفوظة بعد',
               'بعد إنشاء تقرير أو استيراد PDF وارد سيظهر الملف هنا.')
+          else if (files.isEmpty)
+            _info(Icons.search_off_rounded, 'لا توجد ملفات مطابقة', 'جرّب البحث باسم آخر أو امسح عبارة البحث.')
           else
             ...files.map((file) => Container(
               margin: const EdgeInsets.only(bottom: 9),

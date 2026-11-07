@@ -11,6 +11,7 @@ import 'package:arabic_reshaper/arabic_reshaper.dart';
 import 'package:printing/printing.dart';
 import 'package:share_plus/share_plus.dart';
 import '../widgets/official_hospital_header.dart';
+import '../widgets/app_search_field.dart';
 
 class ReportCenterScreen extends StatefulWidget {
   const ReportCenterScreen({super.key, required this.userRole});
@@ -21,9 +22,17 @@ class ReportCenterScreen extends StatefulWidget {
 
 class _ReportCenterScreenState extends State<ReportCenterScreen> {
   static const navy = Color(0xFF082B55), teal = Color(0xFF12B8B0);
+  String _searchTerm = '';
+  late final Stream<QuerySnapshot<Map<String, dynamic>>> _reportsStream;
   User? get user => FirebaseAuth.instance.currentUser;
   bool get admin => widget.userRole == 'admin';
   bool get supervisor => widget.userRole == 'supervisor';
+
+  @override
+  void initState() {
+    super.initState();
+    _reportsStream = _query().snapshots();
+  }
 
   Query<Map<String, dynamic>> _query() {
     Query<Map<String, dynamic>> q = FirebaseFirestore.instance.collection('duty_reports');
@@ -80,10 +89,14 @@ class _ReportCenterScreenState extends State<ReportCenterScreen> {
             const SizedBox(height: 12),
             TextFormField(controller: title, decoration: const InputDecoration(labelText: 'عنوان التقرير'),
               validator: (v) => v == null || v.trim().length < 4 ? 'أدخل عنوانًا واضحًا' : null),
-            if (!supervisor) const SizedBox(height: 0) else ...[
-              const SizedBox(height: 12),
-              TextFormField(controller: employee, decoration: const InputDecoration(labelText: 'اسم الموظف المعني (اختياري)')),
-            ],
+            const SizedBox(height: 12),
+            TextFormField(
+              controller: employee,
+              decoration: const InputDecoration(
+                labelText: 'اسم الموظف المعني بالتقرير (اختياري)',
+                helperText: 'اكتب اسم الشخص الذي يتناوله التقرير، إن وُجد',
+              ),
+            ),
             const SizedBox(height: 12),
             TextFormField(controller: body, minLines: 4, maxLines: 8,
               decoration: const InputDecoration(labelText: 'تفاصيل التقرير والإجراء المتخذ', alignLabelWithHint: true),
@@ -252,7 +265,34 @@ class _ReportCenterScreenState extends State<ReportCenterScreen> {
         (d['createdByName'] as String? ?? '').trim().isNotEmpty
             ? (d['createdByName'] as String).trim()
             : 'غير مسجل';
+    final senderRole = d['createdByRole'] == 'supervisor'
+        ? 'مشرف'
+        : d['createdByRole'] == 'security_officer'
+            ? 'ضابط أمن'
+            : 'مستخدم النظام';
+    var reviewerName = (d['reviewedByName'] as String? ?? '').trim();
+    final reviewerUid = (d['reviewedBy'] as String? ?? '').trim();
+    if (reviewerName.isEmpty && reviewerUid.isNotEmpty) {
+      try {
+        final reviewerDoc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(reviewerUid)
+            .get();
+        reviewerName = (reviewerDoc.data()?['displayName'] as String? ?? '').trim();
+      } catch (_) {
+        // Keep the explicit unavailable label; never substitute the report author.
+      }
+    }
+    final supervisorName = d['createdByRole'] == 'supervisor'
+        ? senderName
+        : reviewerName;
+    final supervisorStamp = supervisorName.isEmpty
+        ? ''
+        : d['createdByRole'] == 'supervisor'
+            ? 'توقيع المشرف كاتب التقرير: $supervisorName'
+            : 'رُفع إلى الإدارة واعتمده المشرف: $supervisorName';
     pdf.addPage(pw.MultiPage(
+      pageFormat: PdfPageFormat.a4,
       theme: pw.ThemeData.withFont(base: regular, bold: bold),
       build: (_) => [
         pw.Directionality(
@@ -309,12 +349,19 @@ class _ReportCenterScreenState extends State<ReportCenterScreen> {
                     pw.Text(_shapeArabic('التاريخ والوقت: ${DateFormat('yyyy/MM/dd  HH:mm').format(ts)}'),
                       style: pw.TextStyle(font: regular, fontSize: 11, color: PdfColors.black)),
                     pw.SizedBox(height: 5),
-                    pw.Text(_shapeArabic('هاتف مقدم التقرير: ${d['createdByPhone'] ?? 'غير مسجل'}'),
-                      style: pw.TextStyle(font: regular, fontSize: 11, color: PdfColors.black)),
+                    pw.Text(_shapeArabic('كاتب التقرير: $senderName — $senderRole'),
+                      style: pw.TextStyle(font: bold, fontSize: 11, color: PdfColors.black)),
+                    pw.SizedBox(height: 5),
+                    pw.Text(_shapeArabic('هاتف كاتب التقرير: ${d['createdByPhone'] ?? 'غير مسجل'}'),
+                      style: pw.TextStyle(font: regular, fontSize: 10, color: PdfColors.black)),
                     if ((d['employeeName'] as String? ?? '').trim().isNotEmpty) ...[
                       pw.SizedBox(height: 5),
-                      pw.Text(_shapeArabic('الموظف المعني: ${d['employeeName']}'),
-                        style: pw.TextStyle(font: regular, fontSize: 11, color: PdfColors.black)),
+                      pw.Text(_shapeArabic('الموظف المعني بالتقرير: ${d['employeeName']}'),
+                        style: pw.TextStyle(font: bold, fontSize: 11, color: PdfColors.black)),
+                    ] else ...[
+                      pw.SizedBox(height: 5),
+                      pw.Text(_shapeArabic('الموظف المعني: لم يُحدد في التقرير'),
+                        style: pw.TextStyle(font: regular, fontSize: 10, color: PdfColors.grey700)),
                     ],
                   ],
                 ),
@@ -329,11 +376,48 @@ class _ReportCenterScreenState extends State<ReportCenterScreen> {
               pw.Text(_shapeArabic('الرقم المرجعي: ${d['reportId'] ?? ''}'),
                 style: pw.TextStyle(font: regular, fontSize: 9, color: PdfColors.grey700)),
               pw.SizedBox(height: 26),
-              pw.Divider(color: PdfColors.grey500),
-              pw.SizedBox(height: 8),
-              pw.Text(_shapeArabic('مرسل التقرير: $senderName'),
-                textAlign: pw.TextAlign.right,
-                style: pw.TextStyle(font: bold, fontSize: 11, color: PdfColors.black)),
+              pw.Container(
+                padding: const pw.EdgeInsets.all(12),
+                decoration: pw.BoxDecoration(
+                  border: pw.Border.all(
+                    color: d['createdByRole'] == 'supervisor'
+                        ? PdfColors.blueGrey700
+                        : PdfColors.grey600,
+                    width: 1.4,
+                  ),
+                  borderRadius: pw.BorderRadius.circular(7),
+                ),
+                child: pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.stretch,
+                  children: [
+                    pw.Text(_shapeArabic('بيانات الاعتماد والتوثيق'),
+                      style: pw.TextStyle(font: bold, fontSize: 12, color: PdfColors.black)),
+                    pw.SizedBox(height: 8),
+                    pw.Text(_shapeArabic('أُعدّ التقرير بواسطة: $senderName ($senderRole)'),
+                      style: pw.TextStyle(font: regular, fontSize: 10, color: PdfColors.black)),
+                    if (supervisorStamp.isNotEmpty) ...[
+                      pw.SizedBox(height: 8),
+                      pw.Container(
+                        padding: const pw.EdgeInsets.symmetric(horizontal: 9, vertical: 8),
+                        decoration: pw.BoxDecoration(
+                          border: pw.Border.all(color: PdfColors.blueGrey700, width: 1.2),
+                          borderRadius: pw.BorderRadius.circular(5),
+                        ),
+                        child: pw.Text(_shapeArabic(supervisorStamp),
+                          textAlign: pw.TextAlign.center,
+                          style: pw.TextStyle(font: bold, fontSize: 11, color: PdfColors.blueGrey900)),
+                      ),
+                    ] else if (d['createdByRole'] == 'security_officer') ...[
+                      pw.SizedBox(height: 6),
+                      pw.Text(_shapeArabic('حالة التقرير: مقدم للمراجعة الإشرافية'),
+                        style: pw.TextStyle(font: regular, fontSize: 10, color: PdfColors.grey700)),
+                    ],
+                    pw.SizedBox(height: 7),
+                    pw.Text(_shapeArabic('الرقم المرجعي: ${d['reportId'] ?? ''}'),
+                      style: pw.TextStyle(font: regular, fontSize: 9, color: PdfColors.grey700)),
+                  ],
+                ),
+              ),
             ],
           ),
         ),
@@ -438,14 +522,78 @@ class _ReportCenterScreenState extends State<ReportCenterScreen> {
 
   Future<void> _review(DocumentSnapshot<Map<String, dynamic>> doc, bool forward) async {
     try {
+      final reviewerUid = user?.uid;
+      if (reviewerUid == null) return;
+      final reviewerSnapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(reviewerUid)
+          .get();
+      final reviewerProfile = reviewerSnapshot.data() ?? const <String, dynamic>{};
+      final reviewerName =
+          (reviewerProfile['displayName'] as String? ?? '').trim();
+      if (reviewerName.isEmpty) {
+        _message('تعذر اعتماد التقرير: اسم المشرف غير مسجل في ملف الحساب.');
+        return;
+      }
       await doc.reference.update({
         'status': forward ? 'forwarded' : 'saved',
         'destination': forward ? 'admin' : 'supervisor',
-        'reviewedBy': user?.uid, 'reviewedAt': FieldValue.serverTimestamp(),
+        'reviewedBy': reviewerUid,
+        'reviewedByName': reviewerName,
+        'reviewedAt': FieldValue.serverTimestamp(),
         'updatedAt': FieldValue.serverTimestamp(),
       });
       _message(forward ? 'تم رفع التقرير للإدارة' : 'تم إبقاء التقرير ضمن التقارير الداخلية');
     } on FirebaseException catch (e) { _message('تعذر تحديث التقرير (${e.code}).'); }
+  }
+
+
+  Widget _reviewerIdentity(Map<String, dynamic> data) {
+    final authorName = (data['createdByName'] as String? ?? '').trim();
+    if (data['createdByRole'] == 'supervisor' && authorName.isNotEmpty) {
+      return Text(
+        'كاتب التقرير (مشرف): $authorName',
+        maxLines: 2,
+        overflow: TextOverflow.ellipsis,
+        style: const TextStyle(
+          fontSize: 12,
+          color: Color(0xFF315A83),
+          fontWeight: FontWeight.w800,
+        ),
+      );
+    }
+    final reviewerName = (data['reviewedByName'] as String? ?? '').trim();
+    final reviewerUid = (data['reviewedBy'] as String? ?? '').trim();
+    if (reviewerName.isNotEmpty) {
+      return Text(
+        'راجعه ورفعه المشرف: $reviewerName',
+        maxLines: 2,
+        overflow: TextOverflow.ellipsis,
+        style: const TextStyle(
+          fontSize: 12,
+          color: Color(0xFF315A83),
+          fontWeight: FontWeight.w800,
+        ),
+      );
+    }
+    if (reviewerUid.isEmpty) return const SizedBox.shrink();
+    return FutureBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+      future: FirebaseFirestore.instance.collection('users').doc(reviewerUid).get(),
+      builder: (context, snapshot) {
+        final name = (snapshot.data?.data()?['displayName'] as String? ?? '').trim();
+        if (name.isEmpty) return const SizedBox.shrink();
+        return Text(
+          'راجعه ورفعه المشرف: $name',
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(
+            fontSize: 12,
+            color: Color(0xFF315A83),
+            fontWeight: FontWeight.w800,
+          ),
+        );
+      },
+    );
   }
 
   @override
@@ -501,13 +649,17 @@ class _ReportCenterScreenState extends State<ReportCenterScreen> {
         ),
       ),
       Expanded(child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-        stream: _query().snapshots(),
+        stream: _reportsStream,
         builder: (context, snapshot) {
           if (snapshot.hasError) return const Center(child: Padding(padding: EdgeInsets.all(24),
             child: Text('تعذر تحميل التقارير. تحقق من قواعد Firestore والفهارس والاتصال.', textAlign: TextAlign.center)));
           if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
           final docs = (snapshot.data?.docs ?? [])
               .where((doc) => !_isHiddenForCurrentUser(doc.data()))
+              .where((doc) {
+                final d = doc.data();
+                return matchesSearchText(_searchTerm, [d['title'], d['body'], d['createdByName'], d['createdByPhone'], d['createdByEmail'], d['employeeName'], d['locationName'], d['reportId']]);
+              })
               .toList()
             ..sort((a, b) {
               final at = a.data()['createdAt'];
@@ -515,8 +667,10 @@ class _ReportCenterScreenState extends State<ReportCenterScreen> {
               if (at is Timestamp && bt is Timestamp) return bt.compareTo(at);
               return 0;
             });
-          if (docs.isEmpty) return const Center(child: Text('لا توجد تقارير لعرضها حاليًا.'));
-          return ListView.builder(padding: const EdgeInsets.fromLTRB(14, 8, 14, 90),
+          return Column(children: [
+            Padding(padding: const EdgeInsets.fromLTRB(14, 8, 14, 4), child: AppSearchField(hint: 'ابحث بعنوان التقرير أو اسم الموظف أو الهاتف أو الموقع...', onChanged: (v) => setState(() => _searchTerm = v))),
+            if (docs.isEmpty) Expanded(child: Center(child: Text(_searchTerm.isEmpty ? 'لا توجد تقارير لعرضها حاليًا.' : 'لا توجد تقارير مطابقة للبحث.')))
+            else Expanded(child: ListView.builder(padding: const EdgeInsets.fromLTRB(14, 8, 14, 90),
             itemCount: docs.length, itemBuilder: (context, i) {
               final doc = docs[i], d = doc.data();
               final urgent = d['priority'] == 'urgent';
@@ -570,13 +724,28 @@ class _ReportCenterScreenState extends State<ReportCenterScreen> {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        senderName.isNotEmpty ? senderName : (d['createdByEmail'] as String? ?? 'اسم المرسل غير متاح'),
+                        'كاتب التقرير: ${senderName.isNotEmpty ? senderName : (d['createdByEmail'] as String? ?? 'الاسم غير متاح')}',
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF526579)),
+                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: Color(0xFF173653)),
                       ),
+                      Text(
+                        d['createdByRole'] == 'supervisor' ? 'صفة الكاتب: مشرف' : 'صفة الكاتب: ضابط أمن',
+                        style: const TextStyle(fontSize: 11, color: Color(0xFF526579), fontWeight: FontWeight.w600),
+                      ),
+                      if ((d['employeeName'] as String? ?? '').trim().isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 5),
+                          child: Text(
+                            'الموظف المعني: ${d['employeeName']}',
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(fontSize: 12, color: Color(0xFF087E78), fontWeight: FontWeight.w800),
+                          ),
+                        ),
+                      _reviewerIdentity(d),
                       if (senderPhone.isNotEmpty)
-                        Text('هاتف: $senderPhone', style: const TextStyle(fontSize: 12, color: Color(0xFF526579))),
+                        Text('هاتف الكاتب: $senderPhone', style: const TextStyle(fontSize: 11, color: Color(0xFF65788A))),
                       if (created != null)
                         Text(DateFormat('yyyy/MM/dd  HH:mm').format(created),
                           style: const TextStyle(fontSize: 12, color: Color(0xFF526579))),
@@ -687,7 +856,8 @@ class _ReportCenterScreenState extends State<ReportCenterScreen> {
                     ),
                   ],
                 ])));
-            });
+            })),
+          ]);
         },
       )),
     ]),

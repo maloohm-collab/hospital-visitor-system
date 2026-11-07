@@ -37,6 +37,24 @@ service cloud.firestore {
         && (data.recipientUids.size() < 5 || isEmergencyRecipient(data.recipientUids[4]));
     }
 
+
+    function isWorkNoteRecipient(uid) {
+      return uid is string
+        && exists(/databases/$(database)/documents/users/$(uid))
+        && get(/databases/$(database)/documents/users/$(uid)).data.status == 'active'
+        && get(/databases/$(database)/documents/users/$(uid)).data.role in ['supervisor', 'admin'];
+    }
+
+    function validWorkNoteRecipients(data) {
+      return data.recipientUids is list
+        && data.recipientUids.size() >= 1 && data.recipientUids.size() <= 5
+        && isWorkNoteRecipient(data.recipientUids[0])
+        && (data.recipientUids.size() < 2 || isWorkNoteRecipient(data.recipientUids[1]))
+        && (data.recipientUids.size() < 3 || isWorkNoteRecipient(data.recipientUids[2]))
+        && (data.recipientUids.size() < 4 || isWorkNoteRecipient(data.recipientUids[3]))
+        && (data.recipientUids.size() < 5 || isWorkNoteRecipient(data.recipientUids[4]));
+    }
+
     match /account_requests/{uid} {
       // Applicants may create only their own pending request.
       allow create: if signedIn()
@@ -329,13 +347,17 @@ service cloud.firestore {
         && resource.data.createdByRole == 'security_officer'
         && resource.data.status == 'submitted'
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-          'status', 'destination', 'reviewedBy', 'reviewedAt', 'updatedAt'
+          'status', 'destination', 'reviewedBy', 'reviewedByName', 'reviewedAt', 'updatedAt'
         ])
         && request.resource.data.status in ['saved', 'forwarded']
         && request.resource.data.destination == (
           request.resource.data.status == 'forwarded' ? 'admin' : resource.data.destination
         )
         && request.resource.data.reviewedBy == request.auth.uid
+        && request.resource.data.reviewedByName is string
+        && request.resource.data.reviewedByName.size() > 0
+        && request.resource.data.reviewedByName
+          == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.displayName
         && request.resource.data.reviewedAt == request.time
         && request.resource.data.updatedAt == request.time
       ) || (
@@ -453,10 +475,10 @@ service cloud.firestore {
     }
 
     match /emergency_duty_shifts/{shiftId} {
-      // Every active employee can see who is assigned; only supervisors/admins can assign.
+      // Active staff can view the assignment; only active supervisors can assign.
       allow get, list: if isActiveUser();
 
-      allow create: if (isActiveSupervisor() || isActiveAdmin())
+      allow create: if isActiveSupervisor()
         && request.resource.data.keys().hasOnly([
           'shiftId', 'shiftLabel', 'startsAt', 'endsAt', 'holderUid', 'holderName',
           'handoverHistory', 'startedAt', 'updatedAt',
@@ -483,20 +505,16 @@ service cloud.firestore {
         && request.resource.data.startedAt == request.time
         && request.resource.data.updatedAt == request.time;
 
-      // The on-duty supervisor assigns any active security officer; admins may also
-      // replace or revoke an assignment. Each change appends the previous holder.
-      allow update: if (isActiveSupervisor() || isActiveAdmin())
+      // Only active supervisors may assign or replace the emergency holder.
+      // Administration has read-only oversight and cannot terminate or change an assignment.
+      allow update: if isActiveSupervisor()
         && resource.data.endsAt > request.time
         && request.resource.data.shiftId == resource.data.shiftId
         && request.resource.data.startsAt == resource.data.startsAt
         && request.resource.data.endsAt == resource.data.endsAt
         && request.resource.data.shiftLabel == resource.data.shiftLabel
-        && (
-          request.resource.data.holderUid == ''
-          ? (isActiveAdmin() && request.resource.data.holderName == '')
-          : validEmergencyHolder(request.resource.data.holderUid)
-            && request.resource.data.holderName == get(/databases/$(database)/documents/users/$(request.resource.data.holderUid)).data.displayName
-        )
+        && validEmergencyHolder(request.resource.data.holderUid)
+        && request.resource.data.holderName == get(/databases/$(database)/documents/users/$(request.resource.data.holderUid)).data.displayName
         && request.resource.data.holderUid != resource.data.holderUid
         && request.resource.data.holderName is string
         && request.resource.data.handoverHistory is list
@@ -535,12 +553,16 @@ service cloud.firestore {
 
     match /emergency_arrival_reports/{reportId} {
       allow create: if isActiveUser()
-        && request.resource.data.keys().hasOnly(['reportId', 'shiftId', 'title', 'body', 'recipientUids', 'createdBy', 'createdByName', 'createdAt', 'priority'])
-        && request.resource.data.keys().hasAll(['reportId', 'shiftId', 'title', 'body', 'recipientUids', 'createdBy', 'createdByName', 'createdAt', 'priority'])
+        && request.resource.data.keys().hasOnly(['reportId', 'shiftId', 'title', 'body', 'originalBody', 'aiAssisted', 'reviewConfirmedBy', 'reviewConfirmedAt', 'recipientUids', 'createdBy', 'createdByName', 'createdAt', 'priority'])
+        && request.resource.data.keys().hasAll(['reportId', 'shiftId', 'title', 'body', 'originalBody', 'aiAssisted', 'reviewConfirmedBy', 'reviewConfirmedAt', 'recipientUids', 'createdBy', 'createdByName', 'createdAt', 'priority'])
         && request.resource.data.reportId == reportId
         && request.resource.data.createdBy == request.auth.uid
         && request.resource.data.title is string && request.resource.data.title.size() >= 3
         && request.resource.data.body is string && request.resource.data.body.size() >= 5
+        && request.resource.data.originalBody is string
+        && request.resource.data.aiAssisted is bool
+        && request.resource.data.reviewConfirmedBy == request.auth.uid
+        && request.resource.data.reviewConfirmedAt == request.time
         && request.resource.data.priority == 'urgent'
         && request.resource.data.createdAt == request.time
         && validEmergencyRecipients(request.resource.data)
@@ -548,14 +570,45 @@ service cloud.firestore {
       allow get, list: if isActiveUser()
         && (resource.data.createdBy == request.auth.uid || request.auth.uid in resource.data.recipientUids);
       allow update, delete: if false;
+
+      // Administration may add an immutable review comment to a report.
+      // The report author and administration can read the complete comment thread.
+      match /comments/{commentId} {
+        allow create: if isActiveAdmin()
+          && request.resource.data.keys().hasOnly([
+            'commentId', 'reportId', 'body', 'authorUid', 'authorName', 'authorRole', 'createdAt'
+          ])
+          && request.resource.data.keys().hasAll([
+            'commentId', 'reportId', 'body', 'authorUid', 'authorName', 'authorRole', 'createdAt'
+          ])
+          && request.resource.data.commentId == commentId
+          && request.resource.data.reportId == reportId
+          && request.resource.data.body is string
+          && request.resource.data.body.size() >= 2
+          && exists(/databases/$(database)/documents/emergency_arrival_reports/$(reportId))
+          && request.auth.uid in get(/databases/$(database)/documents/emergency_arrival_reports/$(reportId)).data.recipientUids
+          && request.resource.data.authorUid == request.auth.uid
+          && request.resource.data.authorRole == 'admin'
+          && request.resource.data.authorName is string
+          && request.resource.data.createdAt == request.time;
+
+        allow get, list: if isActiveUser()
+          && (
+            isActiveAdmin()
+            || get(/databases/$(database)/documents/emergency_arrival_reports/$(reportId)).data.createdBy == request.auth.uid
+          );
+
+        allow update, delete: if false;
+      }
     }
 
     match /notifications/{notificationId} {
-      // Only the administration can issue notices. A recipient must be an active user.
-      allow create: if isActiveAdmin()
+      // Admin notices plus atomic emergency assignment/arrival notices.
+      allow create: if isActiveUser()
         && request.resource.data.keys().hasOnly([
           'notificationId', 'recipientUid', 'recipientRole', 'senderUid',
-          'senderEmail', 'title', 'body', 'priority', 'read', 'createdAt'
+          'senderEmail', 'title', 'body', 'priority', 'read', 'createdAt',
+          'kind', 'relatedId'
         ])
         && request.resource.data.keys().hasAll([
           'notificationId', 'recipientUid', 'recipientRole', 'senderUid',
@@ -565,7 +618,7 @@ service cloud.firestore {
         && request.resource.data.recipientUid is string
         && exists(/databases/$(database)/documents/users/$(request.resource.data.recipientUid))
         && get(/databases/$(database)/documents/users/$(request.resource.data.recipientUid)).data.status == 'active'
-        && request.resource.data.recipientRole in ['supervisor', 'security_officer']
+        && request.resource.data.recipientRole in ['supervisor', 'security_officer', 'admin']
         && get(/databases/$(database)/documents/users/$(request.resource.data.recipientUid)).data.role == request.resource.data.recipientRole
         && request.resource.data.senderUid == request.auth.uid
         && request.resource.data.title is string
@@ -574,11 +627,39 @@ service cloud.firestore {
         && request.resource.data.body.size() >= 5
         && request.resource.data.priority in ['normal', 'important', 'urgent']
         && request.resource.data.read == false
-        && request.resource.data.createdAt == request.time;
+        && request.resource.data.createdAt == request.time
+        && (
+          isActiveAdmin()
+          || (
+            isActiveSupervisor()
+            && request.resource.data.kind == 'emergency_assignment'
+            && request.resource.data.relatedId is string
+            && existsAfter(/databases/$(database)/documents/emergency_duty_shifts/$(request.resource.data.relatedId))
+            && getAfter(/databases/$(database)/documents/emergency_duty_shifts/$(request.resource.data.relatedId)).data.holderUid == request.resource.data.recipientUid
+            && getAfter(/databases/$(database)/documents/emergency_duty_shifts/$(request.resource.data.relatedId)).data.assignedByUid == request.auth.uid
+          )
+          || (
+            isActiveSupervisor()
+            && request.resource.data.kind == 'emergency_assignment_ended'
+            && request.resource.data.relatedId is string
+            && exists(/databases/$(database)/documents/emergency_duty_shifts/$(request.resource.data.relatedId))
+            && get(/databases/$(database)/documents/emergency_duty_shifts/$(request.resource.data.relatedId)).data.holderUid == request.resource.data.recipientUid
+            && getAfter(/databases/$(database)/documents/emergency_duty_shifts/$(request.resource.data.relatedId)).data.holderUid != request.resource.data.recipientUid
+            && getAfter(/databases/$(database)/documents/emergency_duty_shifts/$(request.resource.data.relatedId)).data.assignedByUid == request.auth.uid
+          )
+          || (
+            request.resource.data.kind == 'emergency_arrival'
+            && request.resource.data.relatedId is string
+            && existsAfter(/databases/$(database)/documents/emergency_arrival_reports/$(request.resource.data.relatedId))
+            && getAfter(/databases/$(database)/documents/emergency_arrival_reports/$(request.resource.data.relatedId)).data.createdBy == request.auth.uid
+            && request.resource.data.recipientUid in getAfter(/databases/$(database)/documents/emergency_arrival_reports/$(request.resource.data.relatedId)).data.recipientUids
+            && isCurrentEmergencyHolder(getAfter(/databases/$(database)/documents/emergency_arrival_reports/$(request.resource.data.relatedId)).data.shiftId)
+          )
+        );
 
       allow get, list: if isActiveUser()
         && (resource.data.recipientUid == request.auth.uid
-          || (isActiveAdmin() && resource.data.senderUid == request.auth.uid));
+          || resource.data.senderUid == request.auth.uid);
 
       // Recipients may mark their own notice read, but cannot edit its content or recipient.
       allow update: if isActiveUser()
@@ -589,6 +670,238 @@ service cloud.firestore {
         && request.resource.data.readAt == request.time;
 
       allow delete: if false;
+    }
+
+
+    // Work shifts are independent of the employee profile. One active pointer per officer.
+    match /active_work_shifts/{uid} {
+      allow get: if isActiveUser()
+        && (request.auth.uid == uid || isActiveSupervisor() || isActiveAdmin());
+      allow list: if isActiveSupervisor() || isActiveAdmin();
+
+      allow create: if isActiveUser()
+        && request.auth.uid == uid
+        && get(/databases/$(database)/documents/users/$(uid)).data.role == 'security_officer'
+        && request.resource.data.keys().hasOnly(['officerUid', 'shiftId', 'startedAt'])
+        && request.resource.data.keys().hasAll(['officerUid', 'shiftId', 'startedAt'])
+        && request.resource.data.officerUid == uid
+        && request.resource.data.shiftId is string
+        && request.resource.data.startedAt == request.time
+        && existsAfter(/databases/$(database)/documents/work_shifts/$(request.resource.data.shiftId))
+        && getAfter(/databases/$(database)/documents/work_shifts/$(request.resource.data.shiftId)).data.officerUid == uid
+        && getAfter(/databases/$(database)/documents/work_shifts/$(request.resource.data.shiftId)).data.status == 'active';
+
+      allow update: if false;
+
+      allow delete: if isActiveUser()
+        && request.auth.uid == uid
+        && resource.data.officerUid == uid
+        && exists(/databases/$(database)/documents/work_shifts/$(resource.data.shiftId))
+        && getAfter(/databases/$(database)/documents/work_shifts/$(resource.data.shiftId)).data.status == 'completed';
+    }
+
+    match /work_shifts/{shiftId} {
+      allow get, list: if isActiveUser()
+        && (resource.data.officerUid == request.auth.uid
+          || isActiveSupervisor() || isActiveAdmin());
+
+      allow create: if isActiveUser()
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'security_officer'
+        && request.resource.data.keys().hasOnly([
+          'shiftId', 'officerUid', 'officerName', 'status', 'startedAt',
+          'endedAt', 'activeLocationId', 'activeLocationName'
+        ])
+        && request.resource.data.keys().hasAll([
+          'shiftId', 'officerUid', 'officerName', 'status', 'startedAt',
+          'endedAt', 'activeLocationId', 'activeLocationName'
+        ])
+        && request.resource.data.shiftId == shiftId
+        && request.resource.data.officerUid == request.auth.uid
+        && request.resource.data.officerName is string
+        && request.resource.data.status == 'active'
+        && request.resource.data.startedAt == request.time
+        && request.resource.data.endedAt == null
+        && request.resource.data.activeLocationId is string
+        && request.resource.data.activeLocationName is string
+        && existsAfter(/databases/$(database)/documents/active_work_shifts/$(request.auth.uid))
+        && getAfter(/databases/$(database)/documents/active_work_shifts/$(request.auth.uid)).data.shiftId == shiftId;
+
+      allow update: if isActiveUser()
+        && resource.data.officerUid == request.auth.uid
+        && resource.data.status == 'active'
+        && request.resource.data.officerUid == resource.data.officerUid
+        && request.resource.data.shiftId == resource.data.shiftId
+        && request.resource.data.startedAt == resource.data.startedAt
+        && request.resource.data.officerName == resource.data.officerName
+        && (
+          (
+            request.resource.data.status == 'active'
+            && request.resource.data.endedAt == null
+            && request.time < resource.data.startedAt + duration.value(8, 'h')
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+              'activeLocationId', 'activeLocationName'
+            ])
+            && (
+              (
+                resource.data.activeLocationId == null
+                && request.resource.data.activeLocationId is string
+                && existsAfter(/databases/$(database)/documents/work_shifts/$(shiftId)/locations/$(request.resource.data.activeLocationId))
+                && getAfter(/databases/$(database)/documents/work_shifts/$(shiftId)/locations/$(request.resource.data.activeLocationId)).data.locationName == request.resource.data.activeLocationName
+              )
+              || (
+                resource.data.activeLocationId is string
+                && request.resource.data.activeLocationId == null
+                && request.resource.data.activeLocationName == null
+                && existsAfter(/databases/$(database)/documents/work_shifts/$(shiftId)/locations/$(resource.data.activeLocationId))
+                && getAfter(/databases/$(database)/documents/work_shifts/$(shiftId)/locations/$(resource.data.activeLocationId)).data.status == 'completed'
+              )
+            )
+          )
+          || (
+            request.resource.data.status == 'completed'
+            && request.resource.data.endedAt == request.time
+            && request.resource.data.activeLocationId == null
+            && request.resource.data.activeLocationName == null
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+              'status', 'endedAt', 'activeLocationId', 'activeLocationName'
+            ])
+            && !existsAfter(/databases/$(database)/documents/active_work_shifts/$(request.auth.uid))
+            && (
+              resource.data.activeLocationId == null
+              || (
+                existsAfter(/databases/$(database)/documents/work_shifts/$(shiftId)/locations/$(resource.data.activeLocationId))
+                && getAfter(/databases/$(database)/documents/work_shifts/$(shiftId)/locations/$(resource.data.activeLocationId)).data.status == 'completed'
+              )
+            )
+          )
+        );
+
+      allow delete: if false;
+
+      match /locations/{locationId} {
+        allow get, list: if isActiveUser()
+          && (get(/databases/$(database)/documents/work_shifts/$(shiftId)).data.officerUid == request.auth.uid
+            || isActiveSupervisor() || isActiveAdmin());
+
+        allow create: if isActiveUser()
+          && getAfter(/databases/$(database)/documents/work_shifts/$(shiftId)).data.officerUid == request.auth.uid
+          && getAfter(/databases/$(database)/documents/work_shifts/$(shiftId)).data.status == 'active'
+          && existsAfter(/databases/$(database)/documents/active_work_shifts/$(request.auth.uid))
+          && getAfter(/databases/$(database)/documents/active_work_shifts/$(request.auth.uid)).data.shiftId == shiftId
+          && request.time < getAfter(/databases/$(database)/documents/work_shifts/$(shiftId)).data.startedAt + duration.value(8, 'h')
+          && request.resource.data.keys().hasOnly([
+            'locationId', 'locationName', 'status', 'startedAt', 'endedAt'
+          ])
+          && request.resource.data.keys().hasAll([
+            'locationId', 'locationName', 'status', 'startedAt', 'endedAt'
+          ])
+          && request.resource.data.locationId == locationId
+          && request.resource.data.locationName is string
+          && request.resource.data.status == 'active'
+          && request.resource.data.startedAt == request.time
+          && request.resource.data.endedAt == null;
+
+        allow update: if isActiveUser()
+          && get(/databases/$(database)/documents/work_shifts/$(shiftId)).data.officerUid == request.auth.uid
+          && get(/databases/$(database)/documents/work_shifts/$(shiftId)).data.status == 'active'
+          && resource.data.status == 'active'
+          && request.resource.data.status == 'completed'
+          && request.resource.data.locationId == resource.data.locationId
+          && request.resource.data.locationName == resource.data.locationName
+          && request.resource.data.startedAt == resource.data.startedAt
+          && request.resource.data.endedAt == request.time
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'endedAt']);
+
+        allow delete: if false;
+      }
+    }
+
+    match /work_shift_notes/{noteId} {
+      allow create: if isActiveUser()
+        && request.resource.data.keys().hasAll([
+          'noteId', 'shiftId', 'officerUid', 'officerName', 'locationName', 'body', 'recipientUids', 'createdAt'
+        ])
+        && request.resource.data.noteId == noteId
+        && request.resource.data.officerUid is string
+        && request.resource.data.officerName is string
+        && request.resource.data.locationName is string
+        && request.resource.data.body is string
+        && request.resource.data.body.size() >= 2
+        && request.resource.data.createdAt == request.time
+        && validWorkNoteRecipients(request.resource.data)
+        && (
+          (
+            request.resource.data.keys().hasOnly([
+              'noteId', 'shiftId', 'officerUid', 'officerName', 'locationName', 'body', 'recipientUids', 'createdAt'
+            ])
+            && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'security_officer'
+            && request.resource.data.officerUid == request.auth.uid
+            && exists(/databases/$(database)/documents/work_shifts/$(request.resource.data.shiftId))
+            && get(/databases/$(database)/documents/work_shifts/$(request.resource.data.shiftId)).data.officerUid == request.auth.uid
+            && get(/databases/$(database)/documents/work_shifts/$(request.resource.data.shiftId)).data.status == 'active'
+            && request.time < get(/databases/$(database)/documents/work_shifts/$(request.resource.data.shiftId)).data.startedAt + duration.value(8, 'h')
+            && exists(/databases/$(database)/documents/active_work_shifts/$(request.auth.uid))
+            && get(/databases/$(database)/documents/active_work_shifts/$(request.auth.uid)).data.shiftId == request.resource.data.shiftId
+          )
+          || (
+            request.resource.data.keys().hasOnly([
+              'noteId', 'shiftId', 'officerUid', 'officerName', 'locationName', 'body', 'recipientUids', 'createdAt',
+              'forwardedFromNoteId', 'forwardedByUid', 'forwardedByName'
+            ])
+            && request.resource.data.keys().hasAll([
+              'forwardedFromNoteId', 'forwardedByUid', 'forwardedByName'
+            ])
+            && (isActiveAdmin() || isActiveSupervisor())
+            && request.resource.data.forwardedFromNoteId is string
+            && request.resource.data.forwardedByUid == request.auth.uid
+            && request.resource.data.forwardedByName is string
+            && exists(/databases/$(database)/documents/work_shift_notes/$(request.resource.data.forwardedFromNoteId))
+            && request.auth.uid in get(/databases/$(database)/documents/work_shift_notes/$(request.resource.data.forwardedFromNoteId)).data.recipientUids
+            && request.resource.data.officerUid == get(/databases/$(database)/documents/work_shift_notes/$(request.resource.data.forwardedFromNoteId)).data.officerUid
+            && request.resource.data.officerName == get(/databases/$(database)/documents/work_shift_notes/$(request.resource.data.forwardedFromNoteId)).data.officerName
+            && request.resource.data.shiftId == get(/databases/$(database)/documents/work_shift_notes/$(request.resource.data.forwardedFromNoteId)).data.shiftId
+            && request.resource.data.locationName == get(/databases/$(database)/documents/work_shift_notes/$(request.resource.data.forwardedFromNoteId)).data.locationName
+            && request.resource.data.body == get(/databases/$(database)/documents/work_shift_notes/$(request.resource.data.forwardedFromNoteId)).data.body
+          )
+        );
+
+      allow get, list: if isActiveUser()
+        && (
+          (
+            resource.data.officerUid == request.auth.uid
+            && exists(/databases/$(database)/documents/work_shifts/$(resource.data.shiftId))
+            && get(/databases/$(database)/documents/work_shifts/$(resource.data.shiftId)).data.status == 'active'
+            && request.time < get(/databases/$(database)/documents/work_shifts/$(resource.data.shiftId)).data.startedAt + duration.value(8, 'h')
+          )
+          || (
+            request.auth.uid in resource.data.recipientUids
+            && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['supervisor', 'admin']
+          )
+        );
+
+      allow delete: if isActiveUser()
+        && request.auth.uid in resource.data.recipientUids
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['supervisor', 'admin'];
+      allow update: if false;
+    }
+
+    // Daily duty rosters: all active users can read; only administration can manage and publish.
+    match /daily_duty_rosters/{dateKey} {
+      allow get, list: if isActiveUser() && (isActiveAdmin() || resource.data.status == 'published');
+      allow create, update: if isActiveAdmin()
+        && request.resource.data.dateKey == dateKey
+        && request.resource.data.status in ['draft', 'approved', 'published']
+        && request.resource.data.shifts is map
+        && request.resource.data.shifts.keys().hasAll(['A', 'B', 'C']);
+      allow delete: if isActiveAdmin();
+
+      match /versions/{versionId} {
+        allow get, list: if isActiveAdmin();
+        allow create: if isActiveAdmin()
+          && request.resource.data.archivedAt == request.time
+          && request.resource.data.archivedBy == request.auth.uid;
+        allow update, delete: if false;
+      }
     }
 
     match /{document=**} {
