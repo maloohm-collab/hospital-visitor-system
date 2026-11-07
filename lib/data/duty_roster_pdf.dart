@@ -93,7 +93,12 @@ class DutyRosterPdf {
           ),
         ),
         pw.SizedBox(height: 3),
-        pw.TableHelper.fromTextArray(
+        pw.Container(
+          width: double.infinity,
+          alignment: pw.Alignment.centerRight,
+          child: pw.SizedBox(
+            width: pageFormat.width - 100,
+            child: pw.TableHelper.fromTextArray(
           headers: ['ت', 'اسم ضابط الأمن', 'الموقع / الوظيفة', 'ت', 'اسم ضابط الأمن', 'الموقع / الوظيفة'],
           data: pairedRows,
           headerStyle: pw.TextStyle(font: bold, color: PdfColors.white, fontSize: 8),
@@ -110,6 +115,8 @@ class DutyRosterPdf {
             4: const pw.FlexColumnWidth(1.35),
             5: const pw.FlexColumnWidth(1.05),
           },
+            ),
+          ),
         ),
       ];
 
@@ -236,7 +243,7 @@ class DutyRosterPdf {
           textDirection: pw.TextDirection.rtl,
           child: pw.FittedBox(
             fit: pw.BoxFit.scaleDown,
-            alignment: pw.Alignment.topCenter,
+            alignment: pw.Alignment.topRight,
             child: pw.ConstrainedBox(
               constraints: pw.BoxConstraints(maxWidth: pageFormat.width - 44),
               child: pw.Column(
