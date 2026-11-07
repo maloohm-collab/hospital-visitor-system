@@ -660,10 +660,10 @@ class _ReportCenterScreenState extends State<ReportCenterScreen> {
               if (at is Timestamp && bt is Timestamp) return bt.compareTo(at);
               return 0;
             });
-          if (docs.isEmpty) return Center(child: Text(_searchTerm.isEmpty ? 'لا توجد تقارير لعرضها حاليًا.' : 'لا توجد تقارير مطابقة للبحث.'));
           return Column(children: [
             Padding(padding: const EdgeInsets.fromLTRB(14, 8, 14, 4), child: AppSearchField(hint: 'ابحث بعنوان التقرير أو اسم الموظف أو الهاتف أو الموقع...', onChanged: (v) => setState(() => _searchTerm = v))),
-            Expanded(child: ListView.builder(padding: const EdgeInsets.fromLTRB(14, 8, 14, 90),
+            if (docs.isEmpty) Expanded(child: Center(child: Text(_searchTerm.isEmpty ? 'لا توجد تقارير لعرضها حاليًا.' : 'لا توجد تقارير مطابقة للبحث.')))
+            else Expanded(child: ListView.builder(padding: const EdgeInsets.fromLTRB(14, 8, 14, 90),
             itemCount: docs.length, itemBuilder: (context, i) {
               final doc = docs[i], d = doc.data();
               final urgent = d['priority'] == 'urgent';
