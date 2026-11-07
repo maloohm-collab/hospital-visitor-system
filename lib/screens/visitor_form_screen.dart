@@ -537,7 +537,7 @@ class _VisitorFormScreenState extends State<VisitorFormScreen> {
       fillColor: const Color(0xFFF8FAFC),
       contentPadding: const EdgeInsets.symmetric(horizontal: 15, vertical: 17),
       labelStyle: const TextStyle(fontSize: 14, color: _muted),
-      hintStyle: const TextStyle(fontSize: 13, color: Color(0xFF9AA8B6)),
+      hintStyle: const TextStyle(fontSize: 13, color: Color(0xFF65788A)),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
         borderSide: const BorderSide(color: _line),
