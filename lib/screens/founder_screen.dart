@@ -160,7 +160,7 @@ class FounderScreen extends StatelessWidget {
           const Text(
             'نظام زوار مستشفى الزرقاء الحكومي',
             textAlign: TextAlign.center,
-            style: TextStyle(color: Color(0xFF8291A0), fontSize: 11, fontWeight: FontWeight.w600),
+            style: TextStyle(color: Color(0xFF65788A), fontSize: 11, fontWeight: FontWeight.w600),
           ),
         ],
       ),
