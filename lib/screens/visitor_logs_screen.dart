@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../widgets/official_hospital_header.dart';
+import '../widgets/app_search_field.dart';
 
 /// سجل الزيارات مصنف حسب الطابق والقسم لتسهيل المراجعة مع كثرة السجلات.
 class VisitorLogsScreen extends StatefulWidget {
@@ -377,7 +378,7 @@ class _VisitorLogsScreenState extends State<VisitorLogsScreen> {
                             return false;
                           }
                           if (_searchTerm.isNotEmpty) {
-                            final searchable = [
+                            if (!matchesSearchText(_searchTerm, [
                               doc.id,
                               data['floorName'],
                               data['department'],
@@ -386,8 +387,7 @@ class _VisitorLogsScreenState extends State<VisitorLogsScreen> {
                               data['createdByPhone'],
                               data['visitorCount'],
                               data['notes'],
-                            ].join(' ').toLowerCase();
-                            if (!searchable.contains(_searchTerm)) return false;
+                            ])) return false;
                           }
                           return true;
                         }).toList()
