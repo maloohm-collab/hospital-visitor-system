@@ -42,6 +42,8 @@ class _DutyRosterScreenState extends State<DutyRosterScreen>
   bool _publishing = false;
   final Map<String, Timer> _autosaveTimers = {};
   String? copiedFromDateKey;
+  final Map<String, Map<String, dynamic>> _recoverableShifts = {};
+  String? _recoverySourceDateKey;
   bool get admin => widget.userRole == 'admin';
   String get keyDay => DateFormat('yyyy-MM-dd').format(day);
   // تاريخ الكشف الفعلي: شفت A يُرسل قبل يوم، بينما B وC في يوم المناوبة نفسه.
@@ -99,9 +101,7 @@ class _DutyRosterScreenState extends State<DutyRosterScreen>
     super.dispose();
   }
 
-  @override
-  void setState(VoidCallback fn) {
-    super.setState(fn);
+  void _draftChanged() {
     if (admin && _loaded && mounted && !_publishing) _scheduleAutosave();
   }
 
@@ -210,6 +210,7 @@ class _DutyRosterScreenState extends State<DutyRosterScreen>
       if (accepted != true || !mounted) return;
     }
     setState(() => rows[code]![index]['officer'] = officer);
+    _draftChanged();
   }
 
   Future<String?> _pickOfficer(int currentIndex, String currentShift, {bool clinicReplacement = false}) async {
@@ -467,6 +468,8 @@ class _DutyRosterScreenState extends State<DutyRosterScreen>
     _loaded = false;
     try {
       recentAssignments.clear();
+      _recoverableShifts.clear();
+      _recoverySourceDateKey = null;
       copiedFromDateKey = null;
 
       // Keep the existing two-day assignment warning based on yesterday.
@@ -538,6 +541,24 @@ class _DutyRosterScreenState extends State<DutyRosterScreen>
         }
       }
 
+      // Read-only recovery candidates: never overwrite the current roster during load.
+      if (data != null) {
+        final sourceKey = copiedFromDateKey ?? DateFormat('yyyy-MM-dd').format(day.subtract(const Duration(days: 7)));
+        final sourceSnap = await db.collection('daily_duty_rosters').doc(sourceKey).get();
+        final sourceShifts = Map<String, dynamic>.from(sourceSnap.data()?['shifts'] ?? {});
+        final currentShifts = Map<String, dynamic>.from(data['shifts'] ?? {});
+        for (final code in ['A', 'B', 'C']) {
+          final currentBlock = Map<String, dynamic>.from(currentShifts[code] ?? {});
+          final sourceBlock = Map<String, dynamic>.from(sourceShifts[code] ?? {});
+          final currentAssignments = currentBlock['assignments'] as List? ?? const [];
+          final sourceAssignments = sourceBlock['assignments'] as List? ?? const [];
+          if (currentAssignments.isEmpty && sourceAssignments.isNotEmpty) {
+            _recoverableShifts[code] = sourceBlock;
+            _recoverySourceDateKey = sourceKey;
+          }
+        }
+      }
+
       if (data == null) {
         if (admin && mounted) {
           setState(() {
@@ -599,6 +620,43 @@ class _DutyRosterScreenState extends State<DutyRosterScreen>
       _loaded = false;
       msg('تعذر تحميل الكشف. لم نسمح بالحفظ حتى لا تتأثر الأسماء الموجودة.');
     }
+  }
+
+  Future<void> _restoreShiftFromPreviousWeek(String code) async {
+    final source = _recoverableShifts[code];
+    if (source == null || !mounted) return;
+    final accepted = await showDialog<bool>(
+      context: context, barrierDismissible: false,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('استعادة أسماء الشفت'),
+        content: Text('الشفت $code فارغ حالياً، لكن توجد أسماء في نسخة الأسبوع السابق بتاريخ ${_recoverySourceDateKey ?? 'غير محدد'}. هل تريد استعادتها للمراجعة؟ لن يتم اعتمادها أو نشرها تلقائياً.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('إلغاء')),
+          FilledButton(onPressed: () => Navigator.pop(dialogContext, true), child: const Text('استعادة للمراجعة')),
+        ],
+      ),
+    );
+    if (accepted != true || !mounted) return;
+    setState(() {
+      rows[code] = (source['assignments'] as List? ?? const []).map((value) {
+        final item = Map<String, dynamic>.from(value);
+        return <String, String?>{'officer': item['officer']?.toString(), 'location': item['location']?.toString()};
+      }).toList();
+      offs[code] = List<String>.from(source['offNames'] ?? const []);
+      annuals[code] = List<String>.from(source['annualNames'] ?? const []);
+      specials[code] = List<String>.from(source['specialNames'] ?? const []);
+      notes[code] = (source['adminNote'] ?? '').toString();
+      supervisors[code] = source['supervisorName']?.toString() ?? supervisors[code];
+      if (code == 'A') {
+        final clinics = source['clinicAssignments'] as List? ?? const [];
+        clinicRows..clear()..addAll(clinics.map((value) {
+          final item = Map<String, dynamic>.from(value);
+          return <String, String?>{'officer': item['officer']?.toString(), 'location': item['location']?.toString()};
+        }));
+      }
+    });
+    _draftChanged();
+    msg('تمت استعادة أسماء الشفت $code للشاشة للمراجعة فقط.');
   }
 
   Future<void> _chooseEditTarget() async {
@@ -1293,6 +1351,10 @@ class _DutyRosterScreenState extends State<DutyRosterScreen>
                     icon: Icons.send_rounded, onPressed: busy ? null : _publish, primary: true),
                   _actionButton(label: 'مسح معلومات الكشف وإعادة التعيين', icon: Icons.restart_alt,
                     onPressed: busy ? null : _resetCurrentShift, foreground: Colors.red.shade700),
+                  if (_recoverableShifts.containsKey(shift))
+                    _actionButton(label: 'استعادة أسماء الشفت $shift من نسخة الأسبوع السابق',
+                      icon: Icons.restore_rounded,
+                      onPressed: busy ? null : () => _restoreShiftFromPreviousWeek(shift)),
                 ],
               ),
               const SizedBox(height: 16),
@@ -1319,7 +1381,7 @@ class _DutyRosterScreenState extends State<DutyRosterScreen>
                   contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 16),
                 ),
                 items: DutyRosterCatalog.siteManagers.map((v) => DropdownMenuItem(value: v, child: Text(v))).toList(),
-                onChanged: (v) => setState(() => siteManager = v),
+                onChanged: (v) { setState(() => siteManager = v); _draftChanged(); },
               ),
               const SizedBox(height: 16),
               const Divider(height: 1, thickness: 1),
@@ -1361,7 +1423,7 @@ class _DutyRosterScreenState extends State<DutyRosterScreen>
                   alignLabelWithHint: true,
                   contentPadding: EdgeInsets.all(14),
                 ),
-                onChanged: (v) { notes[shift] = v; _scheduleAutosave(); },
+                onChanged: (v) { notes[shift] = v; _draftChanged(); },
               ),
             ],
             if (!admin && data == null)
@@ -1407,7 +1469,7 @@ class _DutyRosterScreenState extends State<DutyRosterScreen>
         decoration: const InputDecoration(labelText: 'المشرف', border: OutlineInputBorder(),
           contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 15)),
         items: DutyRosterCatalog.supervisorsFor(s).map((v) => DropdownMenuItem(value: v, child: Text(v))).toList(),
-        onChanged: (v) => setState(() => supervisors[s] = v),
+        onChanged: (v) { setState(() => supervisors[s] = v); _draftChanged(); },
       ) else if ((b['supervisorName'] ?? '').toString().isNotEmpty)
         ListTile(dense: true, title: const Text('المشرف'), subtitle: Text(b['supervisorName'].toString())),
       const SizedBox(height: 12),
@@ -1448,7 +1510,7 @@ class _DutyRosterScreenState extends State<DutyRosterScreen>
                       ),
                     ),
             ),
-            if (!readOnly) IconButton(onPressed: () => setState(() => rows[s]!.removeAt(i)), icon: const Icon(Icons.delete_outline, color: Colors.red)),
+            if (!readOnly) IconButton(onPressed: () { setState(() => rows[s]!.removeAt(i)); _draftChanged(); }, icon: const Icon(Icons.delete_outline, color: Colors.red)),
           ]),
           const SizedBox(height: 10),
           if (readOnly)
@@ -1461,7 +1523,7 @@ class _DutyRosterScreenState extends State<DutyRosterScreen>
             OutlinedButton.icon(
               onPressed: () async {
                 final selected = await _pickLocation(l);
-                if (selected != null && mounted) setState(() => r['location'] = selected);
+                if (selected != null && mounted) { setState(() => r['location'] = selected); _draftChanged(); }
               },
               icon: const Icon(Icons.location_searching_rounded),
               label: Align(
@@ -1477,7 +1539,7 @@ class _DutyRosterScreenState extends State<DutyRosterScreen>
             ),
         ])));
       }),
-      if (!readOnly) OutlinedButton.icon(onPressed: () => setState(() => rows[s]!.add({'officer': null, 'location': null})),
+      if (!readOnly) OutlinedButton.icon(onPressed: () { setState(() => rows[s]!.add({'officer': null, 'location': null})); _draftChanged(); },
         icon: const Icon(Icons.add), label: const Text('إضافة ضابط ووظيفة')),
       const SizedBox(height: 10), const Padding(padding: EdgeInsets.only(top: 14, bottom: 8),
         child: Divider(height: 1, thickness: 1)),
@@ -1485,7 +1547,7 @@ class _DutyRosterScreenState extends State<DutyRosterScreen>
       if (readOnly)
         _nameTableChips(b['offNames'] as List? ?? const [])
       else ...[
-        Wrap(spacing: 5, children: offs[s]!.map((n) => InputChip(label: Text(n), onDeleted: () => setState(() => offs[s]!.remove(n)))).toList()),
+        Wrap(spacing: 5, children: offs[s]!.map((n) => InputChip(label: Text(n), onDeleted: () { setState(() => offs[s]!.remove(n)); _draftChanged(); })).toList()),
         const SizedBox(height: 8),
         OutlinedButton.icon(
           onPressed: () async {
@@ -1494,7 +1556,7 @@ class _DutyRosterScreenState extends State<DutyRosterScreen>
               candidates: _availableOfficers(s),
               selectedNames: offs[s]!,
             );
-            if (result != null && mounted) setState(() => offs[s]!..clear()..addAll(result));
+            if (result != null && mounted) { setState(() => offs[s]!..clear()..addAll(result)); _draftChanged(); }
           },
           icon: const Icon(Icons.search),
           label: const Text('بحث واختيار المجازين'),
@@ -1505,7 +1567,7 @@ class _DutyRosterScreenState extends State<DutyRosterScreen>
       if (readOnly)
         _nameTableChips(b['annualNames'] as List? ?? const [])
       else ...[
-        Wrap(spacing: 5, children: annuals[s]!.map((n) => InputChip(label: Text(n), onDeleted: () => setState(() => annuals[s]!.remove(n)))).toList()),
+        Wrap(spacing: 5, children: annuals[s]!.map((n) => InputChip(label: Text(n), onDeleted: () { setState(() => annuals[s]!.remove(n)); _draftChanged(); })).toList()),
         const SizedBox(height: 8),
         OutlinedButton.icon(
           onPressed: () async {
@@ -1514,7 +1576,7 @@ class _DutyRosterScreenState extends State<DutyRosterScreen>
               candidates: _availableOfficers(s),
               selectedNames: annuals[s]!,
             );
-            if (result != null && mounted) setState(() => annuals[s]!..clear()..addAll(result));
+            if (result != null && mounted) { setState(() => annuals[s]!..clear()..addAll(result)); _draftChanged(); }
           },
           icon: const Icon(Icons.search),
           label: const Text('بحث واختيار المجاز السنوي'),
@@ -1573,6 +1635,7 @@ class _DutyRosterScreenState extends State<DutyRosterScreen>
                           if (accepted != true || !mounted) return;
                         }
                         setState(() => clinicRows[index]['officer'] = selected);
+                        _draftChanged();
                       },
                     ),
                   ),
@@ -1593,7 +1656,7 @@ class _DutyRosterScreenState extends State<DutyRosterScreen>
       if (readOnly)
         _nameTableChips(b['specialNames'] as List? ?? const [])
       else ...[
-        Wrap(spacing: 5, children: specials[s]!.map((n) => InputChip(label: Text(n), onDeleted: () => setState(() => specials[s]!.remove(n)))).toList()),
+        Wrap(spacing: 5, children: specials[s]!.map((n) => InputChip(label: Text(n), onDeleted: () { setState(() => specials[s]!.remove(n)); _draftChanged(); })).toList()),
         const SizedBox(height: 8),
         OutlinedButton.icon(
           onPressed: () async {
@@ -1602,7 +1665,7 @@ class _DutyRosterScreenState extends State<DutyRosterScreen>
               candidates: DutyRosterCatalog.specialFor(s),
               selectedNames: specials[s]!,
             );
-            if (result != null && mounted) setState(() => specials[s]!..clear()..addAll(result));
+            if (result != null && mounted) { setState(() => specials[s]!..clear()..addAll(result)); _draftChanged(); }
           },
           icon: const Icon(Icons.search),
           label: const Text('بحث واختيار سوات'),
