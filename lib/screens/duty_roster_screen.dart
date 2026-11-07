@@ -517,7 +517,7 @@ class _DutyRosterScreenState extends State<DutyRosterScreen>
         final sourceData = sourceSnap.data();
         final sourceShifts = Map<String, dynamic>.from(sourceData?['shifts'] ?? {});
         if (sourceData != null &&
-            ['A', 'B', 'C'].every((code) => sourceShifts[code] is Map)) {
+            ['A', 'B', 'C'].any((code) => sourceShifts[code] is Map)) {
           data = sourceData;
           copiedFromDateKey = sourceKey;
         }
