@@ -292,12 +292,81 @@ class _WorkLocationScreenState extends State<WorkLocationScreen> {
     style: const TextStyle(fontSize: 12, color: Color(0xFF65788A)),
   );
 
-  Widget _picker() => DropdownButtonFormField<String>(
-    value: location, isExpanded: true,
-    decoration: const InputDecoration(labelText: 'اختر موقع العمل', border: OutlineInputBorder(),
-      prefixIcon: Icon(Icons.location_on_outlined)),
-    items: locations.map((v) => DropdownMenuItem(value: v, child: Text(v))).toList(),
-    onChanged: busy ? null : (v) => setState(() => location = v),
+  Future<void> _chooseLocation() async {
+    final controller = TextEditingController();
+    var query = '';
+    final selected = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          final filtered = locations.where((item) =>
+              matchesSearchText(query, [item])).toList();
+          return AlertDialog(
+            title: const Text('اختيار موقع العمل', style: TextStyle(color: navy)),
+            content: SizedBox(
+              width: double.maxFinite,
+              height: MediaQuery.of(context).size.height * 0.58,
+              child: Column(children: [
+                TextField(
+                  controller: controller,
+                  autofocus: true,
+                  textDirection: TextDirection.rtl,
+                  onChanged: (value) => setDialogState(() => query = value),
+                  style: const TextStyle(color: Color(0xFF173653)),
+                  decoration: const InputDecoration(
+                    hintText: 'ابحث باسم الموقع...',
+                    prefixIcon: Icon(Icons.search_rounded),
+                    suffixIcon: Icon(Icons.location_on_outlined),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Expanded(
+                  child: filtered.isEmpty
+                      ? const Center(child: Text('لا يوجد موقع مطابق للبحث.'))
+                      : ListView.separated(
+                          itemCount: filtered.length,
+                          separatorBuilder: (_, __) => const Divider(height: 1),
+                          itemBuilder: (context, index) => ListTile(
+                            title: Text(filtered[index],
+                                style: const TextStyle(color: navy, fontWeight: FontWeight.w600)),
+                            trailing: filtered[index] == location
+                                ? const Icon(Icons.check_circle, color: teal)
+                                : null,
+                            onTap: () => Navigator.pop(dialogContext, filtered[index]),
+                          ),
+                        ),
+                ),
+              ]),
+            ),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(dialogContext),
+                  child: const Text('إلغاء')),
+            ],
+          );
+        },
+      ),
+    );
+    controller.dispose();
+    if (selected != null && mounted) setState(() => location = selected);
+  }
+
+  Widget _picker() => InkWell(
+    onTap: busy ? null : _chooseLocation,
+    borderRadius: BorderRadius.circular(13),
+    child: InputDecorator(
+      decoration: const InputDecoration(
+        labelText: 'اختر موقع العمل',
+        prefixIcon: Icon(Icons.location_on_outlined),
+        suffixIcon: Icon(Icons.search_rounded),
+      ),
+      child: Text(
+        location ?? 'اضغط للبحث واختيار أحد المواقع',
+        style: TextStyle(
+          color: location == null ? const Color(0xFF65788A) : navy,
+          fontWeight: location == null ? FontWeight.normal : FontWeight.w800,
+        ),
+      ),
+    ),
   );
 
   Widget _startCard(String label, VoidCallback action) => Card(
