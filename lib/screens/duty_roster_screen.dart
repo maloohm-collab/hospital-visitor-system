@@ -655,8 +655,8 @@ class _DutyRosterScreenState extends State<DutyRosterScreen>
         }));
       }
     });
-    _draftChanged();
-    msg('تمت استعادة أسماء الشفت $code للشاشة للمراجعة فقط.');
+    _recoverableShifts.remove(code);
+    msg('تمت استعادة أسماء الشفت $code للشاشة للمراجعة فقط. راجعها ثم احفظ المسودة يدوياً إذا رغبت.');
   }
 
   Future<void> _chooseEditTarget() async {
