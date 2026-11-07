@@ -216,6 +216,12 @@ class _StaffDutyHistoryScreenState extends State<StaffDutyHistoryScreen> {
       if (_matches((b['supervisorName'] ?? '').toString(), name)) {
         add(s, 'مشرف الشفت', 'الإشراف على الشفت ' + s.shift, 'تكليف إشرافي', true);
       }
+      // مدير الموقع يتكرر في بيانات الشفتات الثلاث؛ نسجله مرة واحدة فقط في اليوم.
+      final managerKey = _key(s.date) + '|site-manager';
+      if (_matches((b['siteManager'] ?? '').toString(), name) && seen.add(managerKey)) {
+        result.add(_DutyEntry(date: s.date, shift: s.shift, type: 'مدير الموقع',
+          place: 'إدارة الموقع', status: 'تكليف إداري', isWork: true));
+      }
     }
     result.sort((a, b) {
       final date = a.date.compareTo(b.date);
