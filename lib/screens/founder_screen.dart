@@ -91,13 +91,15 @@ class FounderScreen extends StatelessWidget {
             child: Column(
               children: const [
                 _FeatureRow(icon: Icons.meeting_room_outlined, title: 'إدارة الزيارات', description: 'تسجيل بيانات الزيارة والطابق والقسم والغرفة وعدد الزوار ووقت الدخول والخروج والملاحظات.'),
-                _FeatureRow(icon: Icons.manage_search_rounded, title: 'السجلات والإحصاءات', description: 'البحث ومراجعة السجلات ومتابعة الزيارات القائمة والملخصات وفق صلاحيات الحساب.'),
+                _FeatureRow(icon: Icons.manage_search_rounded, title: 'البحث والوصول السريع', description: 'حقول بحث في السجلات والموظفين والإشعارات والتقارير ومواقع العمل والكشوفات، مع دعم تطبيع الحروف والأرقام العربية لتسهيل الوصول إلى النتائج.'),
+                _FeatureRow(icon: Icons.people_alt_outlined, title: 'إدارة الموظفين والحسابات', description: 'البحث عن الموظفين وطلبات الحسابات ومراجعة بياناتهم وحالاتهم وفق صلاحيات الإدارة.'),
                 _FeatureRow(icon: Icons.calendar_month_rounded, title: 'المناوبات والكشوفات', description: 'تنظيم كشوفات A وB وC ومراجعتها وإعداد تقارير المناوبة.'),
                 _FeatureRow(icon: Icons.location_on_outlined, title: 'مواقع العمل', description: 'تسجيل مباشرة ضابط الأمن في موقعه الحالي، وإنهاء الموقع والانتقال إلى موقع آخر خلال المناوبة.'),
                 _FeatureRow(icon: Icons.sticky_note_2_outlined, title: 'الملاحظات والتقارير', description: 'إرسال ملاحظات العمل للمشرفين أو الإدارة، ومراجعة التقارير ورفعها حسب مسار العمل.'),
                 _FeatureRow(icon: Icons.emergency_outlined, title: 'الطوارئ وتسليم المناوبة', description: 'متابعة تكليف مسؤول الطوارئ وإشعارات الحالات وتسليم الملاحظات بين المناوبات.'),
                 _FeatureRow(icon: Icons.picture_as_pdf_outlined, title: 'تقارير PDF', description: 'إنشاء تقارير قابلة للمعاينة والحفظ والمشاركة بحسب الوظائف المتاحة.'),
                 _FeatureRow(icon: Icons.admin_panel_settings_outlined, title: 'إدارة الحسابات', description: 'مراجعة طلبات الحسابات وإدارة الموظفين وحالات الحسابات من خلال الإدارة.'),
+                _FeatureRow(icon: Icons.lock_outline_rounded, title: 'الدخول وحماية الحساب', description: 'الاحتفاظ بجلسة الدخول عند إغلاق التطبيق، مع إمكانية قفل التطبيق محلياً والعودة باستخدام رمز PIN عند إعداده أو البريد الإلكتروني وكلمة المرور.')
               ],
             ),
           ),
@@ -117,10 +119,20 @@ class FounderScreen extends StatelessWidget {
           ),
           const SizedBox(height: 13),
           _section(
+            icon: Icons.lock_person_outlined,
+            title: 'الدخول واستعادة الحساب',
+            child: const Text(
+              'يمكن أن يحتفظ التطبيق بجلسة المستخدم ما لم يطلب قفل التطبيق. القفل المتاح من الواجهة هو قفل محلي على الجهاز، وليس تسجيل خروج نهائياً من Firebase؛ لذلك يمكن فتح الحساب مجدداً باستخدام رمز PIN المحفوظ محلياً إذا كان قد أُعدّ، أو باستخدام البريد الإلكتروني وكلمة المرور. عند نسيان كلمة المرور يمكن طلب رسالة إعادة تعيين عبر خدمة Firebase Authentication. أما نسيان البريد الإلكتروني فيتطلب التواصل مع الإدارة والتحقق من الهوية، ولا يعرض النظام البريد اعتماداً على الاسم أو رقم الهاتف وحدهما. رمز PIN مرتبط بالجهاز والجلسة المحفوظة، ولا يُعد بديلاً مستقلاً عن تسجيل الدخول بالبريد وكلمة المرور بعد تسجيل خروج نهائي.',
+              style: TextStyle(fontSize: 14, height: 1.8, color: Color(0xFF40566B)),
+              textAlign: TextAlign.justify,
+            ),
+          ),
+          const SizedBox(height: 13),
+          _section(
             icon: Icons.verified_user_outlined,
             title: 'الخصوصية والمسؤولية',
             child: const Text(
-              'تُعرض وظائف وبيانات النظام بحسب دور المستخدم وصلاحياته. ويعتمد التطبيق على خدمات Firebase لتسجيل الدخول وحفظ البيانات المشتركة. يجب استخدام الحساب الشخصي وعدم مشاركة بيانات الدخول أو معلومات الزوار مع غير المخولين، والالتزام بتعليمات المستشفى والجهة المشغلة وسياسات حماية البيانات.',
+              'تُعرض وظائف وبيانات النظام بحسب دور المستخدم وصلاحياته. ويعتمد التطبيق على خدمات Firebase لتسجيل الدخول وحفظ البيانات المشتركة، وعلى التخزين الآمن المحلي لحفظ إعدادات القفل ورمز PIN على الجهاز. لا تُشارك بيانات الدخول أو معلومات الزوار مع غير المخولين، ويجب الالتزام بتعليمات المستشفى والجهة المشغلة وسياسات حماية البيانات.',
               style: TextStyle(fontSize: 14, height: 1.8, color: Color(0xFF40566B)),
               textAlign: TextAlign.justify,
             ),
