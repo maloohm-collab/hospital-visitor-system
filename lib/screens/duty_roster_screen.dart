@@ -908,9 +908,9 @@ class _DutyRosterScreenState extends State<DutyRosterScreen>
     final assignments = (block['assignments'] as List? ?? []);
     final rows = assignments.asMap().entries.map((entry) {
       final item = Map<String, dynamic>.from(entry.value);
-      return '<tr><td>\${entry.key + 1}</td><td>\${esc((item['officer'] ?? '').toString())}</td><td>\${esc((item['location'] ?? '').toString())}</td></tr>';
+      return '<tr><td>${entry.key + 1}</td><td>${esc((item['officer'] ?? '').toString())}</td><td>${esc((item['location'] ?? '').toString())}</td></tr>';
     }).join();
-    String list(String title, List values) => '<h3>$title</h3><p>\${values.map((v) => esc(v.toString())).join('　 •　 ')}</p>';
+    String list(String title, List values) => '<h3>$title</h3><p>${values.map((v) => esc(v.toString())).join('　 •　 ')}</p>';
     final html = '''
 <!DOCTYPE html><html><head><meta charset="utf-8"><style>
 @page{size:A4 landscape;margin:12mm}body{font-family:Arial;direction:rtl;text-align:right}
@@ -919,20 +919,20 @@ td,th{border:1px solid #777;padding:6px;font-size:11pt}th{background:#164a78;col
 </style></head><body>
 <h1>مستشفى الزرقاء الحكومي</h1><h2>شركة الصخرة للخدمات والاستشارات الأمنية</h2>
 <h2>كشف الوظائف اليومي — $keyDay — الشفت $shift</h2>
-<p>مدير الموقع: \${esc((block['siteManager'] ?? '').toString())}　 المشرف: \${esc((block['supervisorName'] ?? '').toString())}　 \${esc((block['hours'] ?? '').toString())}</p>
+<p>مدير الموقع: ${esc((block['siteManager'] ?? '').toString())}　 المشرف: ${esc((block['supervisorName'] ?? '').toString())}　 ${esc((block['hours'] ?? '').toString())}</p>
 <table><tr><th>ت</th><th>اسم ضابط الأمن</th><th>الموقع / الوظيفة</th></tr>$rows</table>
-\${list('المجازون OFF', block['offNames'] as List? ?? [])}
-\${list('المجازون سنوياً', block['annualNames'] as List? ?? [])}
-\${list('قائمة سوات', block['specialNames'] as List? ?? [])}
-\${list('وظائف العيادات', block['clinicAssignments'] as List? ?? [])}
-<h3>ملاحظات المشرف الإداري</h3><p>\${esc((block['adminNote'] ?? 'لا توجد ملاحظات').toString())}</p>
+${list('المجازون OFF', block['offNames'] as List? ?? [])}
+${list('المجازون سنوياً', block['annualNames'] as List? ?? [])}
+${list('قائمة سوات', block['specialNames'] as List? ?? [])}
+${list('وظائف العيادات', block['clinicAssignments'] as List? ?? [])}
+<h3>ملاحظات المشرف الإداري</h3><p>${esc((block['adminNote'] ?? 'لا توجد ملاحظات').toString())}</p>
 <p>التوقيع: ____________________</p></body></html>''';
     return Uint8List.fromList([0xEF, 0xBB, 0xBF, ...utf8.encode(html)]);
   }
 
   Future<void> _exportRoster(Map<String, dynamic> data, String format, bool share) async {
     final extension = format == 'صورة' ? 'png' : format == 'Word' ? 'doc' : 'pdf';
-    final filename = '\${_exportBaseName()}.$extension';
+    final filename = '${_exportBaseName()}.$extension';
     try {
       final blocks = Map<String, dynamic>.from(data['shifts'] ?? {});
       final pdfBytes = Uint8List.fromList(await DutyRosterPdf.build(
@@ -948,7 +948,7 @@ td,th{border:1px solid #777;padding:6px;font-size:11pt}th{background:#164a78;col
       }
       if (share) {
         final directory = await getTemporaryDirectory();
-        final file = File('\${directory.path}/$filename');
+        final file = File('${directory.path}/$filename');
         await file.writeAsBytes(bytes, flush: true);
         await Share.shareXFiles([XFile(file.path)], text: 'كشف وظائف شفت $shift بتاريخ $keyDay');
       } else {
