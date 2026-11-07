@@ -26,9 +26,18 @@ class _WorkLocationScreenState extends State<WorkLocationScreen> {
   bool busy = false;
   Timer? expiryTimer;
   String? expiryShiftId;
+  late final Stream<QuerySnapshot<Map<String, dynamic>>> _activeShiftsStream;
+  late final Stream<QuerySnapshot<Map<String, dynamic>>> _receivedNotesStream;
   User? get user => FirebaseAuth.instance.currentUser;
   String get uid => user?.uid ?? '';
   bool get officer => widget.userRole == 'security_officer';
+
+  @override
+  void initState() {
+    super.initState();
+    _activeShiftsStream = db.collection('work_shifts').where('status', isEqualTo: 'active').snapshots();
+    _receivedNotesStream = db.collection('work_shift_notes').where('recipientUids', arrayContains: uid).snapshots();
+  }
 
   @override
   void dispose() { expiryTimer?.cancel(); note.dispose(); super.dispose(); }
@@ -496,7 +505,7 @@ class _WorkLocationScreenState extends State<WorkLocationScreen> {
   }
 
   Widget _activeShifts() => StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-    stream: db.collection('work_shifts').where('status', isEqualTo: 'active').snapshots(),
+    stream: _activeShiftsStream,
     builder: (context, snap) {
       if (snap.hasError) return const Center(child: Text('تعذر تحميل مواقع ضباط الأمن الحالية.'));
       if (snap.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
@@ -569,7 +578,7 @@ class _WorkLocationScreenState extends State<WorkLocationScreen> {
   );
 
   Widget _receivedNotes() => StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-    stream: db.collection('work_shift_notes').where('recipientUids', arrayContains: uid).snapshots(),
+    stream: _receivedNotesStream,
     builder: (context, snap) {
       if (snap.hasError) return const Center(child: Text('تعذر تحميل الملاحظات الواردة.'));
       if (snap.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
