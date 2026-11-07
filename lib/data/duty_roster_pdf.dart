@@ -226,11 +226,11 @@ class DutyRosterPdf {
           child: pw.Row(
             crossAxisAlignment: pw.CrossAxisAlignment.start,
             children: [
+              pw.Text('•', style: pw.TextStyle(font: bold, fontSize: 7)),
+              pw.SizedBox(width: 4),
               pw.Expanded(child: pw.Text(line,
                 textAlign: pw.TextAlign.right,
                 style: pw.TextStyle(font: regular, fontSize: 6.8))),
-              pw.SizedBox(width: 4),
-              pw.Text('•', style: pw.TextStyle(font: bold, fontSize: 7)),
             ],
           ),
         )),
