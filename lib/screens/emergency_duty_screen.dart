@@ -291,7 +291,7 @@ class _EmergencyDutyScreenState extends State<EmergencyDutyScreen> {
             const SizedBox(height: 12),
             Text('تاريخ ووقت البلاغ تلقائيًا: $reportDateTimeLabel', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
             const SizedBox(height: 8),
-            const Text('بمراجعتك لهذه المعاينة وتأكيد الإرسال، فأنت تؤكد صحة النص النهائي.', style: TextStyle(fontSize: 12, color: Colors.blueGrey)),
+            const Text('بمراجعتك لهذه المعاينة وتأكيد الإرسال، فأنت تؤكد صحة النص النهائي.', style: TextStyle(fontSize: 12, color: Color(0xFF526579))),
             const SizedBox(height: 8),
             const Text('سيصل الإشعار إلى المستلمين المحددين فقط.', style: TextStyle(fontSize: 12)),
           ],
@@ -550,7 +550,7 @@ class _EmergencyDutyScreenState extends State<EmergencyDutyScreen> {
                   section('تكليف مسؤول الطوارئ'),
                   Text(
                     'اختر موظف أمن نشطًا لتكليفه. لا يحتاج الموظف إلى طلب موافقة منفصل أو تغيير دوره الوظيفي.',
-                    style: const TextStyle(fontSize: 12, color: Colors.blueGrey, height: 1.5),
+                    style: const TextStyle(fontSize: 12, color: Color(0xFF526579), height: 1.5),
                   ),
                   const SizedBox(height: 10),
                   StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
@@ -615,12 +615,12 @@ class _EmergencyDutyScreenState extends State<EmergencyDutyScreen> {
                   if (aiAssisted)
                     const Padding(
                       padding: EdgeInsets.only(top: 4),
-                      child: Text('راجع النص المنظّم وعدّله بنفسك قبل المعاينة والتأكيد.', style: TextStyle(fontSize: 12, color: Colors.blueGrey)),
+                      child: Text('راجع النص المنظّم وعدّله بنفسك قبل المعاينة والتأكيد.', style: TextStyle(fontSize: 12, color: Color(0xFF526579))),
                     ),
                   const SizedBox(height: 14),
                   section('اختيار المستلمين'),
                   const Text('اختر مشرفًا واحدًا أو عدة مشرفين، ويمكن اختيار الإدارة بشكل منفصل. الحد الأقصى خمسة مستلمين.',
-                    style: TextStyle(fontSize: 12, color: Colors.blueGrey, height: 1.5)),
+                    style: TextStyle(fontSize: 12, color: Color(0xFF526579), height: 1.5)),
                   const SizedBox(height: 8),
                   StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
                     stream: db.collection('users').where('status', isEqualTo: 'active').snapshots(),
@@ -774,7 +774,7 @@ class _EmergencyDutyScreenState extends State<EmergencyDutyScreen> {
                   style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: navy),
                 ),
                 if (mine)
-                  const Text('أنت المسؤول المكلّف حاليًا.', style: TextStyle(fontSize: 12, color: Colors.blueGrey)),
+                  const Text('أنت المسؤول المكلّف حاليًا.', style: TextStyle(fontSize: 12, color: Color(0xFF526579))),
               ],
             ),
           ),
@@ -784,7 +784,7 @@ class _EmergencyDutyScreenState extends State<EmergencyDutyScreen> {
             : 'لم يتم تكليف مسؤول الطوارئ لهذه الفترة بعد.'),
         if ((data['assignedByName'] ?? '').toString().isNotEmpty)
           Text('تم تحديث المسؤول بواسطة المشرف: ${data['assignedByName']} • ${formatTime(data['assignedAt'])}',
-            style: const TextStyle(fontSize: 12, color: Colors.blueGrey)),
+            style: const TextStyle(fontSize: 12, color: Color(0xFF526579))),
         if (history.isNotEmpty) ...[
           const Divider(height: 22),
           const Text('سجل التسليم والتغييرات', style: TextStyle(fontWeight: FontWeight.w800)),
@@ -792,7 +792,7 @@ class _EmergencyDutyScreenState extends State<EmergencyDutyScreen> {
             Padding(padding: const EdgeInsets.only(top: 5),
               child: Text('${entry['name'] ?? 'مسؤول سابق'} — انتهى تكليفه ${formatTime(entry['endedAt'])}'
                 + ((entry['changedByName'] ?? '').toString().isNotEmpty ? ' • بواسطة ${entry['changedByName']}' : ''),
-                style: const TextStyle(fontSize: 12, color: Colors.blueGrey))),
+                style: const TextStyle(fontSize: 12, color: Color(0xFF526579)))),
         ],
       ]),
     ));
@@ -816,7 +816,7 @@ class _EmergencyDutyScreenState extends State<EmergencyDutyScreen> {
       Icon(icon, size: 36, color: teal), const SizedBox(height: 10),
       Text(title, textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.w900, color: navy)),
       const SizedBox(height: 6),
-      Text(subtitle, textAlign: TextAlign.center, style: const TextStyle(color: Colors.blueGrey, height: 1.5)),
+      Text(subtitle, textAlign: TextAlign.center, style: const TextStyle(color: Color(0xFF526579), height: 1.5)),
     ]),
   );
 }
