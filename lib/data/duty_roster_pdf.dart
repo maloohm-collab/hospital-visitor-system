@@ -13,7 +13,7 @@ class DutyRosterPdf {
     final doc = pw.Document();
     final pageFormat = PdfPageFormat.a4.landscape;
 
-    final shiftCodes = onlyShift == null ? <String>['A', 'B', 'C'] : <String>[onlyShift];
+    final shiftCodes = onlyShift == null ? <String>['A', 'B', 'C'] : <String>[onlyShift!];
     for (final code in shiftCodes) {
       final block = Map<String, dynamic>.from(shifts[code] ?? {});
       final assignments = (block['assignments'] as List? ?? [])
