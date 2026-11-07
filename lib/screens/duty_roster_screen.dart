@@ -44,6 +44,10 @@ class _DutyRosterScreenState extends State<DutyRosterScreen>
   String? copiedFromDateKey;
   bool get admin => widget.userRole == 'admin';
   String get keyDay => DateFormat('yyyy-MM-dd').format(day);
+  // تاريخ الكشف الفعلي: شفت A يُرسل قبل يوم، بينما B وC في يوم المناوبة نفسه.
+  DateTime get rosterDate => shift == 'A' ? day.add(const Duration(days: 1)) : day;
+  String get rosterDateKey => DateFormat('yyyy-MM-dd').format(rosterDate);
+  String get rosterDateLabel => DateFormat('yyyy/MM/dd').format(rosterDate);
   String get shift => ['A', 'B', 'C'][tabs.index];
   bool get isClinicDay => day.weekday == DateTime.sunday ||
       (day.weekday >= DateTime.monday && day.weekday <= DateTime.thursday);
@@ -767,7 +771,7 @@ class _DutyRosterScreenState extends State<DutyRosterScreen>
               Expanded(
                 child: PdfPreview(
                   build: (_) async => Uint8List.fromList(
-                    await DutyRosterPdf.build(date: keyDay, shifts: previewBlocks, onlyShift: shift),
+                    await DutyRosterPdf.build(date: rosterDateKey, shifts: previewBlocks, onlyShift: shift),
                   ),
                   canChangeOrientation: false,
                   canChangePageFormat: false,
@@ -803,7 +807,7 @@ class _DutyRosterScreenState extends State<DutyRosterScreen>
 
     final firstConfirmation = await _confirm(
       'تأكيد اعتماد الكشف',
-      'هل تؤكد اعتماد كشف الشفت $shift بتاريخ $keyDay؟',
+      'هل تؤكد اعتماد كشف الشفت $shift بتاريخ $rosterDateLabel؟',
     );
     if (firstConfirmation != 2 || !mounted) return;
 
@@ -879,7 +883,7 @@ class _DutyRosterScreenState extends State<DutyRosterScreen>
           'senderUid': uid,
           'senderEmail': FirebaseAuth.instance.currentUser?.email ?? '',
           'title': 'كشف الوظائف اليومي الجديد',
-          'body': 'تم اعتماد ونشر كشف الشفت $shift بتاريخ $keyDay.',
+          'body': 'تم اعتماد ونشر كشف الشفت $shift بتاريخ $rosterDateLabel.',
           'priority': 'important',
           'read': false,
           'createdAt': FieldValue.serverTimestamp(),
@@ -899,7 +903,7 @@ class _DutyRosterScreenState extends State<DutyRosterScreen>
     }
   }
 
-  String _exportBaseName() => 'كشف وظائف شفت $shift تاريخ $keyDay';
+  String _exportBaseName() => 'كشف وظائف شفت $shift تاريخ $rosterDateKey';
 
   Uint8List _wordBytes(Map<String, dynamic> data) {
     final blocks = Map<String, dynamic>.from(data['shifts'] ?? {});
@@ -942,7 +946,7 @@ li{font-size:9.5pt;line-height:1.45;margin:3px 0}
 
 </style></head><body>
 <h1>مستشفى الزرقاء الحكومي</h1><h2>شركة الصخرة للخدمات والاستشارات الأمنية</h2>
-<h2>كشف الوظائف اليومي — $keyDay — الشفت $shift</h2>
+<h2>كشف الوظائف اليومي — $rosterDateKey — الشفت $shift</h2>
 <p>مدير الموقع: ${esc((block['siteManager'] ?? '').toString())}　 المشرف: ${esc((block['supervisorName'] ?? '').toString())}　 ${esc((block['hours'] ?? '').toString())}</p>
 <table><tr><th>ت</th><th>اسم ضابط الأمن</th><th>الموقع / الوظيفة</th></tr>$rows</table>
 ${list('المجازون OFF', block['offNames'] as List? ?? [])}
@@ -960,7 +964,7 @@ ${list('قائمة سوات', block['specialNames'] as List? ?? [])}
     try {
       final blocks = Map<String, dynamic>.from(data['shifts'] ?? {});
       final pdfBytes = Uint8List.fromList(await DutyRosterPdf.build(
-          date: keyDay, shifts: blocks, onlyShift: shift));
+          date: rosterDateKey, shifts: blocks, onlyShift: shift));
       Uint8List bytes;
       if (format == 'صورة') {
         final raster = await Printing.raster(pdfBytes, pages: const [0], dpi: 180).first;
@@ -974,7 +978,7 @@ ${list('قائمة سوات', block['specialNames'] as List? ?? [])}
         final directory = await getTemporaryDirectory();
         final file = File('${directory.path}/$filename');
         await file.writeAsBytes(bytes, flush: true);
-        await Share.shareXFiles([XFile(file.path)], text: 'كشف وظائف شفت $shift بتاريخ $keyDay');
+        await Share.shareXFiles([XFile(file.path)], text: 'كشف وظائف شفت $shift بتاريخ $rosterDateLabel');
       } else {
         final savedPath = await FilePicker.platform.saveFile(
           dialogTitle: 'حفظ $format', fileName: filename, bytes: bytes);
@@ -1120,7 +1124,7 @@ ${list('قائمة سوات', block['specialNames'] as List? ?? [])}
                   const Text('كشف الوظائف اليومي', textAlign: TextAlign.center,
                     style: TextStyle(color: Colors.white, fontSize: 21, fontWeight: FontWeight.w800)),
                   const SizedBox(height: 8),
-                  Text(DateFormat('yyyy/MM/dd').format(day),
+                  Text(rosterDateLabel,
                     textAlign: TextAlign.center,
                     style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w600)),
                   const SizedBox(height: 14),
@@ -1162,7 +1166,7 @@ ${list('قائمة سوات', block['specialNames'] as List? ?? [])}
                     onPressed: busy ? null : _chooseEditTarget),
                   _actionButton(label: 'حفظ مسودة الشفت $shift', icon: Icons.save_outlined,
                     onPressed: busy ? null : _save),
-                  _actionButton(label: published ? 'معاينة وإعادة إرسال الشفت $shift' : 'معاينة واعتماد الشفت $shift',
+                  _actionButton(label: published ? 'معاينة وإعادة إرسال شفت $shift — $rosterDateLabel' : 'معاينة واعتماد شفت $shift — $rosterDateLabel',
                     icon: Icons.send_rounded, onPressed: busy ? null : _publish, primary: true),
                   _actionButton(label: 'مسح معلومات الكشف وإعادة التعيين', icon: Icons.restart_alt,
                     onPressed: busy ? null : _resetCurrentShift, foreground: Colors.red.shade700),
