@@ -25,6 +25,7 @@ class _DutyRosterScreenState extends State<DutyRosterScreen> with SingleTickerPr
   final List<Map<String, String?>> clinicRows = [];
   final Map<String, List<String>> recentAssignments = {};
   final Map<String, List<String>> offs = {'A': [], 'B': [], 'C': []};
+  final Map<String, List<String>> annuals = {'A': [], 'B': [], 'C': []};
   final Map<String, List<String>> specials = {'A': [], 'B': [], 'C': []};
   final Map<String, String> notes = {'A': '', 'B': '', 'C': ''};
   String? siteManager = 'ياسر الشديفات';
@@ -188,7 +189,7 @@ class _DutyRosterScreenState extends State<DutyRosterScreen> with SingleTickerPr
                     return ListTile(
                       dense: true,
                       contentPadding: const EdgeInsets.symmetric(horizontal: 8),
-                      title: Text(officer, style: const TextStyle(fontWeight: FontWeight.w600, color: navy)),
+                      title: Text(officer, style: const TextStyle(fontWeight: FontWeight.w700, color: navy, fontSize: 16)),
                       subtitle: note == null ? null : Text(note,
                           style: TextStyle(
                             color: repeatedWithinTwoDays ? Colors.deepOrange : const Color(0xFF526579),
@@ -207,6 +208,91 @@ class _DutyRosterScreenState extends State<DutyRosterScreen> with SingleTickerPr
         ),
       ]);
     });
+  }
+
+  Future<List<String>?> _pickNames({
+    required String title,
+    required List<String> candidates,
+    required List<String> selectedNames,
+  }) async {
+    final selected = selectedNames.toSet();
+    var query = '';
+    return showDialog<List<String>>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          final visible = candidates
+              .where((name) => matchesSearchText(query, [name]))
+              .toList();
+          return AlertDialog(
+            title: Text(title, style: const TextStyle(color: navy)),
+            content: SizedBox(
+              width: double.maxFinite,
+              height: MediaQuery.of(context).size.height * .62,
+              child: Column(children: [
+                TextField(
+                  autofocus: true,
+                  textDirection: Directionality.of(context),
+                  decoration: const InputDecoration(
+                    hintText: 'ابحث بالاسم...',
+                    prefixIcon: Icon(Icons.search_rounded),
+                  ),
+                  onChanged: (value) => setDialogState(() => query = value),
+                ),
+                const SizedBox(height: 8),
+                Expanded(
+                  child: visible.isEmpty
+                      ? const Center(child: Text('لا توجد أسماء مطابقة.'))
+                      : ListView.builder(
+                          itemCount: visible.length,
+                          itemBuilder: (_, index) {
+                            final name = visible[index];
+                            final checked = selected.contains(name);
+                            return CheckboxListTile(
+                              value: checked,
+                              controlAffinity: ListTileControlAffinity.leading,
+                              title: Text(name, style: const TextStyle(
+                                fontSize: 16, fontWeight: FontWeight.w600, color: navy)),
+                              onChanged: (value) => setDialogState(() {
+                                if (value == true) {
+                                  selected.add(name);
+                                } else {
+                                  selected.remove(name);
+                                }
+                              }),
+                            );
+                          },
+                        ),
+                ),
+              ]),
+            ),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(dialogContext),
+                child: const Text('إلغاء')),
+              FilledButton(onPressed: () => Navigator.pop(dialogContext, selected.toList()),
+                child: Text('اعتماد الاختيار (${selected.length})')),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  List<String> _availableOfficers(String code) {
+    final assigned = <String>{};
+    for (final row in rows[code]!) {
+      final name = (row['officer'] ?? '').trim();
+      if (name.isNotEmpty) assigned.add(DutyRosterCatalog.normalizeName(name));
+    }
+    if (code == 'A') {
+      for (final row in clinicRows) {
+        final name = (row['officer'] ?? '').trim();
+        if (name.isNotEmpty) assigned.add(DutyRosterCatalog.normalizeName(name));
+      }
+    }
+    return DutyRosterCatalog.offFor(code)
+        .where((name) => !assigned.contains(DutyRosterCatalog.normalizeName(name)))
+        .toList();
   }
 
   Future<String?> _pickLocation(String? current) async {
@@ -329,6 +415,7 @@ class _DutyRosterScreenState extends State<DutyRosterScreen> with SingleTickerPr
             for (final s in ['A', 'B', 'C']) {
               rows[s] = [];
               offs[s] = [];
+              annuals[s] = [];
               specials[s] = [];
               notes[s] = '';
             }
@@ -356,6 +443,7 @@ class _DutyRosterScreenState extends State<DutyRosterScreen> with SingleTickerPr
             };
           }).toList();
           offs[s] = List<String>.from(b['offNames'] ?? const []);
+          annuals[s] = List<String>.from(b['annualNames'] ?? const []);
           specials[s] = List<String>.from(b['specialNames'] ?? const []);
           notes[s] = (b['adminNote'] ?? '').toString();
           supervisors[s] = b['supervisorName']?.toString() ?? supervisors[s];
@@ -397,6 +485,11 @@ class _DutyRosterScreenState extends State<DutyRosterScreen> with SingleTickerPr
               leading: const Icon(Icons.event_busy_outlined),
               title: const Text('المجازون OFF'),
               onTap: () => Navigator.pop(dialogContext, 'المجازون OFF'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.beach_access_outlined),
+              title: const Text('المجازون سنوياً'),
+              onTap: () => Navigator.pop(dialogContext, 'المجازون سنوياً'),
             ),
             ListTile(
               leading: const Icon(Icons.shield_outlined),
@@ -466,7 +559,7 @@ class _DutyRosterScreenState extends State<DutyRosterScreen> with SingleTickerPr
       blocks[s] = {
         'hours': s == 'A' ? '08:00–16:00' : s == 'B' ? '16:00–00:00' : '00:00–08:00',
         'assignments': rows[s]!.where((r) => (r['officer'] ?? '').isNotEmpty && (r['location'] ?? '').isNotEmpty).toList(),
-        'offNames': offs[s], 'specialNames': specials[s], 'adminNote': notes[s], 'supervisorName': supervisors[s], 'siteManager': siteManager,
+        'offNames': offs[s], 'annualNames': annuals[s], 'specialNames': specials[s], 'adminNote': notes[s], 'supervisorName': supervisors[s], 'siteManager': siteManager,
         if (s == 'A') 'clinicAssignments': isClinicDay
             ? clinicRows.where((r) => (r['officer'] ?? '').isNotEmpty).toList()
             : <Map<String, String?>>[],
@@ -870,6 +963,13 @@ class _DutyRosterScreenState extends State<DutyRosterScreen> with SingleTickerPr
     ),
   );
 
+  Widget _nameTableChips(List values) => Wrap(
+    spacing: 6,
+    runSpacing: 4,
+    children: values.map((name) => Chip(label: Text(name.toString(),
+      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)))).toList(),
+  );
+
   Widget _editor(String s, dynamic saved, {required bool readOnly}) {
     final b = saved is Map ? Map<String,dynamic>.from(saved) : <String,dynamic>{};
     final list = readOnly ? (b['assignments'] as List? ?? []).map((e) => Map<String,dynamic>.from(e)).toList() : rows[s]!;
@@ -922,6 +1022,7 @@ class _DutyRosterScreenState extends State<DutyRosterScreen> with SingleTickerPr
                       },
                       icon: const Icon(Icons.person_search),
                       label: Text(n.isEmpty ? 'اختيار ضابط الأمن' : n,
+                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
                           overflow: TextOverflow.ellipsis),
                       style: OutlinedButton.styleFrom(
                         alignment: Alignment.centerRight,
@@ -936,7 +1037,7 @@ class _DutyRosterScreenState extends State<DutyRosterScreen> with SingleTickerPr
             InputDecorator(
               decoration: const InputDecoration(labelText: 'اختيار الموقع / الوظيفة'),
               child: Text(l.isEmpty ? 'غير محدد' : l,
-                  style: const TextStyle(color: navy, fontWeight: FontWeight.w600)),
+                  style: const TextStyle(color: navy, fontWeight: FontWeight.w700, fontSize: 16)),
             )
           else
             OutlinedButton.icon(
@@ -948,6 +1049,7 @@ class _DutyRosterScreenState extends State<DutyRosterScreen> with SingleTickerPr
               label: Align(
                 alignment: Alignment.centerRight,
                 child: Text(l.isEmpty ? 'ابحث واختر الموقع / الوظيفة' : l,
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
                     maxLines: 2, overflow: TextOverflow.ellipsis),
               ),
               style: OutlinedButton.styleFrom(
@@ -962,15 +1064,43 @@ class _DutyRosterScreenState extends State<DutyRosterScreen> with SingleTickerPr
       const SizedBox(height: 10), const Padding(padding: EdgeInsets.only(top: 14, bottom: 8),
         child: Divider(height: 1, thickness: 1)),
       const Text('المجازون OFF', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: navy)),
-      if (readOnly) Wrap(children: (b['offNames'] as List? ?? []).map((n) => Chip(label: Text(n.toString()))).toList())
+      if (readOnly)
+        _nameTableChips(b['offNames'] as List? ?? const [])
       else ...[
         Wrap(spacing: 5, children: offs[s]!.map((n) => InputChip(label: Text(n), onDeleted: () => setState(() => offs[s]!.remove(n)))).toList()),
-        const SizedBox(height: 10),
-        DropdownButtonFormField<String>(value: null, isExpanded: true, decoration: const InputDecoration(
-          labelText: 'إضافة اسم إلى قائمة OFF', border: OutlineInputBorder(),
-          contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 15)),
-          items: DutyRosterCatalog.offFor(s).toSet().where((n) => !offs[s]!.contains(n)).map((n) => DropdownMenuItem(value: n, child: Text(n))).toList(),
-          onChanged: (v) { if (v != null) setState(() => offs[s]!.add(v)); }),
+        const SizedBox(height: 8),
+        OutlinedButton.icon(
+          onPressed: () async {
+            final result = await _pickNames(
+              title: 'اختيار المجازين — المتبقي من شفت $s',
+              candidates: [...offs[s]!, ..._availableOfficers(s)].toSet().toList(),
+              selectedNames: offs[s]!,
+            );
+            if (result != null && mounted) setState(() => offs[s]!..clear()..addAll(result));
+          },
+          icon: const Icon(Icons.search),
+          label: const Text('بحث واختيار المجازين'),
+        ),
+      ],
+      const SizedBox(height: 14),
+      const Text('المجازون سنوياً', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: navy)),
+      if (readOnly)
+        _nameTableChips(b['annualNames'] as List? ?? const [])
+      else ...[
+        Wrap(spacing: 5, children: annuals[s]!.map((n) => InputChip(label: Text(n), onDeleted: () => setState(() => annuals[s]!.remove(n)))).toList()),
+        const SizedBox(height: 8),
+        OutlinedButton.icon(
+          onPressed: () async {
+            final result = await _pickNames(
+              title: 'اختيار المجازين سنوياً — شفت $s',
+              candidates: [...annuals[s]!, ..._availableOfficers(s)].toSet().toList(),
+              selectedNames: annuals[s]!,
+            );
+            if (result != null && mounted) setState(() => annuals[s]!..clear()..addAll(result));
+          },
+          icon: const Icon(Icons.search),
+          label: const Text('بحث واختيار المجاز السنوي'),
+        ),
       ],
       if (s == 'A' && isClinicDay) ...[
         const SizedBox(height: 16),
@@ -1042,15 +1172,23 @@ class _DutyRosterScreenState extends State<DutyRosterScreen> with SingleTickerPr
       const Padding(padding: EdgeInsets.only(top: 14, bottom: 8),
         child: Divider(height: 1, thickness: 1)),
       const Text('قائمة سوات', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: navy)),
-      if (readOnly) Wrap(children: (b['specialNames'] as List? ?? []).map((n) => Chip(label: Text(n.toString()))).toList())
+      if (readOnly)
+        _nameTableChips(b['specialNames'] as List? ?? const [])
       else ...[
         Wrap(spacing: 5, children: specials[s]!.map((n) => InputChip(label: Text(n), onDeleted: () => setState(() => specials[s]!.remove(n)))).toList()),
-        const SizedBox(height: 10),
-        DropdownButtonFormField<String>(value: null, isExpanded: true, decoration: const InputDecoration(
-          labelText: 'إضافة اسم إلى قائمة سوات', border: OutlineInputBorder(),
-          contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 15)),
-          items: DutyRosterCatalog.specialFor(s).toSet().where((n) => !specials[s]!.contains(n)).map((n) => DropdownMenuItem(value: n, child: Text(n))).toList(),
-          onChanged: (v) { if (v != null) setState(() => specials[s]!.add(v)); }),
+        const SizedBox(height: 8),
+        OutlinedButton.icon(
+          onPressed: () async {
+            final result = await _pickNames(
+              title: 'اختيار قائمة سوات — شفت $s',
+              candidates: DutyRosterCatalog.specialFor(s),
+              selectedNames: specials[s]!,
+            );
+            if (result != null && mounted) setState(() => specials[s]!..clear()..addAll(result));
+          },
+          icon: const Icon(Icons.search),
+          label: const Text('بحث واختيار سوات'),
+        ),
       ],
     ]);
   }
