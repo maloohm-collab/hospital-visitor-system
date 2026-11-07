@@ -11,6 +11,7 @@ import 'package:arabic_reshaper/arabic_reshaper.dart';
 import 'package:printing/printing.dart';
 import 'package:share_plus/share_plus.dart';
 import '../widgets/official_hospital_header.dart';
+import '../widgets/app_search_field.dart';
 
 class ReportCenterScreen extends StatefulWidget {
   const ReportCenterScreen({super.key, required this.userRole});
@@ -21,6 +22,7 @@ class ReportCenterScreen extends StatefulWidget {
 
 class _ReportCenterScreenState extends State<ReportCenterScreen> {
   static const navy = Color(0xFF082B55), teal = Color(0xFF12B8B0);
+  String _searchTerm = '';
   User? get user => FirebaseAuth.instance.currentUser;
   bool get admin => widget.userRole == 'admin';
   bool get supervisor => widget.userRole == 'supervisor';
@@ -647,6 +649,10 @@ class _ReportCenterScreenState extends State<ReportCenterScreen> {
           if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
           final docs = (snapshot.data?.docs ?? [])
               .where((doc) => !_isHiddenForCurrentUser(doc.data()))
+              .where((doc) {
+                final d = doc.data();
+                return matchesSearchText(_searchTerm, [d['title'], d['body'], d['createdByName'], d['createdByPhone'], d['createdByEmail'], d['employeeName'], d['locationName'], d['reportId']]);
+              })
               .toList()
             ..sort((a, b) {
               final at = a.data()['createdAt'];
@@ -654,8 +660,10 @@ class _ReportCenterScreenState extends State<ReportCenterScreen> {
               if (at is Timestamp && bt is Timestamp) return bt.compareTo(at);
               return 0;
             });
-          if (docs.isEmpty) return const Center(child: Text('لا توجد تقارير لعرضها حاليًا.'));
-          return ListView.builder(padding: const EdgeInsets.fromLTRB(14, 8, 14, 90),
+          if (docs.isEmpty) return Center(child: Text(_searchTerm.isEmpty ? 'لا توجد تقارير لعرضها حاليًا.' : 'لا توجد تقارير مطابقة للبحث.'));
+          return Column(children: [
+            Padding(padding: const EdgeInsets.fromLTRB(14, 8, 14, 4), child: AppSearchField(hint: 'ابحث بعنوان التقرير أو اسم الموظف أو الهاتف أو الموقع...', onChanged: (v) => setState(() => _searchTerm = v))),
+            Expanded(child: ListView.builder(padding: const EdgeInsets.fromLTRB(14, 8, 14, 90),
             itemCount: docs.length, itemBuilder: (context, i) {
               final doc = docs[i], d = doc.data();
               final urgent = d['priority'] == 'urgent';
@@ -841,7 +849,8 @@ class _ReportCenterScreenState extends State<ReportCenterScreen> {
                     ),
                   ],
                 ])));
-            });
+            })),
+          ]);
         },
       )),
     ]),
