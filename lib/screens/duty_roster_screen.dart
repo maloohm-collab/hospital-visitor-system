@@ -34,7 +34,7 @@ class _DutyRosterScreenState extends State<DutyRosterScreen> with SingleTickerPr
   bool busy = false;
   bool _loaded = false;
   bool _publishing = false;
-  Timer? _autosaveTimer;
+  final Map<String, Timer> _autosaveTimers = {};
   String? copiedFromDateKey;
   bool get admin => widget.userRole == 'admin';
   String get keyDay => DateFormat('yyyy-MM-dd').format(day);
@@ -55,7 +55,7 @@ class _DutyRosterScreenState extends State<DutyRosterScreen> with SingleTickerPr
   void initState() { super.initState(); tabs = TabController(length: 3, vsync: this)..addListener(() { if (mounted) setState(() {}); }); _load(); }
   @override
   void dispose() {
-    _autosaveTimer?.cancel();
+    _autosaveTimers[shift]?.cancel();
     tabs.dispose();
     super.dispose();
   }
@@ -67,10 +67,11 @@ class _DutyRosterScreenState extends State<DutyRosterScreen> with SingleTickerPr
   }
 
   void _scheduleAutosave() {
-    _autosaveTimer?.cancel();
     final targetShift = shift;
     final targetDate = keyDay;
-    _autosaveTimer = Timer(const Duration(milliseconds: 700), () {
+    _autosaveTimers[targetShift]?.cancel();
+    _autosaveTimers[targetShift] = Timer(const Duration(milliseconds: 700), () {
+      _autosaveTimers.remove(targetShift);
       if (!mounted || !_loaded || !admin || targetDate != keyDay) return;
       _persistShiftDraft(targetShift, silent: true);
     });
@@ -640,7 +641,8 @@ class _DutyRosterScreenState extends State<DutyRosterScreen> with SingleTickerPr
     final d = await showDatePicker(context: context, initialDate: day, firstDate: DateTime(2024), lastDate: DateTime(2035));
     if (d == null) return;
     _loaded = false;
-    _autosaveTimer?.cancel();
+    for (final timer in _autosaveTimers.values) { timer.cancel(); }
+    _autosaveTimers.clear();
     setState(() => day = d);
     await _load();
   }
@@ -668,7 +670,7 @@ class _DutyRosterScreenState extends State<DutyRosterScreen> with SingleTickerPr
 
   Future<void> _save() async {
     if (!admin || busy) return;
-    _autosaveTimer?.cancel();
+    _autosaveTimers[shift]?.cancel();
     setState(() => busy = true);
     try {
       final saved = await _persistShiftDraft(shift);
@@ -690,7 +692,7 @@ class _DutyRosterScreenState extends State<DutyRosterScreen> with SingleTickerPr
 
   Future<void> _publish() async {
     if (!admin || busy) return;
-    _autosaveTimer?.cancel();
+    _autosaveTimers[shift]?.cancel();
     await _persistShiftDraft(shift, silent: true);
 
     // اعرض نسخة PDF النهائية للإدارة أولاً، ولا يتم الاعتماد أو الإرسال
@@ -852,7 +854,7 @@ class _DutyRosterScreenState extends State<DutyRosterScreen> with SingleTickerPr
       'سيتم مسح بيانات الشفت $code بتاريخ $keyDay فقط، ولن تتأثر الشفتات الأخرى. هل تريد المتابعة؟',
     );
     if (answer != 2 || !mounted) return;
-    _autosaveTimer?.cancel();
+    _autosaveTimers[code]?.cancel();
     setState(() {
       rows[code] = [];
       offs[code] = [];
@@ -867,7 +869,7 @@ class _DutyRosterScreenState extends State<DutyRosterScreen> with SingleTickerPr
         }
       }
     });
-    _autosaveTimer?.cancel();
+    _autosaveTimers[shift]?.cancel();
     final saved = await _persistShiftDraft(code);
     msg(saved
         ? 'تم مسح بيانات الشفت $code وإعادة تعيينه فقط.'
