@@ -722,7 +722,11 @@ class _DutyRosterScreenState extends State<DutyRosterScreen>
   Future<void> _publish() async {
     if (!admin || busy) return;
     _autosaveTimers[shift]?.cancel();
-    await _persistShiftDraft(shift, silent: true);
+    final draftSaved = await _persistShiftDraft(shift, silent: true);
+    if (!draftSaved) {
+      msg('تعذر حفظ مسودة الشفت $shift؛ أوقفنا الاعتماد حتى لا تضيع التعديلات.');
+      return;
+    }
 
     // اعرض نسخة PDF النهائية للإدارة أولاً، ولا يتم الاعتماد أو الإرسال
     // إلا بعد اختيار أحد الإجراءين من نافذة المعاينة.
@@ -809,6 +813,22 @@ class _DutyRosterScreenState extends State<DutyRosterScreen>
     try {
       final roster = db.collection('daily_duty_rosters').doc(keyDay);
       final old = await roster.get();
+
+      // كل كشف يومي معتمد يصبح أساساً للمراجعة في نفس يوم الأسبوع القادم.
+      // نجهّز الشفت المنشور فقط، ولا نستبدل أي شفت سبق أن أُعد للأسبوع القادم.
+      final nextWeekDate = day.add(const Duration(days: 7));
+      final nextWeekKey = DateFormat('yyyy-MM-dd').format(nextWeekDate);
+      final nextWeekRoster = db.collection('daily_duty_rosters').doc(nextWeekKey);
+      final nextWeekSnapshot = await nextWeekRoster.get();
+      final nextWeekData = nextWeekSnapshot.data() ?? <String, dynamic>{};
+      final nextWeekShifts = Map<String, dynamic>.from(nextWeekData['shifts'] ?? {});
+      final shouldSeedNextWeek = !nextWeekShifts.containsKey(shift);
+      final nextWeekBlock = Map<String, dynamic>.from(selectedBlock);
+      nextWeekBlock
+        ..['status'] = 'draft'
+        ..['managerConfirmed'] = false
+        ..remove('publishedAt');
+
       final batch = db.batch();
       if (old.exists) {
         final version = roster.collection('versions').doc();
@@ -831,6 +851,18 @@ class _DutyRosterScreenState extends State<DutyRosterScreen>
         'updatedAt': FieldValue.serverTimestamp(),
         'updatedBy': FirebaseAuth.instance.currentUser?.uid,
       }, SetOptions(merge: true));
+
+      if (shouldSeedNextWeek) {
+        batch.set(nextWeekRoster, {
+          'dateKey': nextWeekKey,
+          'copiedFromDateKey': keyDay,
+          'preparedForDateKey': nextWeekKey,
+          'shifts': {shift: nextWeekBlock},
+          'status': 'draft',
+          'updatedAt': FieldValue.serverTimestamp(),
+          'updatedBy': FirebaseAuth.instance.currentUser?.uid,
+        }, SetOptions(merge: true));
+      }
       final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
       for (final user in users.docs) {
         if (user.id == uid) continue;
@@ -851,7 +883,9 @@ class _DutyRosterScreenState extends State<DutyRosterScreen>
         });
       }
       await batch.commit();
-      msg('تم اعتماد ونشر كشف الشفت $shift فقط وإرسال الإشعارات للمستخدمين النشطين.');
+      msg(shouldSeedNextWeek
+          ? 'تم اعتماد ونشر الشفت $shift، وتجهيز مسودته للمراجعة في $nextWeekKey.'
+          : 'تم اعتماد ونشر الشفت $shift. توجد مسودة سابقة للأسبوع القادم ولم نستبدلها.');
     } catch (_) {
       msg('تعذر اعتماد أو نشر الكشف. لم يتم تأكيد العملية.');
     } finally {
