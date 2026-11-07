@@ -22,8 +22,8 @@ class DutyRosterPdf {
 
       // تقليل المسافات تلقائياً عند كثرة الأسماء للمحافظة على صفحة واحدة.
       final compact = assignments.length > 34;
-      final rowFontSize = compact ? 7.2 : 9.0;
-      final rowVerticalPadding = compact ? 1.2 : 3.0;
+      final rowFontSize = compact ? 8.0 : 9.5;
+      final rowVerticalPadding = compact ? 1.0 : 2.4;
       // صف أفقي واحد يحتوي مجموعتين: تسلسل/اسم/موقع ثم فاصل ثم المجموعة التالية.
       final pairedRows = <List<String>>[];
       for (var i = 0; i < assignments.length; i += 2) {
@@ -99,16 +99,16 @@ class DutyRosterPdf {
           headerStyle: pw.TextStyle(font: bold, color: PdfColors.white, fontSize: 8),
           cellStyle: pw.TextStyle(font: regular, fontSize: rowFontSize),
           headerDecoration: const pw.BoxDecoration(color: PdfColor.fromInt(0xFF164A78)),
-          cellAlignment: pw.Alignment.center,
+          cellAlignment: pw.Alignment.centerRight,
           border: pw.TableBorder.all(color: PdfColors.grey600, width: .45),
           cellPadding: pw.EdgeInsets.symmetric(vertical: rowVerticalPadding, horizontal: 3),
           columnWidths: {
-            0: const pw.FixedColumnWidth(23),
-            1: const pw.FlexColumnWidth(2.1),
-            2: const pw.FlexColumnWidth(2.0),
-            3: const pw.FixedColumnWidth(23),
-            4: const pw.FlexColumnWidth(2.1),
-            5: const pw.FlexColumnWidth(2.0),
+            0: const pw.FixedColumnWidth(20),
+            1: const pw.FlexColumnWidth(1.35),
+            2: const pw.FlexColumnWidth(1.05),
+            3: const pw.FixedColumnWidth(20),
+            4: const pw.FlexColumnWidth(1.35),
+            5: const pw.FlexColumnWidth(1.05),
           },
         ),
       ];
@@ -195,6 +195,40 @@ class DutyRosterPdf {
         ),
       ]);
 
+      const fixedRules = [
+      'يمنع ترك مكان الوظيفة إلا بوجود بديل وبعد الاتصال مع المشرف ولأي سبب كان، والتعامل مع الجمهور بلباقة وحسن تصرف وبدون تصادم.',
+      'يمنع تجمع الوظائف والالتزام التام بموقع الوظيفة، ويمنع وجود الكراسي في مكان الوظيفة، ويمنع استخدام الهاتف أثناء الوظيفة.',
+      'الاهتمام بالنظافة والهندام من ناحية حلاقة الذقن، وارتداء لباس الشركة كاملاً وارتداء الباج وشعار الشركة.',
+      'يمنع توجيه أي مواطن لمراجعة المناوب الإداري، ويمنع عمل علاقات مع الكوادر سواء أطباء أو ممرضين أو شركات أخرى.',
+      'يمنع إنجاز أي معاملة طبية من قبل موظفينا، ويمنع أخذ أي وجه من أي مراجع أو زائر أو موظفي الشركات الأخرى وتعتبر تحت بند الرشوة.',
+      'تمرير أي ملاحظة كانت صغيرة أو كبيرة، وتفعيل الحس الأمني، ويمنع مراجعة إدارة المستشفى إلا بواجب رسمي وبالأمر.',
+      'عند الحصول على إجازة مرضية يجب أن تكون مختومة من السجل الطبي أو ختم وتوقيع المناوب الإداري عندما يكون السجل مغلقاً وإلا لن تعتمد.',
+    ];
+      content.addAll([
+        pw.SizedBox(height: 4),
+        pw.Container(
+          width: double.infinity,
+          padding: const pw.EdgeInsets.symmetric(vertical: 2, horizontal: 5),
+          color: const PdfColor.fromInt(0xFF315B82),
+          child: pw.Text('التعليمات الثابتة',
+            textAlign: pw.TextAlign.right,
+            style: pw.TextStyle(font: bold, fontSize: 8, color: PdfColors.white)),
+        ),
+        ...fixedRules.map((line) => pw.Padding(
+          padding: const pw.EdgeInsets.only(top: 1, bottom: 1),
+          child: pw.Row(
+            crossAxisAlignment: pw.CrossAxisAlignment.start,
+            children: [
+              pw.Expanded(child: pw.Text(line,
+                textAlign: pw.TextAlign.right,
+                style: pw.TextStyle(font: regular, fontSize: 6.8))),
+              pw.SizedBox(width: 4),
+              pw.Text('•', style: pw.TextStyle(font: bold, fontSize: 7)),
+            ],
+          ),
+        )),
+      ]);
+
       doc.addPage(pw.Page(
         pageFormat: pageFormat,
         margin: const pw.EdgeInsets.fromLTRB(22, 16, 22, 16),
@@ -215,35 +249,6 @@ class DutyRosterPdf {
       ));
     }
 
-    const fixedRules = [
-      'يمنع ترك مكان الوظيفة إلا بوجود بديل وبعد الاتصال مع المشرف ولأي سبب كان، والتعامل مع الجمهور بلباقة وحسن تصرف وبدون تصادم.',
-      'يمنع تجمع الوظائف والالتزام التام بموقع الوظيفة، ويمنع وجود الكراسي في مكان الوظيفة، ويمنع استخدام الهاتف أثناء الوظيفة.',
-      'الاهتمام بالنظافة والهندام من ناحية حلاقة الذقن، وارتداء لباس الشركة كاملاً وارتداء الباج وشعار الشركة.',
-      'يمنع توجيه أي مواطن لمراجعة المناوب الإداري، ويمنع عمل علاقات مع الكوادر سواء أطباء أو ممرضين أو شركات أخرى.',
-      'يمنع إنجاز أي معاملة طبية من قبل موظفينا، ويمنع أخذ أي وجه من أي مراجع أو زائر أو موظفي الشركات الأخرى وتعتبر تحت بند الرشوة.',
-      'تمرير أي ملاحظة كانت صغيرة أو كبيرة، وتفعيل الحس الأمني، ويمنع مراجعة إدارة المستشفى إلا بواجب رسمي وبالأمر.',
-      'عند الحصول على إجازة مرضية يجب أن تكون مختومة من السجل الطبي أو ختم وتوقيع المناوب الإداري عندما يكون السجل مغلقاً وإلا لن تعتمد.',
-    ];
-    doc.addPage(pw.Page(
-      pageFormat: PdfPageFormat.a4,
-      margin: const pw.EdgeInsets.all(28),
-      build: (_) => pw.Directionality(
-        textDirection: pw.TextDirection.rtl,
-        child: pw.Column(
-          crossAxisAlignment: pw.CrossAxisAlignment.stretch,
-          children: [
-            pw.Text('التعليمات الثابتة',
-              style: pw.TextStyle(font: bold, fontSize: 16)),
-            pw.SizedBox(height: 12),
-            ...fixedRules.map((line) => pw.Padding(
-              padding: const pw.EdgeInsets.only(bottom: 5),
-              child: pw.Bullet(text: line,
-                style: pw.TextStyle(font: regular, fontSize: 8)),
-            )),
-          ],
-        ),
-      ),
-    ));
     return doc.save();
   }
 }
