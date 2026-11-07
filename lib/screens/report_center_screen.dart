@@ -23,9 +23,16 @@ class ReportCenterScreen extends StatefulWidget {
 class _ReportCenterScreenState extends State<ReportCenterScreen> {
   static const navy = Color(0xFF082B55), teal = Color(0xFF12B8B0);
   String _searchTerm = '';
+  late final Stream<QuerySnapshot<Map<String, dynamic>>> _reportsStream;
   User? get user => FirebaseAuth.instance.currentUser;
   bool get admin => widget.userRole == 'admin';
   bool get supervisor => widget.userRole == 'supervisor';
+
+  @override
+  void initState() {
+    super.initState();
+    _reportsStream = _query().snapshots();
+  }
 
   Query<Map<String, dynamic>> _query() {
     Query<Map<String, dynamic>> q = FirebaseFirestore.instance.collection('duty_reports');
@@ -642,7 +649,7 @@ class _ReportCenterScreenState extends State<ReportCenterScreen> {
         ),
       ),
       Expanded(child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-        stream: _query().snapshots(),
+        stream: _reportsStream,
         builder: (context, snapshot) {
           if (snapshot.hasError) return const Center(child: Padding(padding: EdgeInsets.all(24),
             child: Text('تعذر تحميل التقارير. تحقق من قواعد Firestore والفهارس والاتصال.', textAlign: TextAlign.center)));
