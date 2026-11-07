@@ -1021,7 +1021,7 @@ class _DutyRosterScreenState extends State<DutyRosterScreen>
                 children: [
                   _actionButton(label: 'تحديد نوع التعديل', icon: Icons.tune,
                     onPressed: busy ? null : _chooseEditTarget),
-                  _actionButton(label: 'حفظ مسودة', icon: Icons.save_outlined,
+                  _actionButton(label: 'حفظ مسودة الشفت $shift', icon: Icons.save_outlined,
                     onPressed: busy ? null : _save),
                   _actionButton(label: published ? 'معاينة وإعادة إرسال الشفت $shift' : 'معاينة واعتماد الشفت $shift',
                     icon: Icons.send_rounded, onPressed: busy ? null : _publish, primary: true),
