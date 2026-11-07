@@ -22,7 +22,7 @@ class DutyRosterPdf {
 
       // تقليل المسافات تلقائياً عند كثرة الأسماء للمحافظة على صفحة واحدة.
       final compact = assignments.length > 34;
-      final rowFontSize = compact ? 8.5 : 9.5;
+      final rowFontSize = compact ? 9.0 : 10.0;
       final rowVerticalPadding = compact ? 1.2 : 2.4;
       // صف أفقي واحد يحتوي مجموعتين: تسلسل/اسم/موقع ثم فاصل ثم المجموعة التالية.
       final pairedRows = <List<String>>[];
@@ -54,7 +54,7 @@ class DutyRosterPdf {
               headers: ['الاسم'],
               data: names,
               headerStyle: pw.TextStyle(font: bold, fontSize: 8, color: PdfColors.white),
-              cellStyle: pw.TextStyle(font: regular, fontSize: compact ? 7 : 8),
+              cellStyle: pw.TextStyle(font: regular, fontSize: compact ? 7.5 : 8.5),
               headerDecoration: pw.BoxDecoration(color: color),
               cellAlignment: pw.Alignment.centerRight,
               border: pw.TableBorder.all(color: PdfColors.grey500, width: .4),
@@ -135,7 +135,7 @@ class DutyRosterPdf {
               headers: ['اسم الموظف', 'موقع العيادة'],
               data: clinicRows,
               headerStyle: pw.TextStyle(font: bold, color: PdfColors.white, fontSize: 8),
-              cellStyle: pw.TextStyle(font: regular, fontSize: compact ? 7 : 8),
+              cellStyle: pw.TextStyle(font: regular, fontSize: compact ? 7.5 : 8.5),
               headerDecoration: const pw.BoxDecoration(color: PdfColor.fromInt(0xFF087E78)),
               cellAlignment: pw.Alignment.center,
               border: pw.TableBorder.all(color: PdfColors.grey500, width: .4),
@@ -177,7 +177,7 @@ class DutyRosterPdf {
           headers: ['ملاحظات المشرف الإداري'],
           data: [[note.isEmpty ? 'لا توجد ملاحظات' : note]],
           headerStyle: pw.TextStyle(font: bold, fontSize: 8, color: PdfColors.white),
-          cellStyle: pw.TextStyle(font: regular, fontSize: compact ? 7 : 8),
+          cellStyle: pw.TextStyle(font: regular, fontSize: compact ? 7.5 : 8.5),
           headerDecoration: const pw.BoxDecoration(color: PdfColor.fromInt(0xFF65788A)),
           cellAlignment: pw.Alignment.centerRight,
           border: pw.TableBorder.all(color: PdfColors.grey500, width: .4),
@@ -196,8 +196,8 @@ class DutyRosterPdf {
           child: pw.Row(children: [
             pw.Expanded(child: pw.Text(
               'معتمد عند مدير الموقع: ${(block['siteManager'] ?? Map<String, dynamic>.from(shifts['A'] ?? {})['siteManager'] ?? '').toString()}',
-              style: pw.TextStyle(font: bold, fontSize: compact ? 7 : 8, color: const PdfColor.fromInt(0xFF082B55)))),
-            pw.Text('التوقيع: ______________', style: pw.TextStyle(font: regular, fontSize: compact ? 7 : 8)),
+              style: pw.TextStyle(font: bold, fontSize: compact ? 7.5 : 8.5, color: const PdfColor.fromInt(0xFF082B55)))),
+            pw.Text('التوقيع: ______________', style: pw.TextStyle(font: regular, fontSize: compact ? 7.5 : 8.5)),
           ]),
         ),
       ]);
@@ -211,29 +211,43 @@ class DutyRosterPdf {
       'تمرير أي ملاحظة كانت صغيرة أو كبيرة، وتفعيل الحس الأمني، ويمنع مراجعة إدارة المستشفى إلا بواجب رسمي وبالأمر.',
       'عند الحصول على إجازة مرضية يجب أن تكون مختومة من السجل الطبي أو ختم وتوقيع المناوب الإداري عندما يكون السجل مغلقاً وإلا لن تعتمد.',
     ];
+      final rulesRows = <pw.TableRow>[];
+      for (var i = 0; i < fixedRules.length; i += 2) {
+        pw.Widget ruleCell(String text) => pw.Padding(
+          padding: const pw.EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+          child: pw.Text(
+            '• $text',
+            textAlign: pw.TextAlign.right,
+            style: pw.TextStyle(font: regular, fontSize: 7.4,
+              color: const PdfColor.fromInt(0xFF24384B), lineSpacing: 1.2),
+          ),
+        );
+        rulesRows.add(pw.TableRow(children: [
+          ruleCell(fixedRules[i]),
+          i + 1 < fixedRules.length
+              ? ruleCell(fixedRules[i + 1])
+              : pw.SizedBox(),
+        ]));
+      }
       content.addAll([
         pw.SizedBox(height: 4),
         pw.Container(
           width: double.infinity,
-          padding: const pw.EdgeInsets.symmetric(vertical: 2, horizontal: 5),
+          padding: const pw.EdgeInsets.symmetric(vertical: 3, horizontal: 6),
           color: const PdfColor.fromInt(0xFF315B82),
           child: pw.Text('التعليمات الثابتة',
             textAlign: pw.TextAlign.right,
-            style: pw.TextStyle(font: bold, fontSize: 8, color: PdfColors.white)),
+            style: pw.TextStyle(font: bold, fontSize: 8.5, color: PdfColors.white)),
         ),
-        ...fixedRules.map((line) => pw.Padding(
-          padding: const pw.EdgeInsets.only(top: 1, bottom: 1),
-          child: pw.Row(
-            crossAxisAlignment: pw.CrossAxisAlignment.start,
-            children: [
-              pw.Text('•', style: pw.TextStyle(font: bold, fontSize: 7)),
-              pw.SizedBox(width: 4),
-              pw.Expanded(child: pw.Text(line,
-                textAlign: pw.TextAlign.right,
-                style: pw.TextStyle(font: regular, fontSize: 6.8))),
-            ],
-          ),
-        )),
+        pw.Table(
+          border: pw.TableBorder.all(
+            color: const PdfColor.fromInt(0xFFD5DEE7), width: .35),
+          columnWidths: const {
+            0: pw.FlexColumnWidth(1),
+            1: pw.FlexColumnWidth(1),
+          },
+          children: rulesRows,
+        ),
       ]);
 
       doc.addPage(pw.Page(
