@@ -22,8 +22,8 @@ class DutyRosterPdf {
 
       // تقليل المسافات تلقائياً عند كثرة الأسماء للمحافظة على صفحة واحدة.
       final compact = assignments.length > 34;
-      final rowFontSize = compact ? 8.0 : 9.5;
-      final rowVerticalPadding = compact ? 1.0 : 2.4;
+      final rowFontSize = compact ? 8.5 : 9.5;
+      final rowVerticalPadding = compact ? 1.2 : 2.4;
       // صف أفقي واحد يحتوي مجموعتين: تسلسل/اسم/موقع ثم فاصل ثم المجموعة التالية.
       final pairedRows = <List<String>>[];
       for (var i = 0; i < assignments.length; i += 2) {
@@ -97,7 +97,7 @@ class DutyRosterPdf {
           width: double.infinity,
           alignment: pw.Alignment.centerRight,
           child: pw.SizedBox(
-            width: pageFormat.width - 100,
+            width: pageFormat.width - 44,
             child: pw.TableHelper.fromTextArray(
           headers: ['ت', 'اسم ضابط الأمن', 'الموقع / الوظيفة', 'ت', 'اسم ضابط الأمن', 'الموقع / الوظيفة'],
           data: pairedRows,
