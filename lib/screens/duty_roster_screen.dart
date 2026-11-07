@@ -464,6 +464,7 @@ class _DutyRosterScreenState extends State<DutyRosterScreen>
   }
 
   Future<void> _load() async {
+    _loaded = false;
     try {
       recentAssignments.clear();
       copiedFromDateKey = null;
@@ -593,8 +594,10 @@ class _DutyRosterScreenState extends State<DutyRosterScreen>
       });
       _loaded = true;
     } catch (_) {
-      _loaded = true;
-      msg('تعذر تحميل الكشف.');
+      // لا نعتبر التحميل ناجحاً عند فشل قراءة Firestore؛ منعاً لحفظ قوائم فارغة
+      // فوق كشف موجود نتيجة خطأ اتصال أو صلاحيات.
+      _loaded = false;
+      msg('تعذر تحميل الكشف. لم نسمح بالحفظ حتى لا تتأثر الأسماء الموجودة.');
     }
   }
 
@@ -730,15 +733,14 @@ class _DutyRosterScreenState extends State<DutyRosterScreen>
 
   Future<void> _publish() async {
     if (!admin || busy) return;
-    _autosaveTimers[shift]?.cancel();
-    final draftSaved = await _persistShiftDraft(shift, silent: true);
-    if (!draftSaved) {
-      msg('تعذر حفظ مسودة الشفت $shift؛ أوقفنا الاعتماد حتى لا تضيع التعديلات.');
+    if (!_loaded) {
+      msg('لم يكتمل تحميل الكشف بعد. لم نفتح المعاينة أو الحفظ حفاظاً على الأسماء.');
       return;
     }
+    _autosaveTimers[shift]?.cancel();
 
-    // اعرض نسخة PDF النهائية للإدارة أولاً، ولا يتم الاعتماد أو الإرسال
-    // إلا بعد اختيار أحد الإجراءين من نافذة المعاينة.
+    // المعاينة للقراءة فقط: لا نحفظ مسودة ولا نكتب إلى Firestore قبل
+    // أن يراجع المدير الكشف ويؤكد الإرسال النهائي.
     Map<String, dynamic> previewData;
     try {
       previewData = await _data('draft');
