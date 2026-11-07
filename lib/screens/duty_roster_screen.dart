@@ -76,15 +76,36 @@ class _DutyRosterScreenState extends State<DutyRosterScreen> with SingleTickerPr
     });
   }
 
-  Future<void> _persistShiftDraft(String code, {bool silent = false}) async {
-    if (!admin || !_loaded) return;
+  Future<bool> _persistShiftDraft(String code, {bool silent = false}) async {
+    if (!admin || !_loaded) return false;
     try {
+      final rosterRef = db.collection('daily_duty_rosters').doc(keyDay);
+      final existingRoster = await rosterRef.get();
+      if (!existingRoster.exists && copiedFromDateKey != null) {
+        final sourceSnap = await db.collection('daily_duty_rosters').doc(copiedFromDateKey).get();
+        final sourceShifts = Map<String, dynamic>.from(sourceSnap.data()?['shifts'] ?? {});
+        for (final sourceCode in ['A', 'B', 'C']) {
+          if (sourceShifts[sourceCode] is Map) {
+            final sourceBlock = Map<String, dynamic>.from(sourceShifts[sourceCode]);
+            sourceBlock['status'] = 'draft';
+            sourceBlock['managerConfirmed'] = false;
+            sourceBlock['publishedAt'] = FieldValue.delete();
+            sourceShifts[sourceCode] = sourceBlock;
+          }
+        }
+        await rosterRef.set({
+          'dateKey': keyDay,
+          'copiedFromDateKey': copiedFromDateKey,
+          'siteManager': siteManager,
+          'shifts': sourceShifts,
+        }, SetOptions(merge: true));
+      }
       final allData = await _data('draft');
       final allBlocks = Map<String, dynamic>.from(allData['shifts'] ?? {});
       final block = Map<String, dynamic>.from(allBlocks[code] ?? {});
       block['status'] = 'draft';
       block['managerConfirmed'] = false;
-      block.remove('publishedAt');
+      block['publishedAt'] = FieldValue.delete();
       final payload = <String, dynamic>{
         'dateKey': keyDay,
         'siteManager': siteManager,
@@ -94,10 +115,11 @@ class _DutyRosterScreenState extends State<DutyRosterScreen> with SingleTickerPr
         'status': 'draft',
         if (copiedFromDateKey != null) 'copiedFromDateKey': copiedFromDateKey,
       };
-      await db.collection('daily_duty_rosters').doc(keyDay)
-          .set(payload, SetOptions(merge: true));
+      await rosterRef.set(payload, SetOptions(merge: true));
+      return true;
     } catch (_) {
       if (!silent) msg('تعذر حفظ مسودة الشفت $code.');
+      return false;
     }
   }
 
@@ -459,6 +481,22 @@ class _DutyRosterScreenState extends State<DutyRosterScreen> with SingleTickerPr
         copiedFromDateKey = data['copiedFromDateKey']?.toString();
       }
 
+      // إذا كان الكشف الحالي قد حُفظ لشفت واحد فقط، استرجع الشفتات الأخرى
+      // من النسخة الأسبوعية دون الكتابة فوق أي شفت موجود حالياً.
+      if (data != null && copiedFromDateKey != null) {
+        final currentShifts = Map<String, dynamic>.from(data['shifts'] ?? {});
+        if (['A', 'B', 'C'].any((code) => !currentShifts.containsKey(code))) {
+          final sourceSnap = await db.collection('daily_duty_rosters').doc(copiedFromDateKey).get();
+          final sourceShifts = Map<String, dynamic>.from(sourceSnap.data()?['shifts'] ?? {});
+          for (final code in ['A', 'B', 'C']) {
+            if (!currentShifts.containsKey(code) && sourceShifts[code] is Map) {
+              currentShifts[code] = sourceShifts[code];
+            }
+          }
+          data = {...data, 'shifts': currentShifts};
+        }
+      }
+
       if (data == null) {
         if (admin && mounted) {
           setState(() {
@@ -633,8 +671,10 @@ class _DutyRosterScreenState extends State<DutyRosterScreen> with SingleTickerPr
     _autosaveTimer?.cancel();
     setState(() => busy = true);
     try {
-      await _persistShiftDraft(shift);
-      msg('تم حفظ مسودة الشفت $shift فقط.');
+      final saved = await _persistShiftDraft(shift);
+      if (saved) {
+        msg('تم حفظ مسودة الشفت $shift فقط.');
+      }
     } finally {
       if (mounted) setState(() => busy = false);
     }
@@ -751,7 +791,7 @@ class _DutyRosterScreenState extends State<DutyRosterScreen> with SingleTickerPr
       final users = await db.collection('users')
           .where('status', isEqualTo: 'active').get();
       selectedBlock['status'] = 'published';
-      selectedBlock['managerConfirmed'] = true;
+      selectedBlock['managerConfirmed'] = false;
       selectedBlock['publishedAt'] = FieldValue.serverTimestamp();
       batch.set(roster, {
         'dateKey': keyDay,
@@ -828,8 +868,10 @@ class _DutyRosterScreenState extends State<DutyRosterScreen> with SingleTickerPr
       }
     });
     _autosaveTimer?.cancel();
-    await _persistShiftDraft(code);
-    msg('تم مسح بيانات الشفت $code وإعادة تعيينه فقط.');
+    final saved = await _persistShiftDraft(code);
+    msg(saved
+        ? 'تم مسح بيانات الشفت $code وإعادة تعيينه فقط.'
+        : 'تمت إعادة التعيين محلياً، لكن تعذر حفظها على الخادم.');
   }
 
   Widget _actionButton({
