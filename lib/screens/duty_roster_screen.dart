@@ -121,6 +121,22 @@ class _DutyRosterScreenState extends State<DutyRosterScreen>
     try {
       final rosterRef = db.collection('daily_duty_rosters').doc(keyDay);
       final existingRoster = await rosterRef.get();
+      // Preserve the last manager-published snapshot before the first draft edit.
+      // Subsequent autosaves see status=draft and will not create duplicate archives.
+      if (existingRoster.exists) {
+        final existingData = existingRoster.data() ?? <String, dynamic>{};
+        final existingShifts = Map<String, dynamic>.from(existingData['shifts'] ?? {});
+        final existingBlock = Map<String, dynamic>.from(existingShifts[code] ?? {});
+        final existingStatus = (existingBlock['status'] ?? '').toString();
+        if (existingStatus == 'published' || existingStatus == 'approved') {
+          final versionRef = rosterRef.collection('versions').doc();
+          await versionRef.set({
+            ...existingData,
+            'archivedAt': FieldValue.serverTimestamp(),
+            'archivedBy': FirebaseAuth.instance.currentUser?.uid,
+          });
+        }
+      }
       if (!existingRoster.exists && copiedFromDateKey != null) {
         final sourceSnap = await db.collection('daily_duty_rosters').doc(copiedFromDateKey).get();
         final sourceShifts = Map<String, dynamic>.from(sourceSnap.data()?['shifts'] ?? {});
