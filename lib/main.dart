@@ -4,6 +4,9 @@ import 'package:firebase_app_check/firebase_app_check.dart';
 import 'package:flutter/foundation.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'screens/auth_screen.dart';
+import 'screens/dashboard_screen.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -144,7 +147,70 @@ class HospitalVisitorApp extends StatelessWidget {
           child: child ?? const SizedBox.shrink(),
         ),
       ),
-      home: const WelcomeScreen(),
+      home: const AuthGate(),
+    );
+  }
+}
+
+
+/// Restores the authenticated Firebase session automatically after app restarts.
+/// A signed-out user returns to the welcome/login flow.
+class AuthGate extends StatelessWidget {
+  const AuthGate({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<User?>(
+      stream: FirebaseAuth.instance.authStateChanges(),
+      builder: (context, authSnapshot) {
+        if (authSnapshot.connectionState == ConnectionState.waiting) {
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
+        }
+        final user = authSnapshot.data;
+        if (user == null) return const WelcomeScreen();
+
+        return FutureBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+          future: FirebaseFirestore.instance.collection('users').doc(user.uid).get(),
+          builder: (context, profileSnapshot) {
+            if (profileSnapshot.connectionState == ConnectionState.waiting) {
+              return const Scaffold(
+                body: Center(child: CircularProgressIndicator()),
+              );
+            }
+            final data = profileSnapshot.data?.data();
+            final role = data?['role'] as String?;
+            final status = data?['status'] as String?;
+            const allowedRoles = {'security_officer', 'supervisor', 'admin'};
+
+            if (profileSnapshot.hasError ||
+                !profileSnapshot.hasData ||
+                !profileSnapshot.data!.exists ||
+                status != 'active' ||
+                role == null ||
+                !allowedRoles.contains(role)) {
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (FirebaseAuth.instance.currentUser?.uid == user.uid) {
+                  FirebaseAuth.instance.signOut();
+                }
+              });
+              return const Scaffold(
+                body: Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(24),
+                    child: Text(
+                      'تعذر التحقق من صلاحية الحساب. يرجى تسجيل الدخول مجددًا أو مراجعة الإدارة.',
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ),
+              );
+            }
+            return DashboardScreen(userRole: role);
+          },
+        );
+      },
     );
   }
 }
