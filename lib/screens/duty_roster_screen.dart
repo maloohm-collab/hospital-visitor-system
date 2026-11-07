@@ -813,7 +813,7 @@ class _DutyRosterScreenState extends State<DutyRosterScreen>
 
     final finalConfirmation = await _confirm(
       'تأكيد الإرسال النهائي',
-      'هذا هو التأكيد الأخير. سيتم اعتماد كشف الشفت $shift فقط وإرساله إلى المستخدمين النشطين. لن تتأثر كشوفات الشفتات الأخرى. هل تريد الإرسال الآن؟',
+      'هذا هو التأكيد الأخير. سيتم اعتماد كشف الشفت $shift بتاريخ $rosterDateLabel فقط وإرساله إلى المستخدمين النشطين. لن تتأثر كشوفات الشفتات الأخرى. هل تريد الإرسال الآن؟',
     );
     if (finalConfirmation != 2 || !mounted) return;
 
