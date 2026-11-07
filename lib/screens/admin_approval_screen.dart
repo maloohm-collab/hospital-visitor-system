@@ -259,7 +259,7 @@ class _AdminApprovalScreenState extends State<AdminApprovalScreen> {
                   ),
                   const SizedBox(height: 16),
                   if (requests.isEmpty)
-                    const Padding(padding: EdgeInsets.all(24), child: Text('لا توجد نتائج مطابقة. جرّب اسمًا أو رقم هاتف آخر.', textAlign: TextAlign.center, style: TextStyle(color: _navy)))
+                    const Padding(padding: EdgeInsets.all(24), child: Text('لا توجد نتائج مطابقة. جرّب اسمًا أو رقم هاتف آخر.', textAlign: TextAlign.center, style: TextStyle(color: _navy))),
                   for (final request in requests)
                     _RequestCard(
                       request: request,
