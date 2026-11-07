@@ -4,6 +4,7 @@ import 'dart:ui' show FontFeature;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import '../screens/auth_screen.dart';
 import '../screens/notifications_screen.dart';
@@ -24,6 +25,8 @@ class DashboardHeader extends StatelessWidget {
   static const _gold = Color(0xFFD8B65A);
   static const _ink = Color(0xFF17324D);
   static const _muted = Color(0xFF536B82);
+  static const _secureStorage = FlutterSecureStorage();
+  static const _lockKey = 'hospital_visitor_local_lock_';
 
   static const _weekdays = <String>[
     'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس',
@@ -380,7 +383,9 @@ class DashboardHeader extends StatelessWidget {
       ),
     );
     if (shouldSignOut != true || !context.mounted) return;
-    await FirebaseAuth.instance.signOut();
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+    await _secureStorage.write(key: '$_lockKey${user.uid}', value: 'locked');
     if (!context.mounted) return;
     Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute(builder: (_) => const AuthScreen()),
