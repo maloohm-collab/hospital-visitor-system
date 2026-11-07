@@ -898,7 +898,7 @@ class _DutyRosterScreenState extends State<DutyRosterScreen>
     try {
       final blocks = Map<String,dynamic>.from(data['shifts'] ?? {});
       final bytes = Uint8List.fromList(await DutyRosterPdf.build(date: keyDay, shifts: blocks, onlyShift: shift));
-      await Printing.sharePdf(bytes: bytes, filename: 'daily_roster_' + keyDay + '.pdf');
+      await Printing.sharePdf(bytes: bytes, filename: 'كشف وظائف شفت ' + shift + ' تاريخ ' + keyDay + '.pdf');
     } catch (_) { msg('تعذر تجهيز ملف PDF للمشاركة.'); }
   }
 
@@ -906,7 +906,7 @@ class _DutyRosterScreenState extends State<DutyRosterScreen>
     try {
       final blocks = Map<String,dynamic>.from(data['shifts'] ?? {});
       final bytes = Uint8List.fromList(await DutyRosterPdf.build(date: keyDay, shifts: blocks, onlyShift: shift));
-      await Printing.layoutPdf(onLayout: (_) async => bytes, name: 'daily_roster_' + keyDay + '.pdf');
+      await Printing.layoutPdf(onLayout: (_) async => bytes, name: 'كشف وظائف شفت ' + shift + ' تاريخ ' + keyDay + '.pdf');
     } catch (_) { msg('تعذر تجهيز ملف PDF للحفظ أو الطباعة.'); }
   }
 
