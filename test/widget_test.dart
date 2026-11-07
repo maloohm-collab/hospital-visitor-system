@@ -9,6 +9,12 @@ void main() {
     await initializeDateFormatting('en');
   });
 
+  Widget buildWelcomeTestApp() {
+    return MaterialApp(
+      home: const WelcomeScreen(),
+    );
+  }
+
   testWidgets('welcome screen displays the approved background and sign-in entry point',
       (tester) async {
     tester.view.physicalSize = const Size(800, 1000);
@@ -16,7 +22,9 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
 
-    await tester.pumpWidget(const HospitalVisitorApp());
+    // Test the welcome UI in isolation. AuthGate requires a real Firebase
+    // session and is covered by integration tests, not this widget test.
+    await tester.pumpWidget(buildWelcomeTestApp());
 
     expect(find.byType(WelcomeScreen), findsOneWidget);
     expect(find.byType(Image), findsOneWidget);
@@ -33,7 +41,7 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
 
-    await tester.pumpWidget(const HospitalVisitorApp());
+    await tester.pumpWidget(buildWelcomeTestApp());
 
     final signInButton = find.widgetWithText(
       FilledButton,
