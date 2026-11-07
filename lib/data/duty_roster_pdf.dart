@@ -6,18 +6,24 @@ class DutyRosterPdf {
   static Future<List<int>> build({
     required String date,
     required Map<String, dynamic> shifts,
+    String? onlyShift,
   }) async {
     final regular = await PdfGoogleFonts.cairoRegular();
     final bold = await PdfGoogleFonts.cairoBold();
     final doc = pw.Document();
     final pageFormat = PdfPageFormat.a4.landscape;
 
-    for (final code in ['A', 'B', 'C']) {
+    final shiftCodes = onlyShift == null ? <String>['A', 'B', 'C'] : <String>[onlyShift];
+    for (final code in shiftCodes) {
       final block = Map<String, dynamic>.from(shifts[code] ?? {});
       final assignments = (block['assignments'] as List? ?? [])
           .map((value) => Map<String, dynamic>.from(value))
           .toList();
 
+      // تقليل المسافات تلقائياً عند كثرة الأسماء للمحافظة على صفحة واحدة.
+      final compact = assignments.length > 34;
+      final rowFontSize = compact ? 7.2 : 9.0;
+      final rowVerticalPadding = compact ? 1.2 : 3.0;
       // صف أفقي واحد يحتوي مجموعتين: تسلسل/اسم/موقع ثم فاصل ثم المجموعة التالية.
       final pairedRows = <List<String>>[];
       for (var i = 0; i < assignments.length; i += 2) {
@@ -48,11 +54,11 @@ class DutyRosterPdf {
               headers: ['الاسم'],
               data: names,
               headerStyle: pw.TextStyle(font: bold, fontSize: 8, color: PdfColors.white),
-              cellStyle: pw.TextStyle(font: regular, fontSize: 9),
+              cellStyle: pw.TextStyle(font: regular, fontSize: compact ? 7 : 8),
               headerDecoration: pw.BoxDecoration(color: color),
               cellAlignment: pw.Alignment.centerRight,
               border: pw.TableBorder.all(color: PdfColors.grey500, width: .4),
-              cellPadding: const pw.EdgeInsets.symmetric(vertical: 3, horizontal: 5),
+              cellPadding: pw.EdgeInsets.symmetric(vertical: compact ? 1 : 2, horizontal: 4),
             ),
           ],
         );
@@ -60,12 +66,12 @@ class DutyRosterPdf {
 
       final content = <pw.Widget>[
         pw.Text('مستشفى الزرقاء الحكومي',
-          style: pw.TextStyle(font: bold, fontSize: 12)),
+          style: pw.TextStyle(font: bold, fontSize: 11, color: const PdfColor.fromInt(0xFF082B55))),
         pw.Text('شركة الصخرة للخدمات والاستشارات الأمنية',
-          style: pw.TextStyle(font: bold, fontSize: 10)),
+          style: pw.TextStyle(font: bold, fontSize: 9, color: const PdfColor.fromInt(0xFF087E78))),
         pw.SizedBox(height: 2),
         pw.Text('كشف الوظائف اليومي — $date',
-          style: pw.TextStyle(font: bold, fontSize: 11)),
+          style: pw.TextStyle(font: bold, fontSize: 10, color: const PdfColor.fromInt(0xFF082B55))),
         pw.SizedBox(height: 3),
         pw.Row(children: [
           pw.Expanded(child: pw.Text(
@@ -91,11 +97,11 @@ class DutyRosterPdf {
           headers: ['ت', 'اسم ضابط الأمن', 'الموقع / الوظيفة', 'ت', 'اسم ضابط الأمن', 'الموقع / الوظيفة'],
           data: pairedRows,
           headerStyle: pw.TextStyle(font: bold, color: PdfColors.white, fontSize: 8),
-          cellStyle: pw.TextStyle(font: regular, fontSize: 9),
+          cellStyle: pw.TextStyle(font: regular, fontSize: rowFontSize),
           headerDecoration: const pw.BoxDecoration(color: PdfColor.fromInt(0xFF164A78)),
           cellAlignment: pw.Alignment.center,
           border: pw.TableBorder.all(color: PdfColors.grey600, width: .45),
-          cellPadding: const pw.EdgeInsets.symmetric(vertical: 3, horizontal: 4),
+          cellPadding: pw.EdgeInsets.symmetric(vertical: rowVerticalPadding, horizontal: 3),
           columnWidths: {
             0: const pw.FixedColumnWidth(23),
             1: const pw.FlexColumnWidth(2.1),
@@ -122,11 +128,11 @@ class DutyRosterPdf {
               headers: ['اسم الموظف', 'موقع العيادة'],
               data: clinicRows,
               headerStyle: pw.TextStyle(font: bold, color: PdfColors.white, fontSize: 8),
-              cellStyle: pw.TextStyle(font: regular, fontSize: 8),
+              cellStyle: pw.TextStyle(font: regular, fontSize: compact ? 7 : 8),
               headerDecoration: const pw.BoxDecoration(color: PdfColor.fromInt(0xFF087E78)),
               cellAlignment: pw.Alignment.center,
               border: pw.TableBorder.all(color: PdfColors.grey500, width: .4),
-              cellPadding: const pw.EdgeInsets.symmetric(vertical: 2, horizontal: 4),
+              cellPadding: pw.EdgeInsets.symmetric(vertical: compact ? 1 : 2, horizontal: 3),
             ),
           ]);
         }
@@ -164,11 +170,28 @@ class DutyRosterPdf {
           headers: ['ملاحظات المشرف الإداري'],
           data: [[note.isEmpty ? 'لا توجد ملاحظات' : note]],
           headerStyle: pw.TextStyle(font: bold, fontSize: 8, color: PdfColors.white),
-          cellStyle: pw.TextStyle(font: regular, fontSize: 9),
+          cellStyle: pw.TextStyle(font: regular, fontSize: compact ? 7 : 8),
           headerDecoration: const pw.BoxDecoration(color: PdfColor.fromInt(0xFF65788A)),
           cellAlignment: pw.Alignment.centerRight,
           border: pw.TableBorder.all(color: PdfColors.grey500, width: .4),
-          cellPadding: const pw.EdgeInsets.symmetric(vertical: 4, horizontal: 6),
+          cellPadding: pw.EdgeInsets.symmetric(vertical: compact ? 2 : 3, horizontal: 5),
+        ),
+      ]);
+
+      content.addAll([
+        pw.SizedBox(height: 5),
+        pw.Container(
+          padding: const pw.EdgeInsets.symmetric(vertical: 5, horizontal: 8),
+          decoration: pw.BoxDecoration(
+            border: pw.Border.all(color: const PdfColor.fromInt(0xFF087E78), width: .8),
+            borderRadius: pw.BorderRadius.circular(3),
+          ),
+          child: pw.Row(children: [
+            pw.Expanded(child: pw.Text(
+              'معتمد عند مدير الموقع: ${(block['siteManager'] ?? Map<String, dynamic>.from(shifts['A'] ?? {})['siteManager'] ?? '').toString()}',
+              style: pw.TextStyle(font: bold, fontSize: compact ? 7 : 8, color: const PdfColor.fromInt(0xFF082B55)))),
+            pw.Text('التوقيع: ______________', style: pw.TextStyle(font: regular, fontSize: compact ? 7 : 8)),
+          ]),
         ),
       ]);
 
@@ -177,9 +200,16 @@ class DutyRosterPdf {
         margin: const pw.EdgeInsets.fromLTRB(22, 16, 22, 16),
         build: (_) => pw.Directionality(
           textDirection: pw.TextDirection.rtl,
-          child: pw.Column(
-            crossAxisAlignment: pw.CrossAxisAlignment.stretch,
-            children: content,
+          child: pw.FittedBox(
+            fit: pw.BoxFit.scaleDown,
+            alignment: pw.Alignment.topCenter,
+            child: pw.ConstrainedBox(
+              constraints: pw.BoxConstraints(maxWidth: pageFormat.width - 44),
+              child: pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.stretch,
+                children: content,
+              ),
+            ),
           ),
         ),
       ));
@@ -206,9 +236,9 @@ class DutyRosterPdf {
               style: pw.TextStyle(font: bold, fontSize: 16)),
             pw.SizedBox(height: 12),
             ...fixedRules.map((line) => pw.Padding(
-              padding: const pw.EdgeInsets.only(bottom: 8),
+              padding: const pw.EdgeInsets.only(bottom: 5),
               child: pw.Bullet(text: line,
-                style: pw.TextStyle(font: regular, fontSize: 10)),
+                style: pw.TextStyle(font: regular, fontSize: 8)),
             )),
           ],
         ),
