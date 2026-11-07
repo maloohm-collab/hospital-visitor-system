@@ -1,10 +1,15 @@
 import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
 import 'dart:typed_data';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:printing/printing.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
 import '../data/duty_roster_pdf.dart';
 import '../data/duty_roster_catalog.dart';
 import '../widgets/app_search_field.dart';
@@ -894,20 +899,96 @@ class _DutyRosterScreenState extends State<DutyRosterScreen>
     }
   }
 
-  Future<void> _sharePdf(Map<String,dynamic> data) async {
-    try {
-      final blocks = Map<String,dynamic>.from(data['shifts'] ?? {});
-      final bytes = Uint8List.fromList(await DutyRosterPdf.build(date: keyDay, shifts: blocks, onlyShift: shift));
-      await Printing.sharePdf(bytes: bytes, filename: 'كشف وظائف شفت ' + shift + ' تاريخ ' + keyDay + '.pdf');
-    } catch (_) { msg('تعذر تجهيز ملف PDF للمشاركة.'); }
+  String _exportBaseName() => 'كشف وظائف شفت $shift تاريخ $keyDay';
+
+  Uint8List _wordBytes(Map<String, dynamic> data) {
+    final blocks = Map<String, dynamic>.from(data['shifts'] ?? {});
+    final block = Map<String, dynamic>.from(blocks[shift] ?? {});
+    String esc(String value) => const HtmlEscape().convert(value);
+    final assignments = (block['assignments'] as List? ?? []);
+    final rows = assignments.asMap().entries.map((entry) {
+      final item = Map<String, dynamic>.from(entry.value);
+      return '<tr><td>\${entry.key + 1}</td><td>\${esc((item['officer'] ?? '').toString())}</td><td>\${esc((item['location'] ?? '').toString())}</td></tr>';
+    }).join();
+    String list(String title, List values) => '<h3>$title</h3><p>\${values.map((v) => esc(v.toString())).join('　 •　 ')}</p>';
+    final html = '''
+<!DOCTYPE html><html><head><meta charset="utf-8"><style>
+@page{size:A4 landscape;margin:12mm}body{font-family:Arial;direction:rtl;text-align:right}
+h1,h2,h3{text-align:center;color:#123b60}table{width:100%;border-collapse:collapse}
+td,th{border:1px solid #777;padding:6px;font-size:11pt}th{background:#164a78;color:white}
+</style></head><body>
+<h1>مستشفى الزرقاء الحكومي</h1><h2>شركة الصخرة للخدمات والاستشارات الأمنية</h2>
+<h2>كشف الوظائف اليومي — $keyDay — الشفت $shift</h2>
+<p>مدير الموقع: \${esc((block['siteManager'] ?? '').toString())}　 المشرف: \${esc((block['supervisorName'] ?? '').toString())}　 \${esc((block['hours'] ?? '').toString())}</p>
+<table><tr><th>ت</th><th>اسم ضابط الأمن</th><th>الموقع / الوظيفة</th></tr>$rows</table>
+\${list('المجازون OFF', block['offNames'] as List? ?? [])}
+\${list('المجازون سنوياً', block['annualNames'] as List? ?? [])}
+\${list('قائمة سوات', block['specialNames'] as List? ?? [])}
+\${list('وظائف العيادات', block['clinicAssignments'] as List? ?? [])}
+<h3>ملاحظات المشرف الإداري</h3><p>\${esc((block['adminNote'] ?? 'لا توجد ملاحظات').toString())}</p>
+<p>التوقيع: ____________________</p></body></html>''';
+    return Uint8List.fromList([0xEF, 0xBB, 0xBF, ...utf8.encode(html)]);
   }
 
-  Future<void> _savePdf(Map<String,dynamic> data) async {
+  Future<void> _exportRoster(Map<String, dynamic> data, String format, bool share) async {
+    final extension = format == 'صورة' ? 'png' : format == 'Word' ? 'doc' : 'pdf';
+    final filename = '\${_exportBaseName()}.$extension';
     try {
-      final blocks = Map<String,dynamic>.from(data['shifts'] ?? {});
-      final bytes = Uint8List.fromList(await DutyRosterPdf.build(date: keyDay, shifts: blocks, onlyShift: shift));
-      await Printing.layoutPdf(onLayout: (_) async => bytes, name: 'كشف وظائف شفت ' + shift + ' تاريخ ' + keyDay + '.pdf');
-    } catch (_) { msg('تعذر تجهيز ملف PDF للحفظ أو الطباعة.'); }
+      final blocks = Map<String, dynamic>.from(data['shifts'] ?? {});
+      final pdfBytes = Uint8List.fromList(await DutyRosterPdf.build(
+          date: keyDay, shifts: blocks, onlyShift: shift));
+      Uint8List bytes;
+      if (format == 'صورة') {
+        final raster = await Printing.raster(pdfBytes, pages: const [0], dpi: 180).first;
+        bytes = Uint8List.fromList(await raster.toPng());
+      } else if (format == 'Word') {
+        bytes = _wordBytes(data);
+      } else {
+        bytes = pdfBytes;
+      }
+      if (share) {
+        final directory = await getTemporaryDirectory();
+        final file = File('\${directory.path}/$filename');
+        await file.writeAsBytes(bytes, flush: true);
+        await Share.shareXFiles([XFile(file.path)], text: 'كشف وظائف شفت $shift بتاريخ $keyDay');
+      } else {
+        final savedPath = await FilePicker.platform.saveFile(
+          dialogTitle: 'حفظ $format', fileName: filename, bytes: bytes);
+        if (savedPath != null && mounted) msg('تم حفظ الملف.');
+      }
+    } catch (_) {
+      if (mounted) msg('تعذر تجهيز ملف $format. حاول مرة أخرى.');
+    }
+  }
+
+  Future<void> _showExportOptions(Map<String, dynamic> data) async {
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (sheetContext) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(18),
+          child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            const Text('حفظ وإرسال الكشف', textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+            const SizedBox(height: 14),
+            for (final format in ['صورة', 'Word', 'PDF']) ...[
+              Text(format, style: const TextStyle(fontWeight: FontWeight.w800, color: navy)),
+              Row(children: [
+                Expanded(child: OutlinedButton.icon(
+                  onPressed: () { Navigator.pop(sheetContext); _exportRoster(data, format, false); },
+                  icon: const Icon(Icons.save_alt), label: const Text('حفظ'))),
+                const SizedBox(width: 8),
+                Expanded(child: FilledButton.icon(
+                  onPressed: () { Navigator.pop(sheetContext); _exportRoster(data, format, true); },
+                  icon: const Icon(Icons.share), label: const Text('إرسال / مشاركة'))),
+              ]),
+              const SizedBox(height: 8),
+            ],
+          ]),
+        ),
+      ),
+    );
   }
 
   Future<void> _resetCurrentShift() async {
@@ -1068,17 +1149,10 @@ class _DutyRosterScreenState extends State<DutyRosterScreen>
               const SizedBox(height: 16),
             ],
             if (data != null && (admin || published)) ...[
-              _sectionTitle('ملف الكشف PDF', icon: Icons.picture_as_pdf_outlined),
-              Wrap(
-                spacing: 10,
-                runSpacing: 10,
-                children: [
-                  _actionButton(label: 'مشاركة PDF للشفت $shift', icon: Icons.share,
-                    onPressed: () => _sharePdf(data), primary: true),
-                  _actionButton(label: 'حفظ / طباعة PDF للشفت $shift', icon: Icons.download,
-                    onPressed: () => _savePdf(data)),
-                ],
-              ),
+              _sectionTitle('حفظ وإرسال الكشف', icon: Icons.file_present_outlined),
+              _actionButton(label: 'اختيار الصيغة: صورة أو Word أو PDF',
+                icon: Icons.ios_share_rounded,
+                onPressed: () => _showExportOptions(data), primary: true),
               const SizedBox(height: 16),
               const Divider(height: 1, thickness: 1),
               const SizedBox(height: 16),
