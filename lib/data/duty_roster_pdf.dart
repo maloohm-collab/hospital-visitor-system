@@ -308,7 +308,6 @@ class DutyRosterPdf {
           pw.TableRow(children: [
             cell(
               statusItems[i][1],
-              ,
               background: statusBg(statusItems[i][1]),
             ),
             cell(
