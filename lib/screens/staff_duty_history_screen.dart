@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'dart:typed_data';
+import 'dart:ui' as ui;
 import 'package:arabic_reshaper/arabic_reshaper.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:file_picker/file_picker.dart';
@@ -606,7 +607,7 @@ class _StaffDutyHistoryScreenState extends State<StaffDutyHistoryScreen> {
           return TextField(
             controller: controller,
             focusNode: focusNode,
-            textDirection: TextDirection.rtl,
+            textDirection: ui.TextDirection.rtl,
             textInputAction: TextInputAction.search,
             onChanged: (value) {
               _name.value = controller.value;
