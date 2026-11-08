@@ -39,6 +39,7 @@ class DutyRosterImageImportService {
   "date": "YYYY-MM-DD أو null إذا تعذر قراءته",
   "shift": "A أو B أو C أو null إذا تعذر تحديده",
   "supervisorName": "اسم المشرف إذا كان ظاهراً، وإلا نص فارغ",
+  "siteManager": "اسم مدير الموقع إذا كان ظاهراً، وإلا نص فارغ",
   "assignments": [{"officer": "اسم الموظف كما هو مطبوع", "location": "الموقع أو الوظيفة كما هو مطبوع"}],
   "offNames": ["أسماء المجازين"],
   "annualNames": ["أسماء المجازين سنوياً"],
@@ -55,7 +56,7 @@ class DutyRosterImageImportService {
 - ضع وظائف العيادات في clinicAssignments فقط إذا كانت ظاهرة كجدول عيادات مستقل.
 - تجاهل التاريخ أو النصوص التي لا تخص بيانات الكشف، لكن استخرج تاريخ المناوبة المطبوع إن كان واضحاً.
 - لا تعتبر التعليمات الثابتة أو الملاحظات المطبوعة العامة أسماء موظفين أو مواقع.
-- إذا كانت الصورة تحتوي أكثر من شفت، استخرج الشفت المطلوب فقط.
+- استخرج اسم المشرف ومدير الموقع من خانتيهما المخصصتين إذا كانتا ظاهرتين بوضوح.\n- إذا كانت الصورة تحتوي أكثر من شفت، استخرج الشفت المطلوب فقط.
 ''';
 
     final prompt = TextPart(
@@ -84,6 +85,7 @@ class DutyRosterImageImportService {
     result['date'] = result['date']?.toString();
     result['shift'] = result['shift']?.toString().toUpperCase();
     result['supervisorName'] = (result['supervisorName'] ?? '').toString().trim();
+    result['siteManager'] = (result['siteManager'] ?? '').toString().trim();
     result['assignments'] = _mapRows(result['assignments']);
     result['clinicAssignments'] = _mapRows(result['clinicAssignments']);
     result['offNames'] = _stringList(result['offNames']);
