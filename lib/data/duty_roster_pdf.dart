@@ -69,10 +69,9 @@ class DutyRosterPdf {
     final doc = pw.Document();
 
     const pageFormat = PdfPageFormat.a4;
-    // عرض الكشف يقارب 85% من عرض A4 مع هوامش جانبية متساوية.
-    const margin = 44.6;
-    // هوامش عمودية أصغر لإتاحة مساحة كافية للكشف كاملاً بدون تصغير.
-    const marginV = 24.0;
+    // هوامش جانبية بسيطة لاستغلال عرض A4 (العرض ≈ 567pt).
+    const margin = 14.0;
+    const marginV = 20.0;
     final contentWidth = pageFormat.width - margin * 2;
     final dayName = _arabicDay(date);
     final dateLabel = dayName.isEmpty ? date : '$dayName   |   $date';
@@ -105,12 +104,15 @@ class DutyRosterPdf {
       final lowerRowsCount =
           clinics.length > statusCount ? clinics.length : statusCount;
 
-      // نفس الخط ونفس الحشو لكل الجداول (الرئيسي والسفلي) حتى تتطابق المواصفات.
-      // يُحدد الحجم حسب مجموع الصفوف العمودية في الصفحة.
+      // نفس الخط ونفس ارتفاع الصف لكل الجداول (الرئيسي والسفلي).
       final totalRows = half + lowerRowsCount;
-      final double fs = totalRows <= 28 ? 10.0 : (totalRows <= 33 ? 9.0 : 8.0);
+      final double fs =
+          totalRows <= 28 ? 10.0 : (totalRows <= 33 ? 9.0 : 8.5);
       final double vPad =
-          totalRows <= 28 ? 2.5 : (totalRows <= 33 ? 1.8 : 1.0);
+          totalRows <= 28 ? 2.0 : (totalRows <= 33 ? 1.4 : 1.0);
+      // ارتفاع صف ثابت: خط Cairo يعطي ارتفاع سطر كبيراً (~1.9×)،
+      // فنثبّت الارتفاع على ~1.45× حتى يتسع الكشف بدون انكماش.
+      final double rowH = fs * 1.45 + vPad * 2;
 
       pw.Widget cell(
         String value, {
@@ -120,29 +122,34 @@ class DutyRosterPdf {
         pw.Font? font,
         pw.Alignment align = pw.Alignment.center,
         pw.TextAlign textAlign = pw.TextAlign.center,
-        bool fitJob = false,
+        bool wrap = false,
       }) {
         final effectiveSize = size ?? fs;
         final text = pw.Text(
           value,
           textDirection: pw.TextDirection.rtl,
           textAlign: textAlign,
-          maxLines: fitJob ? 1 : null,
+          maxLines: wrap ? null : 1,
           style: pw.TextStyle(font: font ?? bold, fontSize: effectiveSize),
         );
+        if (wrap) {
+          return pw.Container(
+            alignment: align,
+            color: background ?? (header ? _head : null),
+            padding: pw.EdgeInsets.symmetric(vertical: vPad, horizontal: 3),
+            child: text,
+          );
+        }
         return pw.Container(
+          height: rowH,
           alignment: align,
           color: background ?? (header ? _head : null),
-          padding: pw.EdgeInsets.symmetric(
-            vertical: vPad,
-            horizontal: fitJob ? 2 : 3,
+          padding: const pw.EdgeInsets.symmetric(horizontal: 3),
+          child: pw.FittedBox(
+            fit: pw.BoxFit.scaleDown,
+            alignment: align,
+            child: text,
           ),
-          child: fitJob
-              ? pw.FittedBox(
-                  fit: pw.BoxFit.scaleDown,
-                  child: text,
-                )
-              : text,
         );
       }
 
@@ -159,7 +166,9 @@ class DutyRosterPdf {
 
       pw.Widget bar(String value, {double? size}) => pw.Container(
             width: double.infinity,
-            padding: pw.EdgeInsets.symmetric(vertical: vPad + 1, horizontal: 6),
+            height: rowH,
+            alignment: pw.Alignment.center,
+            padding: const pw.EdgeInsets.symmetric(horizontal: 6),
             decoration: pw.BoxDecoration(
               color: _head,
               border: pw.Border.all(color: _line, width: .7),
@@ -168,6 +177,7 @@ class DutyRosterPdf {
               value,
               textDirection: pw.TextDirection.rtl,
               textAlign: pw.TextAlign.center,
+              maxLines: 1,
               style: pw.TextStyle(font: bold, fontSize: size ?? fs),
             ),
           );
@@ -181,48 +191,39 @@ class DutyRosterPdf {
       final supervisor = (block['supervisorName'] ?? '').toString();
       final note = (block['adminNote'] ?? '').toString().trim();
 
-      final titleBox = pw.Center(
-        child: pw.Container(
-          width: contentWidth,
-          decoration: pw.BoxDecoration(
-            border: pw.Border.all(color: _line, width: .9),
-          ),
-          child: pw.Column(children: [
-            pw.Container(
-              width: double.infinity,
-              padding: const pw.EdgeInsets.symmetric(vertical: 3, horizontal: 5),
-              child: pw.Text(
-                'مستشفى الزرقاء الحكومي — شفت $code',
-                textDirection: pw.TextDirection.rtl,
-                textAlign: pw.TextAlign.center,
-                style: pw.TextStyle(font: bold, fontSize: 14.5),
-              ),
+      pw.Widget titleLine(String value, double size, {bool topBorder = false}) =>
+          pw.Container(
+            width: double.infinity,
+            height: size * 1.4 + 6,
+            alignment: pw.Alignment.center,
+            decoration: topBorder
+                ? const pw.BoxDecoration(
+                    border: pw.Border(top: pw.BorderSide(color: _line, width: .9)),
+                  )
+                : null,
+            child: pw.Text(
+              value,
+              textDirection: pw.TextDirection.rtl,
+              textAlign: pw.TextAlign.center,
+              maxLines: 1,
+              style: pw.TextStyle(font: bold, fontSize: size),
             ),
-            pw.Container(
-              width: double.infinity,
-              padding: const pw.EdgeInsets.only(bottom: 3, left: 4, right: 4),
-              child: pw.Text(
-                'شركة الصخرة للخدمات والاستشارات الأمنية',
-                textDirection: pw.TextDirection.rtl,
-                textAlign: pw.TextAlign.center,
-                style: pw.TextStyle(font: bold, fontSize: 9.5),
-              ),
-            ),
-            pw.Container(
-              width: double.infinity,
-              decoration: const pw.BoxDecoration(
-                border: pw.Border(top: pw.BorderSide(color: _line, width: .9)),
-              ),
-              padding: const pw.EdgeInsets.symmetric(vertical: 3),
-              child: pw.Text(
-                hours.isEmpty ? dateLabel : '$dateLabel   |   $hours',
-                textDirection: pw.TextDirection.rtl,
-                textAlign: pw.TextAlign.center,
-                style: pw.TextStyle(font: bold, fontSize: 11.5),
-              ),
-            ),
-          ]),
+          );
+
+      final titleBox = pw.Container(
+        width: double.infinity,
+        decoration: pw.BoxDecoration(
+          border: pw.Border.all(color: _line, width: .9),
         ),
+        child: pw.Column(children: [
+          titleLine('مستشفى الزرقاء الحكومي — شفت $code', 14.5),
+          titleLine('شركة الصخرة للخدمات والاستشارات الأمنية', 9.5),
+          titleLine(
+            hours.isEmpty ? dateLabel : '$dateLabel   |   $hours',
+            11.5,
+            topBorder: true,
+          ),
+        ]),
       );
 
       // أعمدة موحدة: الجدول الرئيسي والجداول السفلية تستخدم نفس النسب
@@ -234,10 +235,10 @@ class DutyRosterPdf {
       // LTR: مجموعة اليسار أولاً، ثم مجموعة اليمين (الأرقام 1..half يميناً).
       final mainRows = <pw.TableRow>[
         pw.TableRow(children: [
-          cell('الوظيفة', header: true, fitJob: true),
+          cell('الوظيفة', header: true),
           cell('الموظف', header: true),
           cell('ت', header: true),
-          cell('الوظيفة', header: true, fitJob: true),
+          cell('الوظيفة', header: true),
           cell('الموظف', header: true),
           cell('ت', header: true),
         ]),
@@ -247,10 +248,10 @@ class DutyRosterPdf {
         final left = leftIndex < assignments.length ? assignments[leftIndex] : null;
         final right = assignments[r];
         mainRows.add(pw.TableRow(children: [
-          cell(left == null ? '' : (left['location'] ?? '').toString(), fitJob: true),
+          cell(left == null ? '' : (left['location'] ?? '').toString()),
           cell(left == null ? '' : (left['officer'] ?? '').toString()),
           cell(left == null ? '' : (leftIndex + 1).toString()),
-          cell((right['location'] ?? '').toString(), fitJob: true),
+          cell((right['location'] ?? '').toString()),
           cell((right['officer'] ?? '').toString()),
           cell((r + 1).toString()),
         ]));
@@ -275,13 +276,13 @@ class DutyRosterPdf {
       };
       final clinicRows = <pw.TableRow>[
         pw.TableRow(children: [
-          cell('الوظيفة', header: true, fitJob: true),
+          cell('الوظيفة', header: true),
           cell('الموظف', header: true),
           cell('ت', header: true),
         ]),
         for (var i = 0; i < clinics.length; i++)
           pw.TableRow(children: [
-            cell((clinics[i]['location'] ?? '').toString(), fitJob: true),
+            cell((clinics[i]['location'] ?? '').toString()),
             cell((clinics[i]['officer'] ?? '').toString()),
             cell((i + 1).toString()),
           ]),
@@ -299,7 +300,7 @@ class DutyRosterPdf {
               : null;
       final statusRows = <pw.TableRow>[
         pw.TableRow(children: [
-          cell('الحالة', header: true, fitJob: true),
+          cell('الحالة', header: true),
           cell('الاسم', header: true),
           cell('ت', header: true),
         ]),
@@ -307,7 +308,7 @@ class DutyRosterPdf {
           pw.TableRow(children: [
             cell(
               statusItems[i][1],
-              fitJob: true,
+              ,
               background: statusBg(statusItems[i][1]),
             ),
             cell(
@@ -367,6 +368,7 @@ class DutyRosterPdf {
               size: fs - 1,
               align: pw.Alignment.centerRight,
               textAlign: pw.TextAlign.right,
+              wrap: true,
             ),
             cell('ملاحظة', header: true),
           ]),
@@ -390,12 +392,13 @@ class DutyRosterPdf {
       final rulesRows = <pw.TableRow>[];
       for (var i = 0; i < _rules.length; i += 2) {
         pw.Widget ruleCell(String value) => pw.Padding(
-              padding: const pw.EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+              padding: const pw.EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
               child: pw.Text(
                 '• $value',
                 textDirection: pw.TextDirection.rtl,
                 textAlign: pw.TextAlign.right,
-                style: pw.TextStyle(font: bold, fontSize: 8.0, lineSpacing: 1.15),
+                // سالب لتقليل ارتفاع السطر الكبير في خط Cairo.
+                style: pw.TextStyle(font: bold, fontSize: 8.0, lineSpacing: -4),
               ),
             );
         // أول تعليمة في الخلية اليمنى لضمان التسلسل من اليمين إلى اليسار.
@@ -424,7 +427,8 @@ class DutyRosterPdf {
           ),
           pw.Container(
             width: double.infinity,
-            padding: const pw.EdgeInsets.symmetric(vertical: 3, horizontal: 5),
+            height: 11.5 * 1.4 + 6,
+            alignment: pw.Alignment.center,
             decoration: pw.BoxDecoration(
               border: pw.Border.all(color: _line, width: .7),
             ),
@@ -432,6 +436,7 @@ class DutyRosterPdf {
               'التعليمات أعلاه تعتبر أوامر ثابتة وسيحاسب كل من يخالفها',
               textDirection: pw.TextDirection.rtl,
               textAlign: pw.TextAlign.center,
+              maxLines: 1,
               style: pw.TextStyle(font: bold, fontSize: 11.5),
             ),
           ),
@@ -477,7 +482,10 @@ class DutyRosterPdf {
 
       doc.addPage(pw.Page(
         pageFormat: pageFormat,
-        margin: const pw.EdgeInsets.symmetric(horizontal: margin, vertical: marginV),
+        margin: const pw.EdgeInsets.symmetric(
+          horizontal: margin,
+          vertical: marginV,
+        ),
         build: (_) => content,
       ));
     }
