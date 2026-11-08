@@ -33,11 +33,17 @@ class DutyRosterImageImportService {
 
 قواعد إلزامية:
 1) استخرج بيانات الشفت $expectedShift فقط، ولا تدمج أي شفت آخر حتى لو ظهر في الصورة.
-2) استخرج تاريخ المناوبة المطبوع نفسه بصيغة YYYY-MM-DD، وليس تاريخ اليوم.
+2) اقرأ التاريخ المطبوع وفق التنسيق الأردني المعتاد يوم/شهر/سنة (DD/MM/YYYY): الرقم الأول هو اليوم دائماً والرقم الثاني هو الشهر دائماً. لا تعكسهما ولا تستخدم تفسير الشهر/اليوم الأمريكي.
+   حوّل التاريخ المقروء إلى YYYY-MM-DD فقط بعد تحديد اليوم والشهر بشكل صحيح.
+   أمثلة إلزامية: 09/11/2026 تصبح 2026-11-09، و 11/09/2026 تصبح 2026-09-11. لا تخلط بين المثالين.
+   إذا كان ترتيب التاريخ في الصورة غير واضح، لا تخمّن؛ أخرج null للتاريخ.
 3) حافظ على ترتيب الصفوف والأسماء كما في الكشف.
 4) لا تخترع اسماً أو موقعاً ولا تخمّن النص غير الواضح. اترك القيمة غير المقروءة فارغة "" مع إبقاء الصف إن أمكن.
 5) لا تسقط أي صف أو اسم. راجع بداية الجدول ونهايته وجميع الأقسام قبل إخراج النتيجة.
 6) افصل المجازين والمجازين سنوياً والسوات في القوائم المخصصة، ولا تضعهم ضمن assignments.
+   قسم السوات قد يظهر بعنوان: سوات، SWAT، مشرفين زائد سوات، مشرف سوات، أو ضباط أمن تدخل سريع.
+   افحص هذا القسم بشكل مستقل، وانقل كل الأسماء الظاهرة فيه إلى specialNames كما هي، حتى لو كان الاسم مكرراً ضمن قائمة المشرفين.
+   لا تترك specialNames فارغة إذا كان قسم السوات يحتوي أسماء. لا تدمج أسماء السوات مع supervisorName.
 7) ضع وظائف العيادات في clinicAssignments فقط إذا كان لها قسم/جدول مستقل في الكشف.
 8) استخرج المشرف ومدير الموقع من خاناتهما فقط إن كانتا موجودتين.
 9) تجاهل التعليمات والأوامر الثابتة والتواقيع الفارغة والعناوين العامة؛ لا تعتبرها أسماء موظفين.
@@ -98,7 +104,14 @@ class DutyRosterImageImportService {
     result['clinicAssignments'] = _mapRows(result['clinicAssignments']);
     result['offNames'] = _stringList(result['offNames']);
     result['annualNames'] = _stringList(result['annualNames']);
-    result['specialNames'] = _stringList(result['specialNames']);
+    // Gemini may label the SWAT section with a different key; normalize all
+    // common variants into the review screen's canonical specialNames field.
+    final swatSource = result['specialNames'] ??
+        result['swatNames'] ??
+        result['swat'] ??
+        result['swatAssignments'] ??
+        result['supervisorsSwat'];
+    result['specialNames'] = _stringList(swatSource);
 
     final hasAnyData = (result['assignments'] as List).isNotEmpty ||
         (result['clinicAssignments'] as List).isNotEmpty ||
