@@ -898,12 +898,13 @@ class _DutyRosterScreenState extends State<DutyRosterScreen>
       );
     } catch (error) {
       if (mounted) {
-        final message = error is ArgumentError || error is FormatException ||
-                error is StateError
-            ? error.toString().replaceFirst('Invalid argument(s): ', '')
-                .replaceFirst('FormatException: ', '')
-                .replaceFirst('Bad state: ', '')
-            : 'تعذر استخراج البيانات. تحقق من اتصال الإنترنت وإعدادات Firebase AI ثم أعد المحاولة.';
+        final details = error.toString()
+            .replaceFirst('Invalid argument(s): ', '')
+            .replaceFirst('FormatException: ', '')
+            .replaceFirst('Bad state: ', '');
+        final message = details.length > 420
+            ? 'تعذر استخراج البيانات: ${details.substring(0, 420)}…'
+            : 'تعذر استخراج البيانات: $details';
         msg(message);
       }
       return;
