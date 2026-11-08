@@ -585,7 +585,7 @@ class _DutyRosterScreenState extends State<DutyRosterScreen>
           copiedFromDateKey = sourceKey;
         }
       } else if (data != null) {
-        copiedFromDateKey = data['copiedFromDateKey']?.toString();
+        copiedFromDateKey = data['copiedFromDateKey']?.toString() ?? copiedFromDateKey;
       }
 
       // إذا كان الكشف الحالي قد حُفظ لشفت واحد فقط، استرجع الشفتات الأخرى
