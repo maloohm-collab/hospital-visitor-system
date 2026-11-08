@@ -465,6 +465,77 @@ class _WorkLocationScreenState extends State<WorkLocationScreen> {
     )),
   );
 
+  Widget _recentWorkerNotes() => StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+    stream: db.collection('work_shift_notes')
+        .where('officerUid', isEqualTo: uid)
+        .where('createdAt', isGreaterThanOrEqualTo: Timestamp.fromDate(
+          DateTime.now().subtract(const Duration(hours: 10))))
+        .snapshots(),
+    builder: (context, notesSnap) {
+      if (notesSnap.hasError) {
+        return const Padding(
+          padding: EdgeInsets.all(12),
+          child: Text('تعذر تحميل ملاحظاتك الأخيرة.'),
+        );
+      }
+      final now = DateTime.now();
+      final sent = (notesSnap.data?.docs ?? []).where((doc) {
+        final item = doc.data();
+        final createdAt = item['createdAt'];
+        return !item.containsKey('forwardedFromNoteId') &&
+          createdAt is Timestamp &&
+          now.isBefore(createdAt.toDate().add(const Duration(hours: 10)));
+      }).toList()
+        ..sort((a, b) {
+          final aTime = a.data()['createdAt'] as Timestamp;
+          final bTime = b.data()['createdAt'] as Timestamp;
+          return bTime.compareTo(aTime);
+        });
+      if (sent.isEmpty) return const SizedBox.shrink();
+      return Card(
+        color: Colors.white,
+        elevation: 0,
+        margin: const EdgeInsets.only(top: 12),
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Text('ملاحظاتي المرسلة خلال آخر 10 ساعات',
+                style: TextStyle(color: navy, fontWeight: FontWeight.w900)),
+              ...sent.map((doc) {
+                final item = doc.data();
+                final deleteUntil = item['ownerDeleteUntil'];
+                final canDelete = deleteUntil is Timestamp &&
+                  DateTime.now().isBefore(deleteUntil.toDate());
+                final site = (item['locationName'] as String? ?? '').trim();
+                return ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.sticky_note_2_outlined, color: teal),
+                  title: Text(item['body'] as String? ?? ''),
+                  subtitle: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (site.isNotEmpty) Text('الموقع: $site'),
+                      _time(item['createdAt']),
+                    ],
+                  ),
+                  trailing: canDelete
+                    ? IconButton(
+                        tooltip: 'حذف خلال يوم الإرسال',
+                        onPressed: busy ? null : () => _deleteOwnNote(doc.id),
+                        icon: const Icon(Icons.delete_outline_rounded, color: Colors.red),
+                      )
+                    : null,
+                );
+              }),
+            ],
+          ),
+        ),
+      );
+    },
+  );
+
   Widget _activeShift(String shiftId, Map<String, dynamic> data) {
     final siteId = data['activeLocationId'] as String?;
     final startedAt = data['startedAt'];
@@ -577,50 +648,8 @@ class _WorkLocationScreenState extends State<WorkLocationScreen> {
               style: FilledButton.styleFrom(backgroundColor: teal, foregroundColor: Colors.white)),
 
             const SizedBox(height: 12),
-            StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-              stream: db.collection('work_shift_notes')
-                  .where('officerUid', isEqualTo: uid)
-                  .where('shiftId', isEqualTo: shiftId)
-                  .where('createdAt', isGreaterThanOrEqualTo: Timestamp.fromDate(
-                    DateTime.now().subtract(const Duration(hours: 10))))
-                  .snapshots(),
-              builder: (context, notesSnap) {
-                if (notesSnap.hasError) return const Text('تعذر تحميل الملاحظات المرسلة.');
-                final now = DateTime.now();
-                final sent = (notesSnap.data?.docs ?? []).where((doc) {
-                  final item = doc.data();
-                  final createdAt = item['createdAt'];
-                  return !item.containsKey('forwardedFromNoteId') &&
-                    createdAt is Timestamp &&
-                    now.isBefore(createdAt.toDate().add(const Duration(hours: 10)));
-                }).toList();
-                if (sent.isEmpty) return const SizedBox.shrink();
-                return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                  const Divider(height: 20),
-                  const Text('ملاحظاتي المرسلة في هذه المناوبة',
-                    style: TextStyle(color: navy, fontWeight: FontWeight.w900)),
-                  ...sent.map((doc) {
-                    final item = doc.data();
-                    final deleteUntil = item['ownerDeleteUntil'];
-                    final canDelete = deleteUntil is Timestamp &&
-                      DateTime.now().isBefore(deleteUntil.toDate());
-                    return ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      leading: const Icon(Icons.sticky_note_2_outlined, color: teal),
-                      title: Text(item['body'] as String? ?? ''),
-                      subtitle: _time(item['createdAt']),
-                      trailing: canDelete
-                        ? IconButton(
-                            tooltip: 'حذف خلال يوم الإرسال',
-                            onPressed: busy ? null : () => _deleteOwnNote(doc.id),
-                            icon: const Icon(Icons.delete_outline_rounded, color: Colors.red),
-                          )
-                        : null,
-                    );
-                  }),
-                ]);
-              },
-            ),
+            _recentWorkerNotes(),
+
           ],
         )),
       ),
@@ -780,6 +809,7 @@ class _WorkLocationScreenState extends State<WorkLocationScreen> {
             const SizedBox(height: 8), const Text('اختر موقعك الحالي ثم اضغط مباشرة العمل. سيتم تسجيل الوقت واسم الموظف تلقائيًا.',
               textAlign: TextAlign.center),
             const SizedBox(height: 20), _startCard('مباشرة العمل', _start),
+            _recentWorkerNotes(),
           ]);
           return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
             stream: db.collection('work_shifts').doc(shiftId).snapshots(),
