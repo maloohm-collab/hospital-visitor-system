@@ -238,12 +238,12 @@ class DutyRosterPdf {
       // توسيع عمود الاسم بشكل ملحوظ على حساب عمود الوظيفة والترقيم.
       // الترتيب LTR ثابت: الوظيفة، الاسم، الرقم في كل نصف من الكشف.
       final mainTable = table(mainRows, {
-        0: const pw.FlexColumnWidth(1.6),
-        1: const pw.FlexColumnWidth(5.4),
-        2: const pw.FixedColumnWidth(16),
-        3: const pw.FlexColumnWidth(1.6),
-        4: const pw.FlexColumnWidth(5.4),
-        5: const pw.FixedColumnWidth(16),
+        0: const pw.FlexColumnWidth(1.9),
+        1: const pw.FlexColumnWidth(5.1),
+        2: const pw.FixedColumnWidth(21),
+        3: const pw.FlexColumnWidth(1.9),
+        4: const pw.FlexColumnWidth(5.1),
+        5: const pw.FixedColumnWidth(21),
       });
 
       // شريط واحد بعرض الجدول، بدلاً من تكرار رمز الشفت في كل مجموعة.
@@ -264,9 +264,9 @@ class DutyRosterPdf {
 
       // توسيع خانة الاسم في جدولي العيادات والحالات أيضاً.
       final lowerWidths = <int, pw.TableColumnWidth>{
-        0: const pw.FlexColumnWidth(1.6),
-        1: const pw.FlexColumnWidth(5.4),
-        2: const pw.FixedColumnWidth(16),
+        0: const pw.FlexColumnWidth(1.9),
+        1: const pw.FlexColumnWidth(5.1),
+        2: const pw.FixedColumnWidth(21),
       };
       final clinicRows = <pw.TableRow>[
         pw.TableRow(children: [
