@@ -69,7 +69,8 @@ class DutyRosterPdf {
     final doc = pw.Document();
 
     const pageFormat = PdfPageFormat.a4;
-    const margin = 24.0;
+    // عرض الكشف يقارب 85% من عرض A4 مع هوامش جانبية متساوية.
+    const margin = 44.6;
     final contentWidth = pageFormat.width - margin * 2;
     final dayName = _arabicDay(date);
     final dateLabel = dayName.isEmpty ? date : '$dayName   |   $date';
@@ -168,7 +169,7 @@ class DutyRosterPdf {
 
       final titleBox = pw.Center(
         child: pw.Container(
-          width: contentWidth * .82,
+          width: contentWidth,
           decoration: pw.BoxDecoration(
             border: pw.Border.all(color: _line, width: .9),
           ),
@@ -235,12 +236,12 @@ class DutyRosterPdf {
         ]));
       }
       final mainTable = table(mainRows, {
-        0: const pw.FlexColumnWidth(2.4),
-        1: const pw.FlexColumnWidth(3),
-        2: const pw.FixedColumnWidth(24),
-        3: const pw.FlexColumnWidth(2.4),
-        4: const pw.FlexColumnWidth(3),
-        5: const pw.FixedColumnWidth(24),
+        0: const pw.FlexColumnWidth(2.1),
+        1: const pw.FlexColumnWidth(4.2),
+        2: const pw.FixedColumnWidth(20),
+        3: const pw.FlexColumnWidth(2.1),
+        4: const pw.FlexColumnWidth(4.2),
+        5: const pw.FixedColumnWidth(20),
       });
 
       // شريط واحد بعرض الجدول، بدلاً من تكرار رمز الشفت في كل مجموعة.
@@ -260,9 +261,9 @@ class DutyRosterPdf {
       );
 
       final lowerWidths = <int, pw.TableColumnWidth>{
-        0: const pw.FlexColumnWidth(2.4),
-        1: const pw.FlexColumnWidth(3),
-        2: const pw.FixedColumnWidth(24),
+        0: const pw.FlexColumnWidth(2.1),
+        1: const pw.FlexColumnWidth(4.2),
+        2: const pw.FixedColumnWidth(20),
       };
       final clinicRows = <pw.TableRow>[
         pw.TableRow(children: [
