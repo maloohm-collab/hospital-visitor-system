@@ -21,6 +21,7 @@ class _DutyRosterImportReviewScreenState
   static const navy = Color(0xFF082B55);
   late final TextEditingController _dateController;
   late final TextEditingController _supervisorController;
+  late final TextEditingController _siteManagerController;
   late final List<Map<String, TextEditingController>> _assignments;
   late final List<Map<String, TextEditingController>> _clinics;
   late final List<TextEditingController> _offs;
@@ -37,6 +38,9 @@ class _DutyRosterImportReviewScreenState
     );
     _supervisorController = TextEditingController(
       text: (widget.extracted['supervisorName'] ?? '').toString(),
+    );
+    _siteManagerController = TextEditingController(
+      text: (widget.extracted['siteManager'] ?? '').toString(),
     );
     _assignments = _rowControllers(widget.extracted['assignments']);
     _clinics = _rowControllers(widget.extracted['clinicAssignments']);
@@ -62,6 +66,7 @@ class _DutyRosterImportReviewScreenState
   void dispose() {
     _dateController.dispose();
     _supervisorController.dispose();
+    _siteManagerController.dispose();
     for (final row in [..._assignments, ..._clinics]) {
       for (final controller in row.values) {
         controller.dispose();
@@ -240,6 +245,7 @@ class _DutyRosterImportReviewScreenState
       'date': date,
       'shift': widget.expectedShift,
       'supervisorName': _supervisorController.text.trim(),
+      'siteManager': _siteManagerController.text.trim(),
       'assignments': assignments,
       'clinicAssignments': clinics,
       'offNames': _readNames(_offs),
@@ -288,6 +294,15 @@ class _DutyRosterImportReviewScreenState
             textDirection: TextDirection.rtl,
             decoration: const InputDecoration(
               labelText: 'اسم المشرف (إذا كان موجوداً في الكشف)',
+              border: OutlineInputBorder(),
+            ),
+          ),
+          const SizedBox(height: 10),
+          TextField(
+            controller: _siteManagerController,
+            textDirection: TextDirection.rtl,
+            decoration: const InputDecoration(
+              labelText: 'اسم مدير الموقع (إذا كان موجوداً في الكشف)',
               border: OutlineInputBorder(),
             ),
           ),
