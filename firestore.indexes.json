@@ -15,24 +15,6 @@
       ]
     },
     {
-      "collectionGroup": "work_shift_notes",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "officerUid",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "shiftId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "createdAt",
-          "order": "ASCENDING"
-        }
-      ]
-    },
-    {
       "collectionGroup": "work_shifts",
       "queryScope": "COLLECTION",
       "fields": [
@@ -42,6 +24,20 @@
         },
         {
           "fieldPath": "startedAt",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "work_shift_notes",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "officerUid",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
           "order": "ASCENDING"
         }
       ]
