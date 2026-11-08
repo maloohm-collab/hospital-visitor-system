@@ -208,6 +208,8 @@ class _WorkLocationScreenState extends State<WorkLocationScreen> {
     try {
       final shiftSnapshot = await db.collection('work_shifts').doc(shiftId).get();
       final currentLocation = (shiftSnapshot.data()?['activeLocationName'] as String? ?? '').trim();
+      final localNow = DateTime.now().toLocal();
+      final deleteUntil = DateTime(localNow.year, localNow.month, localNow.day + 1);
       final batch = db.batch();
       for (final body in List<String>.from(draftNotes)) {
         final ref = db.collection('work_shift_notes').doc();
@@ -216,6 +218,7 @@ class _WorkLocationScreenState extends State<WorkLocationScreen> {
           'officerName': officerName, 'locationName': currentLocation,
           'body': body, 'recipientUids': recipients.toList(),
           'createdAt': FieldValue.serverTimestamp(),
+          'ownerDeleteUntil': Timestamp.fromDate(deleteUntil),
         });
       }
       await batch.commit();
@@ -250,6 +253,32 @@ class _WorkLocationScreenState extends State<WorkLocationScreen> {
     try {
       await db.collection('work_shift_notes').doc(noteId).delete();
       msg('تم حذف الملاحظة.');
+    } on FirebaseException catch (e) {
+      msg('تعذر حذف الملاحظة (' + e.code + ').');
+    }
+  }
+
+  Future<void> _deleteOwnNote(String noteId) async {
+    if (!officer || busy) return;
+    final yes = await showDialog<bool>(
+      context: context,
+      builder: (c) => AlertDialog(
+        title: const Text('حذف الملاحظة المرسلة؟'),
+        content: const Text('يمكنك حذف ملاحظتك من حسابك خلال يوم إرسالها. ستبقى النسخة لدى المشرفين والإدارة.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('إلغاء')),
+          FilledButton(
+            onPressed: () => Navigator.pop(c, true),
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('حذف'),
+          ),
+        ],
+      ),
+    );
+    if (yes != true) return;
+    try {
+      await db.collection('work_shift_notes').doc(noteId).delete();
+      msg('تم حذف الملاحظة من حسابك.');
     } on FirebaseException catch (e) {
       msg('تعذر حذف الملاحظة (' + e.code + ').');
     }
@@ -572,11 +601,21 @@ class _WorkLocationScreenState extends State<WorkLocationScreen> {
                     style: TextStyle(color: navy, fontWeight: FontWeight.w900)),
                   ...sent.map((doc) {
                     final item = doc.data();
+                    final deleteUntil = item['ownerDeleteUntil'];
+                    final canDelete = deleteUntil is Timestamp &&
+                      DateTime.now().isBefore(deleteUntil.toDate());
                     return ListTile(
                       contentPadding: EdgeInsets.zero,
                       leading: const Icon(Icons.sticky_note_2_outlined, color: teal),
                       title: Text(item['body'] as String? ?? ''),
                       subtitle: _time(item['createdAt']),
+                      trailing: canDelete
+                        ? IconButton(
+                            tooltip: 'حذف خلال يوم الإرسال',
+                            onPressed: busy ? null : () => _deleteOwnNote(doc.id),
+                            icon: const Icon(Icons.delete_outline_rounded, color: Colors.red),
+                          )
+                        : null,
                     );
                   }),
                 ]);
