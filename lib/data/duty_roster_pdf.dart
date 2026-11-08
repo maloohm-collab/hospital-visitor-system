@@ -122,27 +122,28 @@ class DutyRosterPdf {
         bool fitJob = false,
         double jobTextWidth = 75.6,
       }) {
-        var effectiveSize = size ?? fs;
-        if (fitJob && value.isNotEmpty) {
-          while (effectiveSize > 9.0 &&
-              (bold.stringMetrics(value).width * effectiveSize) > jobTextWidth) {
-            effectiveSize = (effectiveSize - 0.5).clamp(9.0, fs).toDouble();
-          }
-        }
+        final effectiveSize = size ?? fs;
+        final text = pw.Text(
+          value,
+          textDirection: pw.TextDirection.rtl,
+          textAlign: textAlign,
+          maxLines: fitJob ? 1 : null,
+          style: pw.TextStyle(font: font ?? bold, fontSize: effectiveSize),
+        );
         return pw.Container(
-            alignment: align,
-            color: background ?? (header ? _head : null),
-            padding: pw.EdgeInsets.symmetric(
-              vertical: vPad,
-              horizontal: fitJob ? 2 : 3,
-            ),
-            child: pw.Text(
-              value,
-              textDirection: pw.TextDirection.rtl,
-              textAlign: textAlign,
-              style: pw.TextStyle(font: font ?? bold, fontSize: effectiveSize),
-            ),
-          );
+          alignment: align,
+          color: background ?? (header ? _head : null),
+          padding: pw.EdgeInsets.symmetric(
+            vertical: vPad,
+            horizontal: fitJob ? 2 : 3,
+          ),
+          child: fitJob
+              ? pw.FittedBox(
+                  fit: pw.BoxFit.scaleDown,
+                  child: text,
+                )
+              : text,
+        );
       }
 
       pw.Widget table(
@@ -289,7 +290,7 @@ class DutyRosterPdf {
         ]),
         for (var i = 0; i < clinics.length; i++)
           pw.TableRow(children: [
-            cell((clinics[i]['location'] ?? '').toString(), fitJob: true, jobTextWidth: 74.2),
+            cell((clinics[i]['location'] ?? '').toString(), fitJob: true),
             cell((clinics[i]['officer'] ?? '').toString()),
             cell((i + 1).toString()),
           ]),
@@ -302,7 +303,7 @@ class DutyRosterPdf {
       ];
       final statusRows = <pw.TableRow>[
         pw.TableRow(children: [
-          cell('الحالة', header: true, fitJob: true, jobTextWidth: 74.2),
+          cell('الحالة', header: true, fitJob: true),
           cell('الاسم', header: true),
           cell('ت', header: true),
         ]),
@@ -311,7 +312,6 @@ class DutyRosterPdf {
             cell(
               statusItems[i][1],
               fitJob: true,
-              jobTextWidth: 74.2,
               background: statusItems[i][1] == 'سنوية'
                   ? const PdfColor(1, .97, .88)
                   : statusItems[i][1] == 'سوات'
