@@ -472,16 +472,10 @@ class DutyRosterPdf {
       doc.addPage(pw.Page(
         pageFormat: pageFormat,
         margin: const pw.EdgeInsets.all(margin),
-        build: (_) => pw.Align(
-          // استخدم عرض المحتوى المحدد فعلياً (85% من A4).
-          // لا تستخدم FittedBox هنا لأنه كان يصغّر الجدول كله ليلائم الارتفاع،
-          // فينتج عنه فراغ كبير على جانبي الصفحة رغم صحة قيمة الهوامش.
-          alignment: pw.Alignment.topCenter,
-          child: pw.SizedBox(
-            width: contentWidth,
-            child: content,
-          ),
-        ),
+        // مساحة الصفحة بعد الهوامش تساوي contentWidth تماماً (85% من A4).
+        // أعد المحتوى مباشرة إلى الصفحة لتجنب طبقة Align/SizedBox إضافية
+        // قد تقيّد قياس العمود الرأسي وتمنع ظهور الأقسام التالية للجدول.
+        build: (_) => content,
       ));
     }
 
