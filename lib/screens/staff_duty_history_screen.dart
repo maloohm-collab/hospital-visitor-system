@@ -11,6 +11,7 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import 'package:share_plus/share_plus.dart';
+import '../data/duty_roster_catalog.dart';
 
 class StaffDutyHistoryScreen extends StatefulWidget {
   const StaffDutyHistoryScreen({super.key});
@@ -23,12 +24,46 @@ class _StaffDutyHistoryScreenState extends State<StaffDutyHistoryScreen> {
   static const teal = Color(0xFF087E78);
   final _name = TextEditingController();
   final _db = FirebaseFirestore.instance;
+  List<String> _employeeNames = [];
   DateTime _from = DateTime.now(), _to = DateTime.now();
   String _period = 'daily';
   bool _loading = false;
   String? _error, _searchedName;
   List<_DutyEntry> _entries = [];
   int _publishedShifts = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _employeeNames = <String>{
+      ...DutyRosterCatalog.shiftA,
+      ...DutyRosterCatalog.shiftB,
+      ...DutyRosterCatalog.shiftC,
+      ...DutyRosterCatalog.supervisors,
+      ...DutyRosterCatalog.siteManagers,
+      ...DutyRosterCatalog.clinicOfficers,
+    }.where((name) => name.trim().isNotEmpty).toList()
+      ..sort((a, b) => a.compareTo(b));
+    _loadRegisteredEmployeeNames();
+  }
+
+  Future<void> _loadRegisteredEmployeeNames() async {
+    try {
+      final users = await _db.collection('users')
+          .where('status', isEqualTo: 'active').get();
+      final registeredNames = users.docs
+          .map((doc) => (doc.data()['displayName'] ?? '').toString().trim())
+          .where((name) => name.isNotEmpty);
+      if (!mounted) return;
+      setState(() {
+        _employeeNames = <String>{..._employeeNames, ...registeredNames}.toList()
+          ..sort((a, b) => a.compareTo(b));
+      });
+    } catch (_) {
+      // The built-in duty-roster names remain available if this optional
+      // directory lookup is temporarily unavailable.
+    }
+  }
 
   String _key(DateTime d) => DateFormat('yyyy-MM-dd').format(d);
   String _label(DateTime d) => DateFormat('yyyy/MM/dd').format(d);
@@ -490,14 +525,102 @@ class _StaffDutyHistoryScreenState extends State<StaffDutyHistoryScreen> {
       const SizedBox(height: 16),
       const Text('اسم الموظف', style: TextStyle(color: navy, fontSize: 15, fontWeight: FontWeight.w800)),
       const SizedBox(height: 7),
-      TextField(controller: _name, textInputAction: TextInputAction.search,
-        onSubmitted: (_) => _search(),
-        decoration: InputDecoration(hintText: 'اكتب الاسم الكامل...',
-          prefixIcon: const Icon(Icons.person_search_rounded),
-          suffixIcon: IconButton(onPressed: () {
-            _name.clear();
-            setState(() { _entries = []; _searchedName = null; _error = null; });
-          }, icon: const Icon(Icons.close_rounded)))),
+      Autocomplete<String>(
+        displayStringForOption: (name) => name,
+        optionsBuilder: (value) {
+          final query = _normalize(value.text);
+          final names = _employeeNames;
+          if (query.isEmpty) return names.take(12);
+          final matches = names.where((name) {
+            final normalized = _normalize(name);
+            return normalized.startsWith(query) || normalized.contains(query);
+          });
+          return matches.take(12);
+        },
+        onSelected: (name) {
+          _name.text = name;
+          _name.selection = TextSelection.collapsed(offset: _name.text.length);
+          _search();
+        },
+        optionsViewBuilder: (context, onSelected, options) => Align(
+          alignment: Alignment.topRight,
+          child: Material(
+            elevation: 7,
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(14),
+            clipBehavior: Clip.antiAlias,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxHeight: 270, minWidth: 280),
+              child: ListView.separated(
+                padding: const EdgeInsets.symmetric(vertical: 5),
+                shrinkWrap: true,
+                itemCount: options.length,
+                separatorBuilder: (_, __) =>
+                    const Divider(height: 1, indent: 14, endIndent: 14),
+                itemBuilder: (context, index) {
+                  final name = options.elementAt(index);
+                  return ListTile(
+                    dense: true,
+                    leading: const CircleAvatar(
+                      radius: 16,
+                      backgroundColor: Color(0xFFEAF5F5),
+                      child: Icon(Icons.person_outline_rounded,
+                          color: teal, size: 19),
+                    ),
+                    title: Text(name,
+                      textAlign: TextAlign.right,
+                      style: const TextStyle(
+                        color: navy, fontWeight: FontWeight.w700, fontSize: 14)),
+                    onTap: () => onSelected(name),
+                  );
+                },
+              ),
+            ),
+          ),
+        ),
+        fieldViewBuilder: (context, controller, focusNode, onFieldSubmitted) {
+          if (_name.text.isNotEmpty && controller.text.isEmpty) {
+            controller.text = _name.text;
+            controller.selection = TextSelection.collapsed(
+                offset: controller.text.length);
+          }
+          return TextField(
+            controller: controller,
+            focusNode: focusNode,
+            textDirection: TextDirection.rtl,
+            textInputAction: TextInputAction.search,
+            onChanged: (value) {
+              _name.value = controller.value;
+              if (_searchedName != null &&
+                  _normalize(value) != _normalize(_searchedName!)) {
+                setState(() {
+                  _entries = [];
+                  _searchedName = null;
+                  _error = null;
+                });
+              }
+            },
+            onSubmitted: (_) => _search(),
+            decoration: InputDecoration(
+              hintText: 'ابدأ بكتابة اسم الموظف...',
+              prefixIcon: const Icon(Icons.person_search_rounded),
+              suffixIcon: IconButton(
+                tooltip: 'مسح الاسم',
+                onPressed: () {
+                  controller.clear();
+                  _name.clear();
+                  setState(() {
+                    _entries = [];
+                    _searchedName = null;
+                    _error = null;
+                  });
+                },
+                icon: const Icon(Icons.close_rounded),
+              ),
+            ),
+          );
+        },
+      ),
       const SizedBox(height: 16),
       const Text('نوع التقرير والفترة', style: TextStyle(color: navy, fontSize: 15, fontWeight: FontWeight.w800)),
       const SizedBox(height: 8),
