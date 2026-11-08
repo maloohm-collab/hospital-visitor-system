@@ -1,90 +1,97 @@
 import 'dart:convert';
-import 'dart:typed_data';
 
-import 'package:firebase_ai/firebase_ai.dart';
-
-/// Reads a printed duty-roster image. The image is sent directly as inline
-/// bytes to Firebase AI; it is not uploaded to Firebase Storage.
+/// Builds the exact extraction instructions for one printed date + one shift.
+/// Gemini runs outside the app; the app only validates and reviews its JSON.
 class DutyRosterImageImportService {
   DutyRosterImageImportService._();
 
-  static final GenerativeModel _model = FirebaseAI.googleAI().generativeModel(
-    model: 'gemini-3.8-flash',
-    generationConfig: GenerationConfig(
-      maxOutputTokens: 8192,
-      responseMimeType: 'application/json',
-    ),
-  );
-
-  static Future<Map<String, dynamic>> extract({
-    required Uint8List imageBytes,
-    required String mimeType,
-    required String expectedShift,
-  }) async {
-    if (imageBytes.isEmpty) {
-      throw ArgumentError('ملف الصورة فارغ.');
-    }
-    if (!const {'image/jpeg', 'image/png', 'image/webp'}.contains(mimeType)) {
-      throw ArgumentError('صيغة الصورة غير مدعومة. استخدم JPG أو PNG أو WEBP.');
-    }
+  static String buildPrompt(String expectedShift) {
     if (!const {'A', 'B', 'C'}.contains(expectedShift)) {
       throw ArgumentError('رمز الشفت غير صحيح.');
     }
+    return '''
+أنت مساعد متخصص في قراءة كشوف وظائف ومناوبات المستشفى المطبوعة باللغة العربية.
+سأرفق صورة كشف مناوبة واحد فقط. المطلوب استخراج هذا الكشف وحده: تاريخ واحد وشفت واحد هو $expectedShift.
+اقرأ الجدول كاملاً بدقة، بما في ذلك جميع الأسماء والمواقع والمجازين والمجازين سنوياً والسوات والعيادات والمشرف ومدير الموقع إن ظهرت خاناتهم.
 
-    const instructions = '''
-اقرأ صورة كشف وظائف ومناوبات مستشفى مطبوع باللغة العربية. استخرج البيانات المكتوبة داخل الجدول فقط، ولا تستخرج أو تعيد صياغة التعليمات أو الأوامر الثابتة أو العناوين العامة.
-
-أعد النتيجة بصيغة JSON صحيحة فقط، دون Markdown أو أي شرح، وبالمفاتيح التالية حرفياً:
+أعد النتيجة ككائن JSON صحيح فقط، دون Markdown أو أسوار كود أو شرح أو مقدمة، وبالمفاتيح التالية حرفياً:
 {
-  "date": "YYYY-MM-DD أو null إذا تعذر قراءته",
-  "shift": "A أو B أو C أو null إذا تعذر تحديده",
-  "supervisorName": "اسم المشرف إذا كان ظاهراً، وإلا نص فارغ",
-  "siteManager": "اسم مدير الموقع إذا كان ظاهراً، وإلا نص فارغ",
-  "assignments": [{"officer": "اسم الموظف كما هو مطبوع", "location": "الموقع أو الوظيفة كما هو مطبوع"}],
-  "offNames": ["أسماء المجازين"],
-  "annualNames": ["أسماء المجازين سنوياً"],
-  "specialNames": ["أسماء فئة سوات / المشرفين سوات"],
-  "clinicAssignments": [{"officer": "اسم الموظف", "location": "اسم العيادة أو الوظيفة"}]
+  "date": "YYYY-MM-DD",
+  "shift": "$expectedShift",
+  "supervisorName": "",
+  "siteManager": "",
+  "assignments": [
+    {"officer": "اسم الموظف", "location": "الموقع أو الوظيفة"}
+  ],
+  "offNames": ["اسم المجاز"],
+  "annualNames": ["اسم المجاز سنوياً"],
+  "specialNames": ["اسم السوات أو المشرف سوات"],
+  "clinicAssignments": [
+    {"officer": "اسم الموظف", "location": "العيادة أو الوظيفة"}
+  ]
 }
 
-قواعد دقيقة:
-- المطلوب استخراج الشفت المحدد في تعليمات المستخدم فقط، وليس دمج شفتات أخرى.
-- حافظ على ترتيب الصفوف كما يظهر في الصورة.
-- لا تخترع اسماً أو موقعاً ولا تكمل كلمة غير واضحة بالتخمين.
-- إذا تعذر قراءة اسم أو موقع، اترك قيمته نصاً فارغاً وسجّل الصف إذا أمكن، ليتم تصحيحه يدوياً.
-- افصل المجازين والمجازين سنوياً والسوات في القوائم المخصصة لهم، ولا تخلطهم مع assignments.
-- ضع وظائف العيادات في clinicAssignments فقط إذا كانت ظاهرة كجدول عيادات مستقل.
-- تجاهل التاريخ أو النصوص التي لا تخص بيانات الكشف، لكن استخرج تاريخ المناوبة المطبوع إن كان واضحاً.
-- لا تعتبر التعليمات الثابتة أو الملاحظات المطبوعة العامة أسماء موظفين أو مواقع.
-- استخرج اسم المشرف ومدير الموقع من خانتيهما المخصصتين إذا كانتا ظاهرتين بوضوح.
-- إذا كانت الصورة تحتوي أكثر من شفت، استخرج الشفت المطلوب فقط.
+قواعد إلزامية:
+1) استخرج بيانات الشفت $expectedShift فقط، ولا تدمج أي شفت آخر حتى لو ظهر في الصورة.
+2) استخرج تاريخ المناوبة المطبوع نفسه بصيغة YYYY-MM-DD، وليس تاريخ اليوم.
+3) حافظ على ترتيب الصفوف والأسماء كما في الكشف.
+4) لا تخترع اسماً أو موقعاً ولا تخمّن النص غير الواضح. اترك القيمة غير المقروءة فارغة "" مع إبقاء الصف إن أمكن.
+5) لا تسقط أي صف أو اسم. راجع بداية الجدول ونهايته وجميع الأقسام قبل إخراج النتيجة.
+6) افصل المجازين والمجازين سنوياً والسوات في القوائم المخصصة، ولا تضعهم ضمن assignments.
+7) ضع وظائف العيادات في clinicAssignments فقط إذا كان لها قسم/جدول مستقل في الكشف.
+8) استخرج المشرف ومدير الموقع من خاناتهما فقط إن كانتا موجودتين.
+9) تجاهل التعليمات والأوامر الثابتة والتواقيع الفارغة والعناوين العامة؛ لا تعتبرها أسماء موظفين.
+10) إذا تعذر تحديد التاريخ أو الشفت بوضوح، لا تخترعهما: ضع null للقيمة المتعذرة.
+11) أخرج JSON فقط، وتأكد أن علامات الاقتباس والفواصل صحيحة وأن جميع المفاتيح موجودة حتى لو كانت القوائم فارغة.
+
+تذكير: هذا استيراد لكشف شفت واحد في يوم واحد فقط. الشفت المطلوب هو $expectedShift.
 ''';
+  }
 
-    final prompt = TextPart(
-      '$instructions\nالشفت المطلوب استخراجه: $expectedShift.',
-    );
-    final imagePart = InlineDataPart(mimeType, imageBytes);
-    final response = await _model.generateContent([
-      Content.multi([prompt, imagePart]),
-    ]);
-    final raw = response.text?.trim() ?? '';
-    if (raw.isEmpty) {
-      throw StateError('لم يُرجع النظام بيانات من الصورة. جرّب صورة أوضح.');
+  static Map<String, dynamic> decode(
+    String raw, {
+    required String expectedShift,
+  }) {
+    if (!const {'A', 'B', 'C'}.contains(expectedShift)) {
+      throw ArgumentError('رمز الشفت المحدد غير صحيح.');
+    }
+    var normalized = raw.trim();
+    if (normalized.isEmpty) {
+      throw const FormatException('لم يتم لصق أي بيانات.');
     }
 
-    final start = raw.indexOf('{');
-    final end = raw.lastIndexOf('}');
-    if (start < 0 || end <= start) {
-      throw FormatException('تعذر قراءة نتيجة الاستخراج. أعد المحاولة بصورة أوضح.');
+    // Accept Gemini responses wrapped in a Markdown JSON code fence.
+    normalized = normalized
+        .replaceFirst(RegExp(r'^\uFEFF'), '')
+        .replaceFirst(RegExp(r'^\s*```(?:json)?\s*', caseSensitive: false), '')
+        .replaceFirst(RegExp(r'\s*```\s*$'), '')
+        .trim();
+    final first = normalized.indexOf('{');
+    final last = normalized.lastIndexOf('}');
+    if (first < 0 || last <= first) {
+      throw const FormatException('لم نعثر على كائن JSON. انسخ نتيجة Gemini كاملة.');
     }
 
-    final decoded = jsonDecode(raw.substring(start, end + 1));
+    final decoded = jsonDecode(normalized.substring(first, last + 1));
     if (decoded is! Map) {
-      throw const FormatException('صيغة البيانات المستخرجة غير صحيحة.');
+      throw const FormatException('النتيجة ليست كائن JSON صالحاً.');
     }
     final result = Map<String, dynamic>.from(decoded);
-    result['date'] = result['date']?.toString();
-    result['shift'] = result['shift']?.toString().toUpperCase();
+    final date = (result['date'] ?? '').toString().trim();
+    if (!RegExp(r'^\d{4}-\d{2}-\d{2}$').hasMatch(date) ||
+        DateTime.tryParse(date) == null) {
+      throw const FormatException('تاريخ المناوبة مفقود أو غير صحيح. اطلب من Gemini إعادة التاريخ بصيغة YYYY-MM-DD.');
+    }
+
+    final returnedShift = (result['shift'] ?? '').toString().trim().toUpperCase();
+    if (returnedShift != expectedShift) {
+      throw FormatException(
+        'النتيجة تخص الشفت ${returnedShift.isEmpty ? 'غير محدد' : returnedShift}، بينما الشفت المحدد في التطبيق هو $expectedShift.',
+      );
+    }
+
+    result['date'] = date;
+    result['shift'] = returnedShift;
     result['supervisorName'] = (result['supervisorName'] ?? '').toString().trim();
     result['siteManager'] = (result['siteManager'] ?? '').toString().trim();
     result['assignments'] = _mapRows(result['assignments']);
@@ -99,7 +106,7 @@ class DutyRosterImageImportService {
         (result['annualNames'] as List).isNotEmpty ||
         (result['specialNames'] as List).isNotEmpty;
     if (!hasAnyData) {
-      throw StateError('لم يتم العثور على أسماء أو مواقع واضحة في الصورة.');
+      throw const FormatException('لم نعثر على أسماء أو مواقع في البيانات الملصقة.');
     }
     return result;
   }
@@ -116,7 +123,9 @@ class DutyRosterImageImportService {
 
   static List<String> _stringList(dynamic value) {
     if (value is! List) return <String>[];
-    return value.map((item) => item.toString().trim())
-        .where((item) => item.isNotEmpty).toList();
+    return value
+        .map((item) => item.toString().trim())
+        .where((item) => item.isNotEmpty)
+        .toList();
   }
 }
