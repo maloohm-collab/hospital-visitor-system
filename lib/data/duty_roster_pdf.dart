@@ -105,8 +105,8 @@ class DutyRosterPdf {
       ].reduce((a, b) => a > b ? a : b);
 
       final double fs = largestSection <= 15
-          ? 11.5
-          : (largestSection <= 18 ? 10.5 : 9.5);
+          ? 11.0
+          : (largestSection <= 18 ? 10.0 : 9.0);
       final double vPad = largestSection <= 15
           ? 3.0
           : (largestSection <= 18 ? 2.2 : 1.5);
@@ -119,18 +119,31 @@ class DutyRosterPdf {
         pw.Font? font,
         pw.Alignment align = pw.Alignment.center,
         pw.TextAlign textAlign = pw.TextAlign.center,
-      }) =>
-          pw.Container(
+        bool fitJob = false,
+        double jobTextWidth = 75.6,
+      }) {
+        var effectiveSize = size ?? fs;
+        if (fitJob && value.isNotEmpty) {
+          while (effectiveSize > 9.0 &&
+              bold.stringSize(value, fontSize: effectiveSize) > jobTextWidth) {
+            effectiveSize = (effectiveSize - 0.5).clamp(9.0, fs).toDouble();
+          }
+        }
+        return pw.Container(
             alignment: align,
             color: background ?? (header ? _head : null),
-            padding: pw.EdgeInsets.symmetric(vertical: vPad, horizontal: 3),
+            padding: pw.EdgeInsets.symmetric(
+              vertical: vPad,
+              horizontal: fitJob ? 2 : 3,
+            ),
             child: pw.Text(
               value,
               textDirection: pw.TextDirection.rtl,
               textAlign: textAlign,
-              style: pw.TextStyle(font: font ?? bold, fontSize: size ?? fs),
+              style: pw.TextStyle(font: font ?? bold, fontSize: effectiveSize),
             ),
           );
+      }
 
       pw.Widget table(
         List<pw.TableRow> rows,
@@ -181,7 +194,7 @@ class DutyRosterPdf {
                 'مستشفى الزرقاء الحكومي — شفت $code',
                 textDirection: pw.TextDirection.rtl,
                 textAlign: pw.TextAlign.center,
-                style: pw.TextStyle(font: bold, fontSize: 15),
+                style: pw.TextStyle(font: bold, fontSize: 14.5),
               ),
             ),
             pw.Container(
@@ -191,7 +204,7 @@ class DutyRosterPdf {
                 'شركة الصخرة للخدمات والاستشارات الأمنية',
                 textDirection: pw.TextDirection.rtl,
                 textAlign: pw.TextAlign.center,
-                style: pw.TextStyle(font: bold, fontSize: 10),
+                style: pw.TextStyle(font: bold, fontSize: 9.5),
               ),
             ),
             pw.Container(
@@ -204,7 +217,7 @@ class DutyRosterPdf {
                 hours.isEmpty ? dateLabel : '$dateLabel   |   $hours',
                 textDirection: pw.TextDirection.rtl,
                 textAlign: pw.TextAlign.center,
-                style: pw.TextStyle(font: bold, fontSize: 12),
+                style: pw.TextStyle(font: bold, fontSize: 11.5),
               ),
             ),
           ]),
@@ -214,10 +227,10 @@ class DutyRosterPdf {
       // LTR: مجموعة اليسار أولاً، ثم مجموعة اليمين (الأرقام 1..half يميناً).
       final mainRows = <pw.TableRow>[
         pw.TableRow(children: [
-          cell('الوظيفة', header: true),
+          cell('الوظيفة', header: true, fitJob: true),
           cell('الموظف', header: true),
           cell('ت', header: true),
-          cell('الوظيفة', header: true),
+          cell('الوظيفة', header: true, fitJob: true),
           cell('الموظف', header: true),
           cell('ت', header: true),
         ]),
@@ -227,10 +240,10 @@ class DutyRosterPdf {
         final left = leftIndex < assignments.length ? assignments[leftIndex] : null;
         final right = assignments[r];
         mainRows.add(pw.TableRow(children: [
-          cell(left == null ? '' : (left['location'] ?? '').toString()),
+          cell(left == null ? '' : (left['location'] ?? '').toString(), fitJob: true),
           cell(left == null ? '' : (left['officer'] ?? '').toString()),
           cell(left == null ? '' : (leftIndex + 1).toString()),
-          cell((right['location'] ?? '').toString()),
+          cell((right['location'] ?? '').toString(), fitJob: true),
           cell((right['officer'] ?? '').toString()),
           cell((r + 1).toString()),
         ]));
@@ -238,11 +251,11 @@ class DutyRosterPdf {
       // توسيع عمود الاسم بشكل ملحوظ على حساب عمود الوظيفة والترقيم.
       // الترتيب LTR ثابت: الوظيفة، الاسم، الرقم في كل نصف من الكشف.
       final mainTable = table(mainRows, {
-        0: const pw.FlexColumnWidth(1.9),
-        1: const pw.FlexColumnWidth(5.1),
+        0: const pw.FlexColumnWidth(2.4),
+        1: const pw.FlexColumnWidth(4.6),
         2: const pw.FixedColumnWidth(21),
-        3: const pw.FlexColumnWidth(1.9),
-        4: const pw.FlexColumnWidth(5.1),
+        3: const pw.FlexColumnWidth(2.4),
+        4: const pw.FlexColumnWidth(4.6),
         5: const pw.FixedColumnWidth(21),
       });
 
@@ -264,19 +277,19 @@ class DutyRosterPdf {
 
       // توسيع خانة الاسم في جدولي العيادات والحالات أيضاً.
       final lowerWidths = <int, pw.TableColumnWidth>{
-        0: const pw.FlexColumnWidth(1.9),
-        1: const pw.FlexColumnWidth(5.1),
+        0: const pw.FlexColumnWidth(2.4),
+        1: const pw.FlexColumnWidth(4.6),
         2: const pw.FixedColumnWidth(21),
       };
       final clinicRows = <pw.TableRow>[
         pw.TableRow(children: [
-          cell('الوظيفة', header: true),
+          cell('الوظيفة', header: true, fitJob: true),
           cell('الموظف', header: true),
           cell('ت', header: true),
         ]),
         for (var i = 0; i < clinics.length; i++)
           pw.TableRow(children: [
-            cell((clinics[i]['location'] ?? '').toString()),
+            cell((clinics[i]['location'] ?? '').toString(), fitJob: true, jobTextWidth: 74.2),
             cell((clinics[i]['officer'] ?? '').toString()),
             cell((i + 1).toString()),
           ]),
@@ -289,7 +302,7 @@ class DutyRosterPdf {
       ];
       final statusRows = <pw.TableRow>[
         pw.TableRow(children: [
-          cell('الحالة', header: true),
+          cell('الحالة', header: true, fitJob: true, jobTextWidth: 74.2),
           cell('الاسم', header: true),
           cell('ت', header: true),
         ]),
@@ -297,6 +310,8 @@ class DutyRosterPdf {
           pw.TableRow(children: [
             cell(
               statusItems[i][1],
+              fitJob: true,
+              jobTextWidth: 74.2,
               background: statusItems[i][1] == 'سنوية'
                   ? const PdfColor(1, .97, .88)
                   : statusItems[i][1] == 'سوات'
@@ -395,7 +410,7 @@ class DutyRosterPdf {
                 '• $value',
                 textDirection: pw.TextDirection.rtl,
                 textAlign: pw.TextAlign.right,
-                style: pw.TextStyle(font: bold, fontSize: 8.5, lineSpacing: 1.15),
+                style: pw.TextStyle(font: bold, fontSize: 8.0, lineSpacing: 1.15),
               ),
             );
         // أول تعليمة في الخلية اليمنى لضمان التسلسل من اليمين إلى اليسار.
@@ -407,7 +422,7 @@ class DutyRosterPdf {
       final rulesBox = pw.Column(
         crossAxisAlignment: pw.CrossAxisAlignment.stretch,
         children: [
-          bar('التعليمات الثابتة', size: 9.5),
+          bar('التعليمات الثابتة', size: 9.0),
           pw.Container(
             width: double.infinity,
             decoration: pw.BoxDecoration(
@@ -432,7 +447,7 @@ class DutyRosterPdf {
               'التعليمات أعلاه تعتبر أوامر ثابتة وسيحاسب كل من يخالفها',
               textDirection: pw.TextDirection.rtl,
               textAlign: pw.TextAlign.center,
-              style: pw.TextStyle(font: bold, fontSize: 12),
+              style: pw.TextStyle(font: bold, fontSize: 11.5),
             ),
           ),
         ],
