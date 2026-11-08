@@ -858,6 +858,12 @@ class _WorkLocationScreenState extends State<WorkLocationScreen> {
           appBar: AppBar(
             title: const Text('مواقع الضباط والملاحظات'),
             bottom: const TabBar(
+              labelColor: Colors.white,
+              unselectedLabelColor: Colors.white,
+              indicatorColor: Colors.white,
+              labelStyle: TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
+              unselectedLabelStyle:
+                  TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
               tabs: [
                 Tab(icon: Icon(Icons.location_on_outlined), text: 'المباشرات الحالية'),
                 Tab(icon: Icon(Icons.sticky_note_2_outlined), text: 'الملاحظات الواردة'),
