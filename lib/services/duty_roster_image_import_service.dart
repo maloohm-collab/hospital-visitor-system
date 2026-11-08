@@ -82,7 +82,8 @@ class DutyRosterImageImportService {
     }
     final result = Map<String, dynamic>.from(decoded);
     result['date'] = result['date']?.toString();
-    result['shift'] = result['shift']?.toString().toUpperCase();\n    result['supervisorName'] = (result['supervisorName'] ?? '').toString().trim();
+    result['shift'] = result['shift']?.toString().toUpperCase();
+    result['supervisorName'] = (result['supervisorName'] ?? '').toString().trim();
     result['assignments'] = _mapRows(result['assignments']);
     result['clinicAssignments'] = _mapRows(result['clinicAssignments']);
     result['offNames'] = _stringList(result['offNames']);
