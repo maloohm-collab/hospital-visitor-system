@@ -13,6 +13,8 @@ import 'package:share_plus/share_plus.dart';
 import '../data/duty_roster_pdf.dart';
 import '../data/duty_roster_catalog.dart';
 import '../widgets/app_search_field.dart';
+import '../services/duty_roster_image_import_service.dart';
+import 'duty_roster_import_review_screen.dart';
 
 class DutyRosterScreen extends StatefulWidget {
   const DutyRosterScreen({super.key, required this.userRole});
@@ -845,6 +847,155 @@ class _DutyRosterScreenState extends State<DutyRosterScreen>
       if (status == 'published') 'publishedAt': FieldValue.serverTimestamp()};
   }
 
+  Future<void> _importDutyRosterImage() async {
+    if (!admin || busy) return;
+
+    final picked = await FilePicker.platform.pickFiles(
+      type: FileType.image,
+      allowMultiple: false,
+      withData: true,
+    );
+    if (picked == null || picked.files.isEmpty) return;
+
+    final file = picked.files.single;
+    final extension = (file.extension ?? '').toLowerCase();
+    final mimeType = switch (extension) {
+      'jpg' || 'jpeg' => 'image/jpeg',
+      'png' => 'image/png',
+      'webp' => 'image/webp',
+      _ => '',
+    };
+    if (mimeType.isEmpty) {
+      msg('صيغة الصورة غير مدعومة. اختر JPG أو PNG أو WEBP.');
+      return;
+    }
+
+    Uint8List? imageBytes = file.bytes;
+    if (imageBytes == null && file.path != null) {
+      try {
+        imageBytes = await File(file.path!).readAsBytes();
+      } catch (_) {
+        imageBytes = null;
+      }
+    }
+    if (imageBytes == null || imageBytes.isEmpty) {
+      msg('تعذر قراءة الصورة من الجهاز.');
+      return;
+    }
+    if (imageBytes.lengthInBytes > 15 * 1024 * 1024) {
+      msg('حجم الصورة كبير. اختر صورة لا يتجاوز حجمها 15 ميجابايت.');
+      return;
+    }
+
+    final selectedShift = shift;
+    Map<String, dynamic> extracted;
+    setState(() => busy = true);
+    try {
+      extracted = await DutyRosterImageImportService.extract(
+        imageBytes: imageBytes,
+        mimeType: mimeType,
+        expectedShift: selectedShift,
+      );
+    } catch (error) {
+      if (mounted) {
+        final message = error is ArgumentError || error is FormatException ||
+                error is StateError
+            ? error.toString().replaceFirst('Invalid argument(s): ', '')
+                .replaceFirst('FormatException: ', '')
+                .replaceFirst('Bad state: ', '')
+            : 'تعذر استخراج البيانات. تحقق من اتصال الإنترنت وإعدادات Firebase AI ثم أعد المحاولة.';
+        msg(message);
+      }
+      return;
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
+    if (!mounted) return;
+
+    final detectedShift = (extracted['shift'] ?? '').toString().toUpperCase();
+    if (const {'A', 'B', 'C'}.contains(detectedShift) &&
+        detectedShift != selectedShift) {
+      msg('الصورة تبدو خاصة بالشفت $detectedShift، بينما الشفت المحدد هو $selectedShift. اختر الشفت الصحيح ثم أعد رفع الصورة.');
+      return;
+    }
+
+    final approved = await Navigator.of(context).push<Map<String, dynamic>>(
+      MaterialPageRoute(
+        builder: (_) => DutyRosterImportReviewScreen(
+          extracted: extracted,
+          expectedShift: selectedShift,
+        ),
+      ),
+    );
+    if (approved == null || !mounted) return;
+
+    final printedDate = DateTime.tryParse((approved['date'] ?? '').toString());
+    if (printedDate == null) {
+      msg('تاريخ الكشف غير صحيح. لم يتم إدخال أي بيانات.');
+      return;
+    }
+
+    await _flushPendingAutosaves();
+    for (final timer in _autosaveTimers.values) {
+      timer.cancel();
+    }
+    _autosaveTimers.clear();
+    _autosaveDateKeys.clear();
+
+    // In this screen, shift A is prepared one day before its printed duty date.
+    final targetScreenDay = selectedShift == 'A'
+        ? printedDate.subtract(const Duration(days: 1))
+        : printedDate;
+    setState(() {
+      busy = true;
+      _loaded = false;
+      day = targetScreenDay;
+    });
+
+    try {
+      await _load();
+      if (!_loaded || !mounted) {
+        msg('تعذر تحميل كشف التاريخ المحدد. لم تُدرج البيانات المستخرجة.');
+        return;
+      }
+
+      final importedAssignments =
+          (approved['assignments'] as List? ?? const []).whereType<Map>().map((row) {
+        return <String, String?>{
+          'officer': (row['officer'] ?? '').toString().trim(),
+          'location': (row['location'] ?? '').toString().trim(),
+        };
+      }).toList();
+      final importedClinics =
+          (approved['clinicAssignments'] as List? ?? const []).whereType<Map>().map((row) {
+        return <String, String?>{
+          'officer': (row['officer'] ?? '').toString().trim(),
+          'location': (row['location'] ?? '').toString().trim(),
+        };
+      }).toList();
+
+      setState(() {
+        rows[selectedShift] = importedAssignments;
+        offs[selectedShift] = List<String>.from(approved['offNames'] ?? const []);
+        annuals[selectedShift] =
+            List<String>.from(approved['annualNames'] ?? const []);
+        specials[selectedShift] =
+            List<String>.from(approved['specialNames'] ?? const []);
+        if (selectedShift == 'A') {
+          clinicRows
+            ..clear()
+            ..addAll(importedClinics);
+        }
+      });
+      _draftChanged();
+      msg('تم إدخال البيانات المعتمدة في شفت $selectedShift بتاريخ $rosterDateLabel. يمكنك الآن استخدام معاينة PDF الحالية.');
+    } catch (_) {
+      msg('حدث خطأ أثناء إدخال البيانات. لم يتم تغيير ملف PDF أو تنسيقه.');
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
+  }
+
   Future<void> _save() async {
     if (!admin || busy) return;
     _autosaveTimers[shift]?.cancel();
@@ -1454,6 +1605,8 @@ class _DutyRosterScreenState extends State<DutyRosterScreen>
                 runSpacing: 10,
                 alignment: WrapAlignment.start,
                 children: [
+                  _actionButton(label: 'رفع صورة كشف وتعبئة البيانات', icon: Icons.document_scanner_outlined,
+                    onPressed: busy ? null : _importDutyRosterImage, primary: true),
                   _actionButton(label: 'تحديد نوع التعديل', icon: Icons.tune,
                     onPressed: busy ? null : _chooseEditTarget),
                   _actionButton(label: 'حفظ مسودة الشفت $shift', icon: Icons.save_outlined,
