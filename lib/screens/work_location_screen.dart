@@ -219,6 +219,7 @@ class _WorkLocationScreenState extends State<WorkLocationScreen> {
           'body': body, 'recipientUids': recipients.toList(),
           'createdAt': FieldValue.serverTimestamp(),
           'ownerDeleteUntil': Timestamp.fromDate(deleteUntil),
+          'hiddenFromOfficer': false,
         });
       }
       await batch.commit();
@@ -258,7 +259,7 @@ class _WorkLocationScreenState extends State<WorkLocationScreen> {
     }
   }
 
-  Future<void> _deleteOwnNote(String noteId) async {
+  Future<void> _hideOwnNote(String noteId) async {
     if (!officer || busy) return;
     final yes = await showDialog<bool>(
       context: context,
@@ -277,8 +278,8 @@ class _WorkLocationScreenState extends State<WorkLocationScreen> {
     );
     if (yes != true) return;
     try {
-      await db.collection('work_shift_notes').doc(noteId).delete();
-      msg('تم حذف الملاحظة من حسابك.');
+      await db.collection('work_shift_notes').doc(noteId).update({'hiddenFromOfficer': true});
+      msg('تم إخفاء الملاحظة من حسابك، وبقيت لدى المستلمين.');
     } on FirebaseException catch (e) {
       msg('تعذر حذف الملاحظة (' + e.code + ').');
     }
@@ -468,6 +469,7 @@ class _WorkLocationScreenState extends State<WorkLocationScreen> {
   Widget _recentWorkerNotes() => StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
     stream: db.collection('work_shift_notes')
         .where('officerUid', isEqualTo: uid)
+        .where('hiddenFromOfficer', isEqualTo: false)
         .where('createdAt', isGreaterThanOrEqualTo: Timestamp.fromDate(
           DateTime.now().subtract(const Duration(hours: 10))))
         .snapshots(),
@@ -522,8 +524,8 @@ class _WorkLocationScreenState extends State<WorkLocationScreen> {
                   ),
                   trailing: canDelete
                     ? IconButton(
-                        tooltip: 'حذف خلال يوم الإرسال',
-                        onPressed: busy ? null : () => _deleteOwnNote(doc.id),
+                        tooltip: 'إخفاء من حسابي خلال يوم الإرسال',
+                        onPressed: busy ? null : () => _hideOwnNote(doc.id),
                         icon: const Icon(Icons.delete_outline_rounded, color: Colors.red),
                       )
                     : null,
