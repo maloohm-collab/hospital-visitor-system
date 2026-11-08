@@ -459,16 +459,13 @@ class DutyRosterPdf {
         pageFormat: pageFormat,
         margin: const pw.EdgeInsets.all(margin),
         build: (_) => pw.Align(
-          // عرض ثابت يساوي المساحة المتاحة بين هامشين متساويين،
-          // مع محاذاة أفقية وسطية حتى تبقى كتلة الكشف في منتصف A4.
+          // استخدم عرض المحتوى المحدد فعلياً (85% من A4).
+          // لا تستخدم FittedBox هنا لأنه كان يصغّر الجدول كله ليلائم الارتفاع،
+          // فينتج عنه فراغ كبير على جانبي الصفحة رغم صحة قيمة الهوامش.
           alignment: pw.Alignment.topCenter,
           child: pw.SizedBox(
             width: contentWidth,
-            child: pw.FittedBox(
-              fit: pw.BoxFit.scaleDown,
-              alignment: pw.Alignment.topCenter,
-              child: pw.SizedBox(width: contentWidth, child: content),
-            ),
+            child: content,
           ),
         ),
       ));
