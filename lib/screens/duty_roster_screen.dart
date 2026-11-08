@@ -981,6 +981,11 @@ class _DutyRosterScreenState extends State<DutyRosterScreen>
             List<String>.from(approved['annualNames'] ?? const []);
         specials[selectedShift] =
             List<String>.from(approved['specialNames'] ?? const []);
+        final importedSupervisor =
+            (approved['supervisorName'] ?? '').toString().trim();
+        if (importedSupervisor.isNotEmpty) {
+          supervisors[selectedShift] = importedSupervisor;
+        }
         if (selectedShift == 'A') {
           clinicRows
             ..clear()
