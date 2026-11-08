@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
+import 'dart:ui' as ui;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -886,7 +887,7 @@ class _DutyRosterScreenState extends State<DutyRosterScreen>
                 controller: controller,
                 minLines: 6,
                 maxLines: 12,
-                textDirection: TextDirection.ltr,
+                textDirection: ui.TextDirection.ltr,
                 decoration: const InputDecoration(
                   hintText: 'الصق JSON هنا…',
                   border: OutlineInputBorder(),
