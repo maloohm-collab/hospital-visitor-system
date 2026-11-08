@@ -390,13 +390,10 @@ class DutyRosterPdf {
       doc.addPage(pw.Page(
         pageFormat: pageFormat,
         margin: const pw.EdgeInsets.all(margin),
-        build: (_) => pw.Directionality(
-          textDirection: pw.TextDirection.ltr,
-          child: pw.FittedBox(
-            fit: pw.BoxFit.scaleDown,
-            alignment: pw.Alignment.topCenter,
-            child: pw.SizedBox(width: contentWidth, child: content),
-          ),
+        build: (_) => pw.FittedBox(
+          fit: pw.BoxFit.scaleDown,
+          alignment: pw.Alignment.topCenter,
+          child: pw.SizedBox(width: contentWidth, child: content),
         ),
       ));
     }
