@@ -188,14 +188,25 @@ class _DutyRosterScreenState extends State<DutyRosterScreen>
       }
       final allData = await _data('draft', dateKey: targetDateKey);
       final allBlocks = Map<String, dynamic>.from(allData['shifts'] ?? {});
+      // قواعد Firestore تشترط وجود A وB وC في كل وثيقة، حتى عند حفظ شفت واحد.
+      // نحافظ على بيانات الشفتات الأخرى الموجودة ولا نكتب فوقها بقيم الشاشة الافتراضية.
+      if (existingRoster.exists) {
+        final storedBlocks = Map<String, dynamic>.from(existingRoster.data()?['shifts'] ?? {});
+        for (final otherCode in ['A', 'B', 'C']) {
+          if (otherCode != code && storedBlocks[otherCode] is Map) {
+            allBlocks[otherCode] = Map<String, dynamic>.from(storedBlocks[otherCode]);
+          }
+        }
+      }
       final block = Map<String, dynamic>.from(allBlocks[code] ?? {});
       block['status'] = 'draft';
       block['managerConfirmed'] = false;
-      block['publishedAt'] = FieldValue.delete();
+      block.remove('publishedAt');
+      allBlocks[code] = block;
       final payload = <String, dynamic>{
         'dateKey': targetDateKey,
         'siteManager': siteManager,
-        'shifts': {code: block},
+        'shifts': allBlocks,
         'updatedAt': FieldValue.serverTimestamp(),
         'updatedBy': FirebaseAuth.instance.currentUser?.uid,
         'status': 'draft',
@@ -959,6 +970,29 @@ class _DutyRosterScreenState extends State<DutyRosterScreen>
       final nextWeekData = nextWeekSnapshot.data() ?? <String, dynamic>{};
       final nextWeekShifts = Map<String, dynamic>.from(nextWeekData['shifts'] ?? {});
       final shouldSeedNextWeek = !nextWeekShifts.containsKey(shift);
+      final nextWeekDateIsClinicDay = nextWeekDate.weekday == DateTime.sunday ||
+          (nextWeekDate.weekday >= DateTime.monday && nextWeekDate.weekday <= DateTime.thursday);
+      // حتى وثيقة الأسبوع القادم الجديدة يجب أن تحتوي مفاتيح A/B/C كاملة حسب قواعد Firestore.
+      for (final code in ['A', 'B', 'C']) {
+        nextWeekShifts.putIfAbsent(code, () => <String, dynamic>{
+          'hours': code == 'A' ? '08:00–16:00' : code == 'B' ? '16:00–00:00' : '00:00–08:00',
+          'assignments': <Map<String, dynamic>>[],
+          'offNames': <String>[],
+          'annualNames': <String>[],
+          'specialNames': <String>[],
+          'adminNote': '',
+          'supervisorName': supervisors[code],
+          'siteManager': siteManager,
+          if (code == 'A') 'clinicAssignments': nextWeekDateIsClinicDay
+              ? DutyRosterCatalog.clinicOfficers.map((name) => <String, dynamic>{
+                  'officer': name,
+                  'location': DutyRosterCatalog.clinicAssignments[name],
+                }).toList()
+              : <Map<String, dynamic>>[],
+          'status': 'draft',
+          'managerConfirmed': false,
+        });
+      }
       final nextWeekBlock = Map<String, dynamic>.from(selectedBlock);
       nextWeekBlock
         ..['status'] = 'draft'
@@ -980,20 +1014,30 @@ class _DutyRosterScreenState extends State<DutyRosterScreen>
       selectedBlock['status'] = 'published';
       selectedBlock['managerConfirmed'] = false;
       selectedBlock['publishedAt'] = FieldValue.serverTimestamp();
+      final publishedShifts = Map<String, dynamic>.from(previewBlocks);
+      final existingShifts = Map<String, dynamic>.from(old.data()?['shifts'] ?? {});
+      for (final code in ['A', 'B', 'C']) {
+        if (code != shift && existingShifts[code] is Map) {
+          publishedShifts[code] = Map<String, dynamic>.from(existingShifts[code]);
+        }
+      }
+      publishedShifts[shift] = selectedBlock;
       batch.set(roster, {
         'dateKey': keyDay,
-        'shifts': {shift: selectedBlock},
+        'shifts': publishedShifts,
+        'status': 'published',
         'lastPublishedShift': shift,
         'updatedAt': FieldValue.serverTimestamp(),
         'updatedBy': FirebaseAuth.instance.currentUser?.uid,
       }, SetOptions(merge: true));
 
       if (shouldSeedNextWeek) {
+        nextWeekShifts[shift] = nextWeekBlock;
         batch.set(nextWeekRoster, {
           'dateKey': nextWeekKey,
           'copiedFromDateKey': keyDay,
           'preparedForDateKey': nextWeekKey,
-          'shifts': {shift: nextWeekBlock},
+          'shifts': nextWeekShifts,
           'status': 'draft',
           'updatedAt': FieldValue.serverTimestamp(),
           'updatedBy': FirebaseAuth.instance.currentUser?.uid,
