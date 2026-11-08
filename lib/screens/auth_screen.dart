@@ -22,8 +22,12 @@ class _AuthScreenState extends State<AuthScreen> {
   bool _obscure = true, _register = false, _loading = false, _usePinLogin = false;
   String _role = 'security_officer';
   static const _navy = Color(0xFF082B55);
-  static const _teal = Color(0xFF12B8B0);
   static const _secureStorage = FlutterSecureStorage();
+  static const _lockKey = 'hospital_visitor_local_lock_';
+
+  Future<void> _clearLocalLock(String uid) async {
+    await _secureStorage.delete(key: '$_lockKey$uid');
+  }
 
   @override
   void dispose() {
@@ -131,6 +135,7 @@ class _AuthScreenState extends State<AuthScreen> {
           return;
         }
 
+        await _clearLocalLock(user.uid);
         if (!mounted) return;
         Navigator.of(context).pushAndRemoveUntil(
           MaterialPageRoute(builder: (_) => DashboardScreen(userRole: role)),
@@ -148,6 +153,62 @@ class _AuthScreenState extends State<AuthScreen> {
     } finally {
       if (mounted) setState(() => _loading = false);
     }
+  }
+
+
+  Future<void> _sendPasswordReset() async {
+    final email = _email.text.trim();
+    if (!email.contains('@') || !email.contains('.')) {
+      _message('أدخل بريدك الإلكتروني أولًا لإرسال رابط إعادة تعيين كلمة المرور.');
+      return;
+    }
+    setState(() => _loading = true);
+    try {
+      await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
+      _message('إذا كان البريد مرتبطًا بحساب، فسيصلك رابط آمن لإعادة تعيين كلمة المرور. تحقق أيضًا من البريد غير المرغوب فيه.');
+    } on FirebaseAuthException catch (error) {
+      _message(_authError(error.code));
+    } catch (_) {
+      _message('تعذر إرسال رابط الاستعادة. تحقق من الاتصال وحاول مجددًا.');
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  void _showForgotPinHelp() {
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('نسيت رمز الدخول السريع؟'),
+        content: const Text(
+          'رمز الدخول السريع محفوظ على هذا الجهاز فقط. سجّل الدخول بالبريد الإلكتروني وكلمة المرور، ثم افتح «حسابي» وأنشئ رمزًا جديدًا؛ وسيحل الرمز الجديد محل القديم.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('حسنًا'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showForgotEmailHelp() {
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('نسيت البريد الإلكتروني؟'),
+        content: const Text(
+          'لحماية الحسابات، لا يعرض التطبيق البريد الإلكتروني اعتمادًا على الاسم أو رقم الهاتف فقط. تواصل مع مسؤول النظام واطلب استعادة الحساب بعد التحقق من هويتك باستخدام اسمك الكامل ورقم الهاتف المسجل. لا ترسل كلمة المرور أو رمز الدخول لأي شخص.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('إغلاق'),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _submitPinLogin() async {
@@ -182,6 +243,7 @@ class _AuthScreenState extends State<AuthScreen> {
         _message('الحساب غير مفعّل. راجع مسؤول النظام.');
         return;
       }
+      await _clearLocalLock(user.uid);
       if (!mounted) return;
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(builder: (_) => DashboardScreen(userRole: role)),
@@ -442,6 +504,28 @@ class _AuthScreenState extends State<AuthScreen> {
                                   textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w900),
                                 ),
                               ),
+                              if (!_register) ...[
+                                const SizedBox(height: 8),
+                                Wrap(
+                                  alignment: WrapAlignment.center,
+                                  spacing: 4,
+                                  runSpacing: 0,
+                                  children: [
+                                    TextButton(
+                                      onPressed: _loading ? null : _sendPasswordReset,
+                                      child: const Text('نسيت كلمة المرور؟'),
+                                    ),
+                                    TextButton(
+                                      onPressed: _loading ? null : _showForgotEmailHelp,
+                                      child: const Text('نسيت البريد الإلكتروني؟'),
+                                    ),
+                                    TextButton(
+                                      onPressed: _loading ? null : _showForgotPinHelp,
+                                      child: const Text('نسيت الرمز؟'),
+                                    ),
+                                  ],
+                                ),
+                              ],
                               const SizedBox(height: 10),
                               TextButton(
                                 onPressed: _loading ? null : () => setState(() {

@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import '../widgets/app_search_field.dart';
 
 class AdminApprovalScreen extends StatefulWidget {
   const AdminApprovalScreen({super.key});
@@ -11,10 +12,10 @@ class AdminApprovalScreen extends StatefulWidget {
 
 class _AdminApprovalScreenState extends State<AdminApprovalScreen> {
   static const _navy = Color(0xFF082B55);
-  static const _teal = Color(0xFF12B8B0);
-
+  
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   late Future<List<Map<String, dynamic>>> _requests;
+  String _searchTerm = '';
 
   @override
   void initState() {
@@ -216,8 +217,9 @@ class _AdminApprovalScreenState extends State<AdminApprovalScreen> {
                 ),
               );
             }
-            final requests = snapshot.data ?? const [];
-            if (requests.isEmpty) {
+            final allRequests = snapshot.data ?? const [];
+            final requests = allRequests.where((r) => matchesSearchText(_searchTerm, [r['displayName'], r['phone'], r['email'], r['requestedRole'], r['uid']])).toList();
+            if (allRequests.isEmpty) {
               return const _StatusPanel(
                 icon: Icons.inbox_outlined,
                 title: 'لا توجد طلبات معلّقة',
@@ -229,6 +231,8 @@ class _AdminApprovalScreenState extends State<AdminApprovalScreen> {
               child: ListView(
                 padding: const EdgeInsets.all(16),
                 children: [
+                  AppSearchField(hint: 'ابحث باسم مقدم الطلب أو الهاتف أو البريد...', onChanged: (v) => setState(() => _searchTerm = v)),
+                  const SizedBox(height: 14),
                   Container(
                     padding: const EdgeInsets.all(18),
                     decoration: BoxDecoration(
@@ -254,6 +258,8 @@ class _AdminApprovalScreenState extends State<AdminApprovalScreen> {
                     ),
                   ),
                   const SizedBox(height: 16),
+                  if (requests.isEmpty)
+                    const Padding(padding: EdgeInsets.all(24), child: Text('لا توجد نتائج مطابقة. جرّب اسمًا أو رقم هاتف آخر.', textAlign: TextAlign.center, style: TextStyle(color: _navy))),
                   for (final request in requests)
                     _RequestCard(
                       request: request,

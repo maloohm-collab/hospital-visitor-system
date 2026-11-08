@@ -2,12 +2,15 @@ import 'dart:ui' show FontFeature;
 
 import 'package:flutter/material.dart';
 
-/// A dependency-light Arabic digital clock shared by every role dashboard.
+/// A shared, full-width Arabic digital clock for all dashboard roles.
 class DigitalClockCard extends StatelessWidget {
-  const DigitalClockCard({super.key});
+  const DigitalClockCard({super.key, this.adminStyle = false});
+
+  // Kept for API compatibility with existing dashboard callers.
+  final bool adminStyle;
 
   static const _navy = Color(0xFF082B55);
-  static const _teal = Color(0xFF12B8B0);
+  static const _muted = Color(0xFF49647D);
   static const _weekdays = <String>[
     'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس',
     'الجمعة', 'السبت', 'الأحد',
@@ -36,73 +39,67 @@ class DigitalClockCard extends StatelessWidget {
       builder: (context, snapshot) {
         final now = snapshot.data ?? DateTime.now();
         return Container(
+          width: double.infinity,
           margin: const EdgeInsets.only(bottom: 16),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          padding: const EdgeInsets.fromLTRB(18, 14, 18, 16),
           decoration: BoxDecoration(
             gradient: const LinearGradient(
-              colors: [_navy, Color(0xFF14558A)],
-              begin: Alignment.centerRight,
-              end: Alignment.centerLeft,
+              colors: [Color(0xFFEAF4FC), Color(0xFFDCEBFA)],
+              begin: Alignment.topRight,
+              end: Alignment.bottomLeft,
             ),
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: _teal.withOpacity(0.45)),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: const Color(0xFFD3E3F1), width: 1),
             boxShadow: const [
               BoxShadow(
-                color: Color(0x14082B55),
-                blurRadius: 12,
+                color: Color(0x0D082B55),
+                blurRadius: 14,
                 offset: Offset(0, 5),
               ),
             ],
           ),
-          child: Row(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Container(
-                width: 46,
-                height: 46,
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.12),
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: const Icon(
-                  Icons.schedule_rounded,
-                  color: Colors.white,
-                  size: 27,
-                ),
-              ),
-              const SizedBox(width: 13),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
+              Row(
+                children: [
+                  const Icon(Icons.schedule_rounded, color: _navy, size: 20),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
                       _date(now),
+                      textAlign: TextAlign.start,
                       style: const TextStyle(
-                        color: Colors.white,
+                        color: _muted,
                         fontSize: 13,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      _time(now),
-                      textDirection: TextDirection.ltr,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 23,
-                        letterSpacing: 1.2,
-                        fontWeight: FontWeight.w900,
-                        fontFeatures: [FontFeature.tabularFigures()],
-                      ),
+                  ),
+                  const Text(
+                    'الوقت الحالي',
+                    style: TextStyle(
+                      color: _muted,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w800,
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
-              const Text(
-                'الوقت الحالي',
-                style: TextStyle(
-                  color: Color(0xFFB8F3EF),
-                  fontSize: 11,
-                  fontWeight: FontWeight.w800,
+              const SizedBox(height: 5),
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  _time(now),
+                  textDirection: TextDirection.ltr,
+                  style: const TextStyle(
+                    color: _navy,
+                    fontSize: 42,
+                    height: 1.18,
+                    letterSpacing: 2.0,
+                    fontWeight: FontWeight.w900,
+                    fontFeatures: [FontFeature.tabularFigures()],
+                  ),
                 ),
               ),
             ],
