@@ -125,7 +125,7 @@ class DutyRosterPdf {
         var effectiveSize = size ?? fs;
         if (fitJob && value.isNotEmpty) {
           while (effectiveSize > 9.0 &&
-              bold.stringSize(value, fontSize: effectiveSize) > jobTextWidth) {
+              (bold.stringMetrics(value).width * effectiveSize) > jobTextWidth) {
             effectiveSize = (effectiveSize - 0.5).clamp(9.0, fs).toDouble();
           }
         }
