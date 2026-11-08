@@ -19,7 +19,8 @@ class DutyRosterImportReviewScreen extends StatefulWidget {
 class _DutyRosterImportReviewScreenState
     extends State<DutyRosterImportReviewScreen> {
   static const navy = Color(0xFF082B55);
-  late final TextEditingController _dateController;\n  late final TextEditingController _supervisorController;
+  late final TextEditingController _dateController;
+  late final TextEditingController _supervisorController;
   late final List<Map<String, TextEditingController>> _assignments;
   late final List<Map<String, TextEditingController>> _clinics;
   late final List<TextEditingController> _offs;
@@ -34,7 +35,10 @@ class _DutyRosterImportReviewScreenState
           ? ''
           : (widget.extracted['date'] ?? '').toString(),
     );
-    _supervisorController = TextEditingController(\n      text: (widget.extracted['supervisorName'] ?? '').toString(),\n    );\n    _assignments = _rowControllers(widget.extracted['assignments']);
+    _supervisorController = TextEditingController(
+      text: (widget.extracted['supervisorName'] ?? '').toString(),
+    );
+    _assignments = _rowControllers(widget.extracted['assignments']);
     _clinics = _rowControllers(widget.extracted['clinicAssignments']);
     _offs = _textControllers(widget.extracted['offNames']);
     _annuals = _textControllers(widget.extracted['annualNames']);
@@ -56,7 +60,8 @@ class _DutyRosterImportReviewScreenState
 
   @override
   void dispose() {
-    _dateController.dispose();\n    _supervisorController.dispose();
+    _dateController.dispose();
+    _supervisorController.dispose();
     for (final row in [..._assignments, ..._clinics]) {
       for (final controller in row.values) {
         controller.dispose();
