@@ -18,6 +18,47 @@ class DutyRosterPdf {
     'عند الحصول على إجازة مرضية يجب أن تكون مختومة من السجل الطبي أو ختم وتوقيع المناوب الإداري عندما يكون السجل مغلقاً وإلا لن تعتمد.',
   ];
 
+  /// يحوّل التاريخ المعروض إلى اسم اليوم العربي دون تغيير صيغة التاريخ الأصلية.
+  /// يدعم ISO (yyyy-MM-dd) وصيغ اليوم/الشهر/السنة الشائعة.
+  static String _arabicDay(String rawDate) {
+    final value = rawDate.trim();
+    DateTime? parsed = DateTime.tryParse(value);
+
+    if (parsed == null) {
+      final parts = value.split(RegExp(r'[/.-]'));
+      if (parts.length == 3) {
+        final first = int.tryParse(parts[0]);
+        final second = int.tryParse(parts[1]);
+        final third = int.tryParse(parts[2]);
+        if (first != null && second != null && third != null) {
+          final year = parts[0].length == 4 ? first : third;
+          final month = second;
+          final day = parts[0].length == 4 ? third : first;
+          if (year >= 1 && month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+            final candidate = DateTime(year, month, day);
+            if (candidate.year == year &&
+                candidate.month == month &&
+                candidate.day == day) {
+              parsed = candidate;
+            }
+          }
+        }
+      }
+    }
+
+    if (parsed == null) return '';
+    const days = [
+      'الاثنين',
+      'الثلاثاء',
+      'الأربعاء',
+      'الخميس',
+      'الجمعة',
+      'السبت',
+      'الأحد',
+    ];
+    return days[parsed.weekday - 1];
+  }
+
   static Future<List<int>> build({
     required String date,
     required Map<String, dynamic> shifts,
@@ -30,6 +71,8 @@ class DutyRosterPdf {
     const pageFormat = PdfPageFormat.a4;
     const margin = 24.0;
     final contentWidth = pageFormat.width - margin * 2;
+    final dayName = _arabicDay(date);
+    final dateLabel = dayName.isEmpty ? date : '$dayName   |   $date';
     final shiftCodes =
         onlyShift == null ? <String>['A', 'B', 'C'] : <String>[onlyShift];
 
@@ -156,7 +199,7 @@ class DutyRosterPdf {
               ),
               padding: const pw.EdgeInsets.symmetric(vertical: 3),
               child: pw.Text(
-                hours.isEmpty ? date : '$date   |   $hours',
+                hours.isEmpty ? dateLabel : '$dateLabel   |   $hours',
                 textDirection: pw.TextDirection.rtl,
                 textAlign: pw.TextAlign.center,
                 style: pw.TextStyle(font: bold, fontSize: 12),
@@ -389,10 +432,18 @@ class DutyRosterPdf {
       doc.addPage(pw.Page(
         pageFormat: pageFormat,
         margin: const pw.EdgeInsets.all(margin),
-        build: (_) => pw.FittedBox(
-          fit: pw.BoxFit.scaleDown,
+        build: (_) => pw.Align(
+          // عرض ثابت يساوي المساحة المتاحة بين هامشين متساويين،
+          // مع محاذاة أفقية وسطية حتى تبقى كتلة الكشف في منتصف A4.
           alignment: pw.Alignment.topCenter,
-          child: pw.SizedBox(width: contentWidth, child: content),
+          child: pw.SizedBox(
+            width: contentWidth,
+            child: pw.FittedBox(
+              fit: pw.BoxFit.scaleDown,
+              alignment: pw.Alignment.topCenter,
+              child: pw.SizedBox(width: contentWidth, child: content),
+            ),
+          ),
         ),
       ));
     }
