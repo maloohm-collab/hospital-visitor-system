@@ -5,11 +5,13 @@ import 'dart:typed_data';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:printing/printing.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../data/duty_roster_pdf.dart';
 import '../data/duty_roster_catalog.dart';
 import '../widgets/app_search_field.dart';
@@ -847,76 +849,95 @@ class _DutyRosterScreenState extends State<DutyRosterScreen>
       if (status == 'published') 'publishedAt': FieldValue.serverTimestamp()};
   }
 
-  Future<void> _importDutyRosterImage() async {
+  Future<void> _openGeminiForRoster() async {
     if (!admin || busy) return;
-
-    final picked = await FilePicker.platform.pickFiles(
-      type: FileType.image,
-      allowMultiple: false,
-      withData: true,
+    final prompt = DutyRosterImageImportService.buildPrompt(shift);
+    await Clipboard.setData(ClipboardData(text: prompt));
+    final opened = await launchUrl(
+      Uri.parse('https://gemini.google.com/app'),
+      mode: LaunchMode.externalApplication,
     );
-    if (picked == null || picked.files.isEmpty) return;
+    if (!mounted) return;
+    if (!opened) {
+      msg('تعذر فتح Gemini. تم نسخ تعليمات استخراج الكشف؛ افتح Gemini والصق التعليمات ثم أرفق صورة الشفت.');
+      return;
+    }
+    msg('تم نسخ تعليمات الاستخراج. في Gemini الصق التعليمات، ثم أرفق صورة كشف الشفت المحدد واطلب إخراج JSON.');
+  }
 
-    final file = picked.files.single;
-    final extension = (file.extension ?? '').toLowerCase();
-    final mimeType = switch (extension) {
-      'jpg' || 'jpeg' => 'image/jpeg',
-      'png' => 'image/png',
-      'webp' => 'image/webp',
-      _ => '',
-    };
-    if (mimeType.isEmpty) {
-      msg('صيغة الصورة غير مدعومة. اختر JPG أو PNG أو WEBP.');
-      return;
-    }
-
-    Uint8List? imageBytes = file.bytes;
-    if (imageBytes == null && file.path != null) {
-      try {
-        imageBytes = await File(file.path!).readAsBytes();
-      } catch (_) {
-        imageBytes = null;
-      }
-    }
-    if (imageBytes == null || imageBytes.isEmpty) {
-      msg('تعذر قراءة الصورة من الجهاز.');
-      return;
-    }
-    if (imageBytes.lengthInBytes > 12 * 1024 * 1024) {
-      msg('حجم الصورة كبير. اختر صورة لا يتجاوز حجمها 12 ميجابايت.');
-      return;
-    }
+  Future<void> _importGeminiRosterResult() async {
+    if (!admin || busy) return;
+    final controller = TextEditingController();
+    final raw = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('استيراد نتيجة Gemini'),
+        content: SizedBox(
+          width: 520,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'الصق هنا JSON الذي أعاده Gemini بعد قراءة صورة هذا الشفت فقط.',
+                textAlign: TextAlign.right,
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: controller,
+                minLines: 6,
+                maxLines: 12,
+                textDirection: TextDirection.ltr,
+                decoration: const InputDecoration(
+                  hintText: 'الصق JSON هنا…',
+                  border: OutlineInputBorder(),
+                  alignLabelWithHint: true,
+                ),
+              ),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: TextButton.icon(
+                  onPressed: () async {
+                    final data = await Clipboard.getData(Clipboard.kTextPlain);
+                    if (data?.text != null) controller.text = data!.text!;
+                  },
+                  icon: const Icon(Icons.content_paste),
+                  label: const Text('لصق من الحافظة'),
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('إلغاء'),
+          ),
+          FilledButton.icon(
+            onPressed: () => Navigator.pop(dialogContext, controller.text),
+            icon: const Icon(Icons.fact_check_outlined),
+            label: const Text('تحليل ومراجعة'),
+          ),
+        ],
+      ),
+    );
+    if (raw == null || raw.trim().isEmpty || !mounted) return;
 
     final selectedShift = shift;
     Map<String, dynamic> extracted;
-    setState(() => busy = true);
     try {
-      extracted = await DutyRosterImageImportService.extract(
-        imageBytes: imageBytes,
-        mimeType: mimeType,
+      extracted = DutyRosterImageImportService.decode(
+        raw,
         expectedShift: selectedShift,
       );
     } catch (error) {
-      if (mounted) {
-        final details = error.toString()
-            .replaceFirst('Invalid argument(s): ', '')
-            .replaceFirst('FormatException: ', '')
-            .replaceFirst('Bad state: ', '');
-        final message = details.length > 420
-            ? 'تعذر استخراج البيانات: ${details.substring(0, 420)}…'
-            : 'تعذر استخراج البيانات: $details';
-        msg(message);
-      }
+      msg('تعذر قراءة نتيجة Gemini: ${error.toString().replaceFirst('FormatException: ', '')}');
       return;
-    } finally {
-      if (mounted) setState(() => busy = false);
     }
-    if (!mounted) return;
 
     final detectedShift = (extracted['shift'] ?? '').toString().toUpperCase();
     if (const {'A', 'B', 'C'}.contains(detectedShift) &&
         detectedShift != selectedShift) {
-      msg('الصورة تبدو خاصة بالشفت $detectedShift، بينما الشفت المحدد هو $selectedShift. اختر الشفت الصحيح ثم أعد رفع الصورة.');
+      msg('البيانات المستوردة تخص الشفت $detectedShift، بينما الشفت المحدد هو $selectedShift. لم يتم إدخال أي بيانات.');
       return;
     }
 
@@ -1615,8 +1636,10 @@ class _DutyRosterScreenState extends State<DutyRosterScreen>
                 runSpacing: 10,
                 alignment: WrapAlignment.start,
                 children: [
-                  _actionButton(label: 'رفع صورة كشف وتعبئة البيانات', icon: Icons.document_scanner_outlined,
-                    onPressed: busy ? null : _importDutyRosterImage, primary: true),
+                  _actionButton(label: 'فتح Gemini واستخراج كشف الشفت', icon: Icons.auto_awesome,
+                    onPressed: busy ? null : _openGeminiForRoster, primary: true),
+                  _actionButton(label: 'استيراد نتيجة Gemini ولصق البيانات', icon: Icons.content_paste_go,
+                    onPressed: busy ? null : _importGeminiRosterResult),
                   _actionButton(label: 'تحديد نوع التعديل', icon: Icons.tune,
                     onPressed: busy ? null : _chooseEditTarget),
                   _actionButton(label: 'حفظ مسودة الشفت $shift', icon: Icons.save_outlined,
