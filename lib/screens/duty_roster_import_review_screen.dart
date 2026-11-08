@@ -234,6 +234,7 @@ class _DutyRosterImportReviewScreenState
     Navigator.pop(context, <String, dynamic>{
       'date': date,
       'shift': widget.expectedShift,
+      'supervisorName': _supervisorController.text.trim(),
       'assignments': assignments,
       'clinicAssignments': clinics,
       'offNames': _readNames(_offs),
@@ -274,6 +275,15 @@ class _DutyRosterImportReviewScreenState
               hintText: 'YYYY-MM-DD',
               border: OutlineInputBorder(),
               prefixIcon: Icon(Icons.calendar_month),
+            ),
+          ),
+          const SizedBox(height: 10),
+          TextField(
+            controller: _supervisorController,
+            textDirection: TextDirection.rtl,
+            decoration: const InputDecoration(
+              labelText: 'اسم المشرف (إذا كان موجوداً في الكشف)',
+              border: OutlineInputBorder(),
             ),
           ),
           const SizedBox(height: 10),
