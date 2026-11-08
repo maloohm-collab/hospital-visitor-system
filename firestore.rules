@@ -832,8 +832,12 @@ service cloud.firestore {
         && (
           (
             request.resource.data.keys().hasOnly([
-              'noteId', 'shiftId', 'officerUid', 'officerName', 'locationName', 'body', 'recipientUids', 'createdAt'
+              'noteId', 'shiftId', 'officerUid', 'officerName', 'locationName', 'body', 'recipientUids', 'createdAt',
+              'ownerDeleteUntil'
             ])
+            && request.resource.data.ownerDeleteUntil is timestamp
+            && request.resource.data.ownerDeleteUntil > request.time
+            && request.resource.data.ownerDeleteUntil <= request.time + duration.value(24, 'h')
             && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'security_officer'
             && request.resource.data.officerUid == request.auth.uid
             && exists(/databases/$(database)/documents/work_shifts/$(request.resource.data.shiftId))
@@ -869,9 +873,8 @@ service cloud.firestore {
         && (
           (
             resource.data.officerUid == request.auth.uid
-            && exists(/databases/$(database)/documents/work_shifts/$(resource.data.shiftId))
-            && get(/databases/$(database)/documents/work_shifts/$(resource.data.shiftId)).data.status == 'active'
-            && request.time < get(/databases/$(database)/documents/work_shifts/$(resource.data.shiftId)).data.startedAt + duration.value(8, 'h')
+            && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'security_officer'
+            && request.time < resource.data.createdAt + duration.value(10, 'h')
           )
           || (
             request.auth.uid in resource.data.recipientUids
@@ -880,8 +883,18 @@ service cloud.firestore {
         );
 
       allow delete: if isActiveUser()
-        && request.auth.uid in resource.data.recipientUids
-        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['supervisor', 'admin'];
+        && (
+          (
+            resource.data.officerUid == request.auth.uid
+            && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'security_officer'
+            && resource.data.ownerDeleteUntil is timestamp
+            && request.time < resource.data.ownerDeleteUntil
+          )
+          || (
+            request.auth.uid in resource.data.recipientUids
+            && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['supervisor', 'admin']
+          )
+        );
       allow update: if false;
     }
 
