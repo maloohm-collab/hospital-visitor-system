@@ -452,8 +452,23 @@ class DutyRosterPdf {
         ],
       );
 
-      final content = pw.Column(
+      // ثبّت حجم العنوان والجدول الرئيسي، ثم خصص المساحة المتبقية
+      // للأقسام السفلية والتواقيع والتعليمات. إذا زاد ارتفاعها عن المتاح،
+      // يتم تصغير هذا الجزء السفلي فقط حتى لا تختفي العناصر خارج حدود A4.
+      final lowerContent = pw.Column(
         mainAxisSize: pw.MainAxisSize.min,
+        crossAxisAlignment: pw.CrossAxisAlignment.stretch,
+        children: [
+          lower,
+          pw.SizedBox(height: 5),
+          signTable,
+          pw.SizedBox(height: 5),
+          rulesBox,
+        ],
+      );
+
+      final content = pw.Column(
+        mainAxisSize: pw.MainAxisSize.max,
         crossAxisAlignment: pw.CrossAxisAlignment.stretch,
         children: [
           titleBox,
@@ -461,11 +476,16 @@ class DutyRosterPdf {
           shiftBar,
           mainTable,
           pw.SizedBox(height: 5),
-          lower,
-          pw.SizedBox(height: 5),
-          signTable,
-          pw.SizedBox(height: 5),
-          rulesBox,
+          pw.Expanded(
+            child: pw.FittedBox(
+              fit: pw.BoxFit.scaleDown,
+              alignment: pw.Alignment.topCenter,
+              child: pw.SizedBox(
+                width: contentWidth,
+                child: lowerContent,
+              ),
+            ),
+          ),
         ],
       );
 
