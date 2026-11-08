@@ -179,7 +179,7 @@ class _DutyRosterScreenState extends State<DutyRosterScreen>
           'shifts': sourceShifts,
         }, SetOptions(merge: true));
       }
-      final allData = await _data('draft', dateKey: targetDateKey, shiftCode: code);
+      final allData = await _data('draft', dateKey: targetDateKey);
       final allBlocks = Map<String, dynamic>.from(allData['shifts'] ?? {});
       final block = Map<String, dynamic>.from(allBlocks[code] ?? {});
       block['status'] = 'draft';
@@ -548,6 +548,34 @@ class _DutyRosterScreenState extends State<DutyRosterScreen>
       // or alter the historical source document.
       final currentSnap = await db.collection('daily_duty_rosters').doc(keyDay).get();
       Map<String, dynamic>? data = currentSnap.data();
+
+      // ترحيل توافقّي: النسخ القديمة لشفت A كانت تُحفظ بتاريخ التحضير
+      // (اليوم السابق) لا بتاريخ الكشف الفعلي. ننقل نسخة الشفت فقط دون حذف الأصل.
+      if (data == null && shift == 'A') {
+        final legacyPreparationKey = DateFormat('yyyy-MM-dd').format(day);
+        if (legacyPreparationKey != keyDay) {
+          final legacySnap = await db.collection('daily_duty_rosters')
+              .doc(legacyPreparationKey).get();
+          final legacyData = legacySnap.data();
+          final legacyShifts = Map<String, dynamic>.from(legacyData?['shifts'] ?? {});
+          if (legacyData != null && legacyShifts['A'] is Map) {
+            data = {
+              'dateKey': keyDay,
+              'siteManager': legacyData['siteManager'],
+              'shifts': {'A': legacyShifts['A']},
+              'status': legacyData['status'],
+              'migratedFromDateKey': legacyPreparationKey,
+            };
+            await db.collection('daily_duty_rosters').doc(keyDay).set({
+              'dateKey': keyDay,
+              'siteManager': legacyData['siteManager'],
+              'shifts': {'A': legacyShifts['A']},
+              'migratedFromDateKey': legacyPreparationKey,
+              'updatedAt': FieldValue.serverTimestamp(),
+            }, SetOptions(merge: true));
+          }
+        }
+      }
       final todayKey = DateFormat('yyyy-MM-dd').format(DateTime.now());
       if (data == null && keyDay == todayKey) {
         final sourceDate = rosterDate.subtract(const Duration(days: 7));
@@ -785,7 +813,7 @@ class _DutyRosterScreenState extends State<DutyRosterScreen>
     await _load();
   }
 
-  Future<Map<String,dynamic>> _data(String status, {String? dateKey, String? shiftCode}) async {
+  Future<Map<String,dynamic>> _data(String status, {String? dateKey}) async {
     final targetDateKey = dateKey ?? keyDay;
     final targetDate = DateTime.tryParse(targetDateKey) ?? rosterDate;
     final clinicDay = targetDate.weekday == DateTime.sunday ||
