@@ -986,6 +986,10 @@ class _DutyRosterScreenState extends State<DutyRosterScreen>
         if (importedSupervisor.isNotEmpty) {
           supervisors[selectedShift] = importedSupervisor;
         }
+        final importedSiteManager = (approved['siteManager'] ?? '').toString().trim();
+        if (importedSiteManager.isNotEmpty) {
+          siteManager = importedSiteManager;
+        }
         if (selectedShift == 'A') {
           clinicRows
             ..clear()
