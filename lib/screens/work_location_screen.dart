@@ -26,6 +26,7 @@ class _WorkLocationScreenState extends State<WorkLocationScreen> {
   final draftNotes = <String>[];
   String? _draftsLoadedForShift;
   bool _draftsLoading = false;
+  int? _editingDraftIndex;
   final recipients = <String>{};
   String? location;
   String _searchTerm = '';
@@ -198,7 +199,13 @@ class _WorkLocationScreenState extends State<WorkLocationScreen> {
           _draftsLoadedForShift = shiftId;
         });
       } catch (_) {
-        if (mounted) setState(() => _draftsLoadedForShift = shiftId);
+        if (mounted) {
+          setState(() {
+            draftNotes.clear();
+            _draftsLoadedForShift = shiftId;
+          });
+          msg('تعذر استعادة المسودات المحفوظة على الجهاز.');
+        }
       } finally {
         _draftsLoading = false;
       }
@@ -209,41 +216,60 @@ class _WorkLocationScreenState extends State<WorkLocationScreen> {
     final shiftId = _draftsLoadedForShift;
     if (shiftId == null) return;
     final key = _draftStorageKey(shiftId);
-    if (draftNotes.isEmpty) {
-      await _draftStorage.delete(key: key);
-    } else {
-      await _draftStorage.write(key: key, value: jsonEncode(draftNotes));
+    try {
+      if (draftNotes.isEmpty) {
+        await _draftStorage.delete(key: key);
+      } else {
+        await _draftStorage.write(key: key, value: jsonEncode(draftNotes));
+      }
+    } catch (_) {
+      if (mounted) msg('تعذر حفظ المسودات على الجهاز.');
     }
   }
 
   void _saveDraftNote() {
+    if (_draftsLoading) return;
     final value = note.text.trim();
     if (value.length < 2) { msg('اكتب ملاحظة لا تقل عن حرفين لإضافتها للمسودات.'); return; }
+    final editing = _editingDraftIndex;
     setState(() {
-      draftNotes.add(value);
+      if (editing != null && editing >= 0 && editing < draftNotes.length) {
+        draftNotes[editing] = value;
+        _editingDraftIndex = null;
+      } else {
+        draftNotes.add(value);
+      }
       note.clear();
     });
     unawaited(_persistDrafts());
-    msg('أُضيفت الملاحظة إلى المسودات، ويمكنك تعديلها أو حذفها قبل الإرسال.');
+    msg(editing == null ? 'أُضيفت الملاحظة إلى المسودات.' : 'تم حفظ تعديل المسودة.');
   }
 
   void _editDraft(int index) {
-    if (index < 0 || index >= draftNotes.length) return;
+    if (index < 0 || index >= draftNotes.length || _draftsLoading) return;
     setState(() {
-      note.text = draftNotes.removeAt(index);
+      note.text = draftNotes[index];
+      _editingDraftIndex = index;
     });
-    unawaited(_persistDrafts());
   }
 
   void _removeDraft(int index) {
-    if (index < 0 || index >= draftNotes.length) return;
-    setState(() => draftNotes.removeAt(index));
+    if (index < 0 || index >= draftNotes.length || _draftsLoading) return;
+    setState(() {
+      draftNotes.removeAt(index);
+      if (_editingDraftIndex == index) {
+        _editingDraftIndex = null;
+        note.clear();
+      } else if (_editingDraftIndex != null && _editingDraftIndex! > index) {
+        _editingDraftIndex = _editingDraftIndex! - 1;
+      }
+    });
     unawaited(_persistDrafts());
   }
 
   Future<void> _sendNote(String shiftId, String officerName) async {
-    if (note.text.trim().isNotEmpty) {
-      msg('أضف النص المكتوب إلى المسودات أولًا قبل الإرسال.');
+    if (note.text.trim().isNotEmpty || _editingDraftIndex != null) {
+      msg('احفظ النص أو تعديل المسودة أولًا قبل الإرسال.');
       return;
     }
     if (draftNotes.isEmpty) { msg('أضف ملاحظة واحدة على الأقل إلى المسودات.'); return; }
@@ -271,6 +297,7 @@ class _WorkLocationScreenState extends State<WorkLocationScreen> {
       if (mounted) {
         setState(() {
           draftNotes.clear();
+          _editingDraftIndex = null;
           recipients.clear();
         });
       }
@@ -634,13 +661,13 @@ class _WorkLocationScreenState extends State<WorkLocationScreen> {
             const Text('إرسال ملاحظة للمشرفين / الإدارة',
               style: TextStyle(color: navy, fontWeight: FontWeight.w900, fontSize: 16)),
             const SizedBox(height: 8),
-            TextField(controller: note, minLines: 2, maxLines: 5,
+            TextField(controller: note, enabled: !_draftsLoading, minLines: 2, maxLines: 5,
               decoration: const InputDecoration(hintText: 'اكتب الملاحظة...', border: OutlineInputBorder())),
             const SizedBox(height: 8),
             OutlinedButton.icon(
-              onPressed: busy ? null : _saveDraftNote,
-              icon: const Icon(Icons.playlist_add_rounded),
-              label: const Text('إضافة إلى المسودات'),
+              onPressed: busy || _draftsLoading ? null : _saveDraftNote,
+              icon: Icon(_editingDraftIndex == null ? Icons.playlist_add_rounded : Icons.save_outlined),
+              label: Text(_editingDraftIndex == null ? 'إضافة إلى المسودات' : 'حفظ تعديل المسودة'),
             ),
             if (draftNotes.isNotEmpty) ...[
               const SizedBox(height: 8),
@@ -659,12 +686,12 @@ class _WorkLocationScreenState extends State<WorkLocationScreen> {
                   trailing: Wrap(mainAxisSize: MainAxisSize.min, children: [
                     IconButton(
                       tooltip: 'تعديل المسودة',
-                      onPressed: busy ? null : () => _editDraft(entry.key),
+                      onPressed: busy || _draftsLoading ? null : () => _editDraft(entry.key),
                       icon: const Icon(Icons.edit_outlined, color: navy),
                     ),
                     IconButton(
                       tooltip: 'حذف المسودة',
-                      onPressed: busy ? null : () => _removeDraft(entry.key),
+                      onPressed: busy || _draftsLoading ? null : () => _removeDraft(entry.key),
                       icon: const Icon(Icons.delete_outline_rounded, color: Colors.red),
                     ),
                   ]),
