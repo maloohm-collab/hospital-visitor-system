@@ -35,15 +35,14 @@ class _StaffDutyHistoryScreenState extends State<StaffDutyHistoryScreen> {
   @override
   void initState() {
     super.initState();
-    _employeeNames = <String>{
+    _employeeNames = _prepareEmployeeNames([
       ...DutyRosterCatalog.shiftA,
       ...DutyRosterCatalog.shiftB,
       ...DutyRosterCatalog.shiftC,
       ...DutyRosterCatalog.supervisors,
       ...DutyRosterCatalog.siteManagers,
       ...DutyRosterCatalog.clinicOfficers,
-    }.where((name) => name.trim().isNotEmpty).toList()
-      ..sort((a, b) => a.compareTo(b));
+    ]);
     _loadRegisteredEmployeeNames();
   }
 
@@ -56,13 +55,25 @@ class _StaffDutyHistoryScreenState extends State<StaffDutyHistoryScreen> {
           .where((name) => name.isNotEmpty);
       if (!mounted) return;
       setState(() {
-        _employeeNames = <String>{..._employeeNames, ...registeredNames}.toList()
-          ..sort((a, b) => a.compareTo(b));
+        _employeeNames = _prepareEmployeeNames([
+          ..._employeeNames,
+          ...registeredNames,
+        ]);
       });
     } catch (_) {
       // The built-in duty-roster names remain available if this optional
       // directory lookup is temporarily unavailable.
     }
+  }
+
+  List<String> _prepareEmployeeNames(Iterable<String> names) {
+    final unique = <String, String>{};
+    for (final raw in names) {
+      final name = raw.trim();
+      final key = _normalize(name);
+      if (key.isNotEmpty) unique.putIfAbsent(key, () => name);
+    }
+    return unique.values.toList()..sort((a, b) => a.compareTo(b));
   }
 
   String _key(DateTime d) => DateFormat('yyyy-MM-dd').format(d);
@@ -551,7 +562,14 @@ class _StaffDutyHistoryScreenState extends State<StaffDutyHistoryScreen> {
             clipBehavior: Clip.antiAlias,
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxHeight: 270, minWidth: 280),
-              child: ListView.separated(
+              child: options.isEmpty
+                  ? const Padding(
+                      padding: EdgeInsets.all(14),
+                      child: Text('لا توجد أسماء مطابقة',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(color: Color(0xFF65788A))),
+                    )
+                  : ListView.separated(
                 padding: const EdgeInsets.symmetric(vertical: 5),
                 shrinkWrap: true,
                 itemCount: options.length,
