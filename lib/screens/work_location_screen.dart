@@ -683,7 +683,7 @@ class _WorkLocationScreenState extends State<WorkLocationScreen> {
                     child: Text('${entry.key + 1}', style: const TextStyle(color: navy, fontWeight: FontWeight.w800)),
                   ),
                   title: Text(entry.value, maxLines: 3, overflow: TextOverflow.ellipsis),
-                  trailing: Wrap(mainAxisSize: MainAxisSize.min, children: [
+                  trailing: Wrap(children: [
                     IconButton(
                       tooltip: 'تعديل المسودة',
                       onPressed: busy || _draftsLoading ? null : () => _editDraft(entry.key),
