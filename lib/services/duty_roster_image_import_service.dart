@@ -38,6 +38,7 @@ class DutyRosterImageImportService {
 {
   "date": "YYYY-MM-DD أو null إذا تعذر قراءته",
   "shift": "A أو B أو C أو null إذا تعذر تحديده",
+  "supervisorName": "اسم المشرف إذا كان ظاهراً، وإلا نص فارغ",
   "assignments": [{"officer": "اسم الموظف كما هو مطبوع", "location": "الموقع أو الوظيفة كما هو مطبوع"}],
   "offNames": ["أسماء المجازين"],
   "annualNames": ["أسماء المجازين سنوياً"],
