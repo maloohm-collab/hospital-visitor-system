@@ -113,6 +113,7 @@ class DutyRosterPdf {
       pw.Widget cell(
         String value, {
         bool header = false,
+        PdfColor? background,
         double? size,
         pw.Font? font,
         pw.Alignment align = pw.Alignment.center,
@@ -120,7 +121,7 @@ class DutyRosterPdf {
       }) =>
           pw.Container(
             alignment: align,
-            color: header ? _head : null,
+            color: background ?? (header ? _head : null),
             padding: pw.EdgeInsets.symmetric(vertical: vPad, horizontal: 3),
             child: pw.Text(
               value,
@@ -290,9 +291,30 @@ class DutyRosterPdf {
         ]),
         for (var i = 0; i < statusItems.length; i++)
           pw.TableRow(children: [
-            cell(statusItems[i][1]),
-            cell(statusItems[i][0]),
-            cell((i + 1).toString()),
+            cell(
+              statusItems[i][1],
+              background: statusItems[i][1] == 'سنوية'
+                  ? const PdfColor(1, .97, .88)
+                  : statusItems[i][1] == 'سوات'
+                      ? const PdfColor(.88, .94, 1)
+                      : null,
+            ),
+            cell(
+              statusItems[i][0],
+              background: statusItems[i][1] == 'سنوية'
+                  ? const PdfColor(1, .97, .88)
+                  : statusItems[i][1] == 'سوات'
+                      ? const PdfColor(.88, .94, 1)
+                      : null,
+            ),
+            cell(
+              (i + 1).toString(),
+              background: statusItems[i][1] == 'سنوية'
+                  ? const PdfColor(1, .97, .88)
+                  : statusItems[i][1] == 'سوات'
+                      ? const PdfColor(.88, .94, 1)
+                      : null,
+            ),
           ]),
       ];
 
@@ -369,7 +391,7 @@ class DutyRosterPdf {
                 '• $value',
                 textDirection: pw.TextDirection.rtl,
                 textAlign: pw.TextAlign.right,
-                style: pw.TextStyle(font: bold, fontSize: 9, lineSpacing: 1.2),
+                style: pw.TextStyle(font: bold, fontSize: 8.5, lineSpacing: 1.15),
               ),
             );
         // أول تعليمة في الخلية اليمنى لضمان التسلسل من اليمين إلى اليسار.
