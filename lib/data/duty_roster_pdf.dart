@@ -120,7 +120,6 @@ class DutyRosterPdf {
         pw.Alignment align = pw.Alignment.center,
         pw.TextAlign textAlign = pw.TextAlign.center,
         bool fitJob = false,
-        double jobTextWidth = 75.6,
       }) {
         final effectiveSize = size ?? fs;
         final text = pw.Text(
