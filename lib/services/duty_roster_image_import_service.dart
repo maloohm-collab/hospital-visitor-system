@@ -11,7 +11,6 @@ class DutyRosterImageImportService {
   static final GenerativeModel _model = FirebaseAI.googleAI().generativeModel(
     model: 'gemini-3.8-flash',
     generationConfig: GenerationConfig(
-      temperature: 0.0,
       maxOutputTokens: 8192,
       responseMimeType: 'application/json',
     ),
