@@ -16,9 +16,10 @@ Future<void> main() async {
     await FirebaseAppCheck.instance.activate(
       androidProvider: kReleaseMode ? AndroidProvider.playIntegrity : AndroidProvider.debug,
     );
-  } catch (_) {
-    // The rest of the app remains available if App Check is not configured yet.
-    // Firebase AI requests require App Check to be configured in Firebase Console.
+  } catch (error, stackTrace) {
+    // Keep the rest of the app available, but retain the reason for AI diagnostics.
+    debugPrint('Firebase App Check activation failed: $error');
+    debugPrintStack(stackTrace: stackTrace);
   }
   await initializeDateFormatting('en');
   runApp(const HospitalVisitorApp());
