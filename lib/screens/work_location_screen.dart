@@ -1,8 +1,10 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:intl/intl.dart';
 import '../data/duty_roster_catalog.dart';
 import '../widgets/app_search_field.dart';
@@ -19,8 +21,11 @@ class _WorkLocationScreenState extends State<WorkLocationScreen> {
   static const teal = Color(0xFF12B8B0);
   static const locations = DutyRosterCatalog.locations;
   final db = FirebaseFirestore.instance;
+  static const _draftStorage = FlutterSecureStorage();
   final note = TextEditingController();
   final draftNotes = <String>[];
+  String? _draftsLoadedForShift;
+  bool _draftsLoading = false;
   final recipients = <String>{};
   String? location;
   String _searchTerm = '';
@@ -174,6 +179,43 @@ class _WorkLocationScreenState extends State<WorkLocationScreen> {
     } finally { if (mounted) setState(() => busy = false); }
   }
 
+  String _draftStorageKey(String shiftId) => 'work_note_drafts_${uid}_$shiftId';
+
+  void _ensureDraftsLoaded(String shiftId) {
+    if (_draftsLoadedForShift == shiftId || _draftsLoading) return;
+    _draftsLoading = true;
+    Future<void>(() async {
+      try {
+        final raw = await _draftStorage.read(key: _draftStorageKey(shiftId));
+        final decoded = raw == null
+            ? <String>[]
+            : (jsonDecode(raw) as List).whereType<String>().toList();
+        if (!mounted) return;
+        setState(() {
+          draftNotes
+            ..clear()
+            ..addAll(decoded);
+          _draftsLoadedForShift = shiftId;
+        });
+      } catch (_) {
+        if (mounted) setState(() => _draftsLoadedForShift = shiftId);
+      } finally {
+        _draftsLoading = false;
+      }
+    });
+  }
+
+  Future<void> _persistDrafts() async {
+    final shiftId = _draftsLoadedForShift;
+    if (shiftId == null) return;
+    final key = _draftStorageKey(shiftId);
+    if (draftNotes.isEmpty) {
+      await _draftStorage.delete(key: key);
+    } else {
+      await _draftStorage.write(key: key, value: jsonEncode(draftNotes));
+    }
+  }
+
   void _saveDraftNote() {
     final value = note.text.trim();
     if (value.length < 2) { msg('اكتب ملاحظة لا تقل عن حرفين لإضافتها للمسودات.'); return; }
@@ -181,6 +223,7 @@ class _WorkLocationScreenState extends State<WorkLocationScreen> {
       draftNotes.add(value);
       note.clear();
     });
+    unawaited(_persistDrafts());
     msg('أُضيفت الملاحظة إلى المسودات، ويمكنك تعديلها أو حذفها قبل الإرسال.');
   }
 
@@ -189,11 +232,13 @@ class _WorkLocationScreenState extends State<WorkLocationScreen> {
     setState(() {
       note.text = draftNotes.removeAt(index);
     });
+    unawaited(_persistDrafts());
   }
 
   void _removeDraft(int index) {
     if (index < 0 || index >= draftNotes.length) return;
     setState(() => draftNotes.removeAt(index));
+    unawaited(_persistDrafts());
   }
 
   Future<void> _sendNote(String shiftId, String officerName) async {
@@ -229,6 +274,7 @@ class _WorkLocationScreenState extends State<WorkLocationScreen> {
           recipients.clear();
         });
       }
+      await _persistDrafts();
       msg('تم إرسال جميع الملاحظات وحفظها لدى المستلمين.');
     } on FirebaseException catch (e) {
       msg('تعذر إرسال الملاحظات (' + e.code + ').');
@@ -539,6 +585,7 @@ class _WorkLocationScreenState extends State<WorkLocationScreen> {
   );
 
   Widget _activeShift(String shiftId, Map<String, dynamic> data) {
+    _ensureDraftsLoaded(shiftId);
     final siteId = data['activeLocationId'] as String?;
     final startedAt = data['startedAt'];
     if (startedAt is Timestamp && expiryShiftId != shiftId) {
