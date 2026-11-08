@@ -48,8 +48,9 @@ class _StaffDutyHistoryScreenState extends State<StaffDutyHistoryScreen> {
 
   Future<void> _loadRegisteredEmployeeNames() async {
     try {
-      final users = await _db.collection('users')
-          .where('status', isEqualTo: 'active').get();
+      // Include suspended/blocked profiles too: their historical duty records
+      // must remain searchable from the administrative archive.
+      final users = await _db.collection('users').get();
       final registeredNames = users.docs
           .map((doc) => (doc.data()['displayName'] ?? '').toString().trim())
           .where((name) => name.isNotEmpty);
