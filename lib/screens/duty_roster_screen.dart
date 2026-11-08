@@ -163,20 +163,27 @@ class _DutyRosterScreenState extends State<DutyRosterScreen>
       if (!existingRoster.exists && copiedFromDateKey != null) {
         final sourceSnap = await db.collection('daily_duty_rosters').doc(copiedFromDateKey).get();
         final sourceShifts = Map<String, dynamic>.from(sourceSnap.data()?['shifts'] ?? {});
+        final draftData = await _data('draft', dateKey: targetDateKey);
+        final draftBlocks = Map<String, dynamic>.from(draftData['shifts'] ?? {});
+        final migratedShifts = <String, dynamic>{};
         for (final sourceCode in ['A', 'B', 'C']) {
-          if (sourceShifts[sourceCode] is Map) {
-            final sourceBlock = Map<String, dynamic>.from(sourceShifts[sourceCode]);
-            sourceBlock['status'] = 'draft';
-            sourceBlock['managerConfirmed'] = false;
-            sourceBlock['publishedAt'] = FieldValue.delete();
-            sourceShifts[sourceCode] = sourceBlock;
-          }
+          final sourceValue = sourceShifts[sourceCode];
+          final sourceBlock = sourceValue is Map
+              ? Map<String, dynamic>.from(sourceValue)
+              : Map<String, dynamic>.from(draftBlocks[sourceCode] ?? {});
+          sourceBlock['status'] = 'draft';
+          sourceBlock['managerConfirmed'] = false;
+          sourceBlock.remove('publishedAt');
+          migratedShifts[sourceCode] = sourceBlock;
         }
         await rosterRef.set({
-          'dateKey': keyDay,
+          'dateKey': targetDateKey,
           'copiedFromDateKey': copiedFromDateKey,
           'siteManager': siteManager,
-          'shifts': sourceShifts,
+          'shifts': migratedShifts,
+          'status': 'draft',
+          'updatedAt': FieldValue.serverTimestamp(),
+          'updatedBy': FirebaseAuth.instance.currentUser?.uid,
         }, SetOptions(merge: true));
       }
       final allData = await _data('draft', dateKey: targetDateKey);
@@ -549,8 +556,9 @@ class _DutyRosterScreenState extends State<DutyRosterScreen>
       final currentSnap = await db.collection('daily_duty_rosters').doc(keyDay).get();
       Map<String, dynamic>? data = currentSnap.data();
 
-      // ترحيل توافقّي: النسخ القديمة لشفت A كانت تُحفظ بتاريخ التحضير
-      // (اليوم السابق) لا بتاريخ الكشف الفعلي. ننقل نسخة الشفت فقط دون حذف الأصل.
+      // ترحيل توافقّي للنسخ القديمة لشفت A:
+      // اقرأ النسخة بتاريخ التحضير فقط، ولا تكتب إلى Firestore أثناء التحميل.
+      // يتم إنشاء النسخة بالتاريخ الفعلي لاحقاً عند الحفظ وبصيغة توافق قواعد الأمان.
       if (data == null && shift == 'A') {
         final legacyPreparationKey = DateFormat('yyyy-MM-dd').format(day);
         if (legacyPreparationKey != keyDay) {
@@ -559,20 +567,8 @@ class _DutyRosterScreenState extends State<DutyRosterScreen>
           final legacyData = legacySnap.data();
           final legacyShifts = Map<String, dynamic>.from(legacyData?['shifts'] ?? {});
           if (legacyData != null && legacyShifts['A'] is Map) {
-            data = {
-              'dateKey': keyDay,
-              'siteManager': legacyData['siteManager'],
-              'shifts': {'A': legacyShifts['A']},
-              'status': legacyData['status'],
-              'migratedFromDateKey': legacyPreparationKey,
-            };
-            await db.collection('daily_duty_rosters').doc(keyDay).set({
-              'dateKey': keyDay,
-              'siteManager': legacyData['siteManager'],
-              'shifts': {'A': legacyShifts['A']},
-              'migratedFromDateKey': legacyPreparationKey,
-              'updatedAt': FieldValue.serverTimestamp(),
-            }, SetOptions(merge: true));
+            data = legacyData;
+            copiedFromDateKey = legacyPreparationKey;
           }
         }
       }
