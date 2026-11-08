@@ -71,6 +71,8 @@ class DutyRosterPdf {
     const pageFormat = PdfPageFormat.a4;
     // عرض الكشف يقارب 85% من عرض A4 مع هوامش جانبية متساوية.
     const margin = 44.6;
+    // هوامش عمودية أصغر لإتاحة مساحة كافية للكشف كاملاً بدون تصغير.
+    const marginV = 24.0;
     final contentWidth = pageFormat.width - margin * 2;
     final dayName = _arabicDay(date);
     final dateLabel = dayName.isEmpty ? date : '$dayName   |   $date';
@@ -98,18 +100,17 @@ class DutyRosterPdf {
       final annualNames = (block['annualNames'] as List? ?? []);
       final specialNames = (block['specialNames'] as List? ?? []);
       final half = (assignments.length + 1) ~/ 2;
-      final largestSection = [
-        half,
-        clinics.length,
-        offNames.length + annualNames.length + specialNames.length,
-      ].reduce((a, b) => a > b ? a : b);
+      final statusCount =
+          offNames.length + annualNames.length + specialNames.length;
+      final lowerRowsCount =
+          clinics.length > statusCount ? clinics.length : statusCount;
 
-      final double fs = largestSection <= 15
-          ? 11.0
-          : (largestSection <= 18 ? 10.0 : 9.0);
-      final double vPad = largestSection <= 15
-          ? 3.0
-          : (largestSection <= 18 ? 2.2 : 1.5);
+      // نفس الخط ونفس الحشو لكل الجداول (الرئيسي والسفلي) حتى تتطابق المواصفات.
+      // يُحدد الحجم حسب مجموع الصفوف العمودية في الصفحة.
+      final totalRows = half + lowerRowsCount;
+      final double fs = totalRows <= 28 ? 10.0 : (totalRows <= 33 ? 9.0 : 8.0);
+      final double vPad =
+          totalRows <= 28 ? 2.5 : (totalRows <= 33 ? 1.8 : 1.0);
 
       pw.Widget cell(
         String value, {
@@ -158,7 +159,7 @@ class DutyRosterPdf {
 
       pw.Widget bar(String value, {double? size}) => pw.Container(
             width: double.infinity,
-            padding: const pw.EdgeInsets.symmetric(vertical: 3, horizontal: 6),
+            padding: pw.EdgeInsets.symmetric(vertical: vPad + 1, horizontal: 6),
             decoration: pw.BoxDecoration(
               color: _head,
               border: pw.Border.all(color: _line, width: .7),
@@ -189,7 +190,7 @@ class DutyRosterPdf {
           child: pw.Column(children: [
             pw.Container(
               width: double.infinity,
-              padding: const pw.EdgeInsets.symmetric(vertical: 4, horizontal: 5),
+              padding: const pw.EdgeInsets.symmetric(vertical: 3, horizontal: 5),
               child: pw.Text(
                 'مستشفى الزرقاء الحكومي — شفت $code',
                 textDirection: pw.TextDirection.rtl,
@@ -224,6 +225,12 @@ class DutyRosterPdf {
         ),
       );
 
+      // أعمدة موحدة: الجدول الرئيسي والجداول السفلية تستخدم نفس النسب
+      // ونفس العرض الكلي، فتظهر بنفس المواصفات.
+      const nameFlex = 4.6;
+      const jobFlex = 2.4;
+      const numWidth = 21.0;
+
       // LTR: مجموعة اليسار أولاً، ثم مجموعة اليمين (الأرقام 1..half يميناً).
       final mainRows = <pw.TableRow>[
         pw.TableRow(children: [
@@ -248,38 +255,23 @@ class DutyRosterPdf {
           cell((r + 1).toString()),
         ]));
       }
-      // توسيع عمود الاسم بشكل ملحوظ على حساب عمود الوظيفة والترقيم.
-      // الترتيب LTR ثابت: الوظيفة، الاسم، الرقم في كل نصف من الكشف.
       final mainTable = table(mainRows, {
-        0: const pw.FlexColumnWidth(2.4),
-        1: const pw.FlexColumnWidth(4.6),
-        2: const pw.FixedColumnWidth(21),
-        3: const pw.FlexColumnWidth(2.4),
-        4: const pw.FlexColumnWidth(4.6),
-        5: const pw.FixedColumnWidth(21),
+        0: const pw.FlexColumnWidth(jobFlex),
+        1: const pw.FlexColumnWidth(nameFlex),
+        2: const pw.FixedColumnWidth(numWidth),
+        3: const pw.FlexColumnWidth(jobFlex),
+        4: const pw.FlexColumnWidth(nameFlex),
+        5: const pw.FixedColumnWidth(numWidth),
       });
 
       // شريط واحد بعرض الجدول، بدلاً من تكرار رمز الشفت في كل مجموعة.
-      final shiftBar = pw.Container(
-        width: double.infinity,
-        padding: const pw.EdgeInsets.symmetric(vertical: 3),
-        decoration: pw.BoxDecoration(
-          color: _head,
-          border: pw.Border.all(color: _line, width: .7),
-        ),
-        child: pw.Text(
-          'شفت $code',
-          textDirection: pw.TextDirection.rtl,
-          textAlign: pw.TextAlign.center,
-          style: pw.TextStyle(font: bold, fontSize: fs),
-        ),
-      );
+      final shiftBar = bar('شفت $code');
 
-      // توسيع خانة الاسم في جدولي العيادات والحالات أيضاً.
+      // نفس نسب أعمدة نصف الجدول الرئيسي.
       final lowerWidths = <int, pw.TableColumnWidth>{
-        0: const pw.FlexColumnWidth(2.4),
-        1: const pw.FlexColumnWidth(4.6),
-        2: const pw.FixedColumnWidth(21),
+        0: const pw.FlexColumnWidth(jobFlex),
+        1: const pw.FlexColumnWidth(nameFlex),
+        2: const pw.FixedColumnWidth(numWidth),
       };
       final clinicRows = <pw.TableRow>[
         pw.TableRow(children: [
@@ -300,6 +292,11 @@ class DutyRosterPdf {
         for (final n in annualNames) [n.toString(), 'سنوية'],
         for (final n in specialNames) [n.toString(), 'سوات'],
       ];
+      PdfColor? statusBg(String status) => status == 'سنوية'
+          ? const PdfColor(1, .97, .88)
+          : status == 'سوات'
+              ? const PdfColor(.88, .94, 1)
+              : null;
       final statusRows = <pw.TableRow>[
         pw.TableRow(children: [
           cell('الحالة', header: true, fitJob: true),
@@ -311,31 +308,21 @@ class DutyRosterPdf {
             cell(
               statusItems[i][1],
               fitJob: true,
-              background: statusItems[i][1] == 'سنوية'
-                  ? const PdfColor(1, .97, .88)
-                  : statusItems[i][1] == 'سوات'
-                      ? const PdfColor(.88, .94, 1)
-                      : null,
+              background: statusBg(statusItems[i][1]),
             ),
             cell(
               statusItems[i][0],
-              background: statusItems[i][1] == 'سنوية'
-                  ? const PdfColor(1, .97, .88)
-                  : statusItems[i][1] == 'سوات'
-                      ? const PdfColor(.88, .94, 1)
-                      : null,
+              background: statusBg(statusItems[i][1]),
             ),
             cell(
               (i + 1).toString(),
-              background: statusItems[i][1] == 'سنوية'
-                  ? const PdfColor(1, .97, .88)
-                  : statusItems[i][1] == 'سوات'
-                      ? const PdfColor(.88, .94, 1)
-                      : null,
+              background: statusBg(statusItems[i][1]),
             ),
           ]),
       ];
 
+      // بدون فراغ بين القسمين: يتطابق عرض كل قسم مع نصف الجدول الرئيسي،
+      // وتصطف الأعمدة تماماً تحت أعمدة الجدول الأعلى.
       final lower = pw.Row(
         crossAxisAlignment: pw.CrossAxisAlignment.start,
         children: [
@@ -345,7 +332,6 @@ class DutyRosterPdf {
               table(statusRows, lowerWidths),
             ]),
           ),
-          pw.SizedBox(width: 8),
           pw.Expanded(
             child: pw.Column(children: [
               bar('ساعات الدوام اليومي — العيادات'),
@@ -438,7 +424,7 @@ class DutyRosterPdf {
           ),
           pw.Container(
             width: double.infinity,
-            padding: const pw.EdgeInsets.symmetric(vertical: 4, horizontal: 5),
+            padding: const pw.EdgeInsets.symmetric(vertical: 3, horizontal: 5),
             decoration: pw.BoxDecoration(
               border: pw.Border.all(color: _line, width: .7),
             ),
@@ -452,17 +438,22 @@ class DutyRosterPdf {
         ],
       );
 
-      // ثبّت حجم العنوان والجدول الرئيسي، ثم خصص المساحة المتبقية
-      // للأقسام السفلية والتواقيع والتعليمات. إذا زاد ارتفاعها عن المتاح،
-      // يتم تصغير هذا الجزء السفلي فقط حتى لا تختفي العناصر خارج حدود A4.
-      final lowerContent = pw.Column(
+      // كل الكشف (العنوان + الجدول الرئيسي + الأقسام السفلية) داخل عمود واحد
+      // بعرض contentWidth ثابت. إن زاد الارتفاع عن A4 يُصغَّر الكشف كله بنسبة
+      // واحدة، فتبقى مواصفات الجزء السفلي مطابقة للجزء العلوي دائماً.
+      final sheet = pw.Column(
         mainAxisSize: pw.MainAxisSize.min,
         crossAxisAlignment: pw.CrossAxisAlignment.stretch,
         children: [
+          titleBox,
+          pw.SizedBox(height: 4),
+          shiftBar,
+          mainTable,
+          pw.SizedBox(height: 4),
           lower,
-          pw.SizedBox(height: 5),
+          pw.SizedBox(height: 4),
           signTable,
-          pw.SizedBox(height: 5),
+          pw.SizedBox(height: 4),
           rulesBox,
         ],
       );
@@ -471,18 +462,13 @@ class DutyRosterPdf {
         mainAxisSize: pw.MainAxisSize.max,
         crossAxisAlignment: pw.CrossAxisAlignment.stretch,
         children: [
-          titleBox,
-          pw.SizedBox(height: 5),
-          shiftBar,
-          mainTable,
-          pw.SizedBox(height: 5),
           pw.Expanded(
             child: pw.FittedBox(
               fit: pw.BoxFit.scaleDown,
               alignment: pw.Alignment.topCenter,
               child: pw.SizedBox(
                 width: contentWidth,
-                child: lowerContent,
+                child: sheet,
               ),
             ),
           ),
@@ -491,10 +477,7 @@ class DutyRosterPdf {
 
       doc.addPage(pw.Page(
         pageFormat: pageFormat,
-        margin: const pw.EdgeInsets.all(margin),
-        // مساحة الصفحة بعد الهوامش تساوي contentWidth تماماً (85% من A4).
-        // أعد المحتوى مباشرة إلى الصفحة لتجنب طبقة Align/SizedBox إضافية
-        // قد تقيّد قياس العمود الرأسي وتمنع ظهور الأقسام التالية للجدول.
+        margin: const pw.EdgeInsets.symmetric(horizontal: margin, vertical: marginV),
         build: (_) => content,
       ));
     }
