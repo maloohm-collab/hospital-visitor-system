@@ -254,7 +254,6 @@ class DutyRosterPdf {
       ];
 
       final lower = pw.Row(
-        textDirection: pw.TextDirection.ltr,
         crossAxisAlignment: pw.CrossAxisAlignment.start,
         children: [
           pw.Expanded(
