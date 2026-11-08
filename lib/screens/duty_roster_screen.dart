@@ -882,8 +882,8 @@ class _DutyRosterScreenState extends State<DutyRosterScreen>
       msg('تعذر قراءة الصورة من الجهاز.');
       return;
     }
-    if (imageBytes.lengthInBytes > 15 * 1024 * 1024) {
-      msg('حجم الصورة كبير. اختر صورة لا يتجاوز حجمها 15 ميجابايت.');
+    if (imageBytes.lengthInBytes > 12 * 1024 * 1024) {
+      msg('حجم الصورة كبير. اختر صورة لا يتجاوز حجمها 12 ميجابايت.');
       return;
     }
 
