@@ -41,18 +41,20 @@ class _DutyRosterScreenState extends State<DutyRosterScreen>
   bool _loaded = false;
   bool _publishing = false;
   final Map<String, Timer> _autosaveTimers = {};
+  final Map<String, String> _autosaveDateKeys = {};
+  String _loadedShift = 'A';
   String? copiedFromDateKey;
   final Map<String, Map<String, dynamic>> _recoverableShifts = {};
   String? _recoverySourceDateKey;
   bool get admin => widget.userRole == 'admin';
-  String get keyDay => DateFormat('yyyy-MM-dd').format(day);
+  String get keyDay => DateFormat('yyyy-MM-dd').format(rosterDate);
   // تاريخ الكشف الفعلي: شفت A يُرسل قبل يوم، بينما B وC في يوم المناوبة نفسه.
   DateTime get rosterDate => shift == 'A' ? day.add(const Duration(days: 1)) : day;
   String get rosterDateKey => DateFormat('yyyy-MM-dd').format(rosterDate);
   String get rosterDateLabel => DateFormat('yyyy/MM/dd').format(rosterDate);
   String get shift => ['A', 'B', 'C'][tabs.index];
-  bool get isClinicDay => day.weekday == DateTime.sunday ||
-      (day.weekday >= DateTime.monday && day.weekday <= DateTime.thursday);
+  bool get isClinicDay => rosterDate.weekday == DateTime.sunday ||
+      (rosterDate.weekday >= DateTime.monday && rosterDate.weekday <= DateTime.thursday);
 
   void _setDefaultClinicRows() {
     clinicRows
@@ -68,7 +70,15 @@ class _DutyRosterScreenState extends State<DutyRosterScreen>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     tabs = TabController(length: 3, vsync: this)
-      ..addListener(() { if (mounted) setState(() {}); });
+      ..addListener(() {
+        if (!mounted) return;
+        setState(() {});
+        final currentShift = shift;
+        if (currentShift != _loadedShift) {
+          _loadedShift = currentShift;
+          _reloadForSelectedShift();
+        }
+      });
     _load();
   }
 
@@ -82,14 +92,22 @@ class _DutyRosterScreenState extends State<DutyRosterScreen>
   }
 
   Future<void> _flushPendingAutosaves() async {
-    final pendingShifts = _autosaveTimers.keys.toList();
+    final pending = Map<String, String>.from(_autosaveDateKeys);
     for (final timer in _autosaveTimers.values) {
       timer.cancel();
     }
     _autosaveTimers.clear();
-    for (final code in pendingShifts) {
-      await _persistShiftDraft(code, silent: true);
+    _autosaveDateKeys.clear();
+    for (final entry in pending.entries) {
+      await _persistShiftDraft(entry.key, dateKey: entry.value, silent: true);
     }
+  }
+
+  Future<void> _reloadForSelectedShift() async {
+    await _flushPendingAutosaves();
+    if (!mounted) return;
+    _loaded = false;
+    await _load();
   }
 
   @override
@@ -109,17 +127,20 @@ class _DutyRosterScreenState extends State<DutyRosterScreen>
     final targetShift = shift;
     final targetDate = keyDay;
     _autosaveTimers[targetShift]?.cancel();
+    _autosaveDateKeys[targetShift] = targetDate;
     _autosaveTimers[targetShift] = Timer(const Duration(milliseconds: 400), () {
       _autosaveTimers.remove(targetShift);
-      if (!mounted || !_loaded || !admin || targetDate != keyDay) return;
-      _persistShiftDraft(targetShift, silent: true);
+      _autosaveDateKeys.remove(targetShift);
+      if (!mounted || !_loaded || !admin) return;
+      _persistShiftDraft(targetShift, dateKey: targetDate, silent: true);
     });
   }
 
-  Future<bool> _persistShiftDraft(String code, {bool silent = false}) async {
+  Future<bool> _persistShiftDraft(String code, {String? dateKey, bool silent = false}) async {
     if (!admin || !_loaded) return false;
+    final targetDateKey = dateKey ?? keyDay;
     try {
-      final rosterRef = db.collection('daily_duty_rosters').doc(keyDay);
+      final rosterRef = db.collection('daily_duty_rosters').doc(targetDateKey);
       final existingRoster = await rosterRef.get();
       // Preserve the last manager-published snapshot before the first draft edit.
       // Subsequent autosaves see status=draft and will not create duplicate archives.
@@ -158,14 +179,14 @@ class _DutyRosterScreenState extends State<DutyRosterScreen>
           'shifts': sourceShifts,
         }, SetOptions(merge: true));
       }
-      final allData = await _data('draft');
+      final allData = await _data('draft', dateKey: targetDateKey, shiftCode: code);
       final allBlocks = Map<String, dynamic>.from(allData['shifts'] ?? {});
       final block = Map<String, dynamic>.from(allBlocks[code] ?? {});
       block['status'] = 'draft';
       block['managerConfirmed'] = false;
       block['publishedAt'] = FieldValue.delete();
       final payload = <String, dynamic>{
-        'dateKey': keyDay,
+        'dateKey': targetDateKey,
         'siteManager': siteManager,
         'shifts': {code: block},
         'updatedAt': FieldValue.serverTimestamp(),
@@ -491,7 +512,7 @@ class _DutyRosterScreenState extends State<DutyRosterScreen>
       copiedFromDateKey = null;
 
       // Keep the existing two-day assignment warning based on yesterday.
-      final previousDay = day.subtract(const Duration(days: 1));
+      final previousDay = rosterDate.subtract(const Duration(days: 1));
       final previousKey = DateFormat('yyyy-MM-dd').format(previousDay);
       final previousSnap = await db.collection('daily_duty_rosters').doc(previousKey).get();
       final previousData = previousSnap.data();
@@ -529,7 +550,7 @@ class _DutyRosterScreenState extends State<DutyRosterScreen>
       Map<String, dynamic>? data = currentSnap.data();
       final todayKey = DateFormat('yyyy-MM-dd').format(DateTime.now());
       if (data == null && keyDay == todayKey) {
-        final sourceDate = day.subtract(const Duration(days: 7));
+        final sourceDate = rosterDate.subtract(const Duration(days: 7));
         final sourceKey = DateFormat('yyyy-MM-dd').format(sourceDate);
         final sourceSnap = await db.collection('daily_duty_rosters').doc(sourceKey).get();
         final sourceData = sourceSnap.data();
@@ -561,7 +582,7 @@ class _DutyRosterScreenState extends State<DutyRosterScreen>
 
       // Read-only recovery candidates: never overwrite the current roster during load.
       if (data != null) {
-        final sourceKey = copiedFromDateKey ?? DateFormat('yyyy-MM-dd').format(day.subtract(const Duration(days: 7)));
+        final sourceKey = copiedFromDateKey ?? DateFormat('yyyy-MM-dd').format(rosterDate.subtract(const Duration(days: 7)));
         final sourceSnap = await db.collection('daily_duty_rosters').doc(sourceKey).get();
         final sourceShifts = Map<String, dynamic>.from(sourceSnap.data()?['shifts'] ?? {});
         final currentShifts = Map<String, dynamic>.from(data['shifts'] ?? {});
@@ -764,7 +785,11 @@ class _DutyRosterScreenState extends State<DutyRosterScreen>
     await _load();
   }
 
-  Future<Map<String,dynamic>> _data(String status) async {
+  Future<Map<String,dynamic>> _data(String status, {String? dateKey, String? shiftCode}) async {
+    final targetDateKey = dateKey ?? keyDay;
+    final targetDate = DateTime.tryParse(targetDateKey) ?? rosterDate;
+    final clinicDay = targetDate.weekday == DateTime.sunday ||
+        (targetDate.weekday >= DateTime.monday && targetDate.weekday <= DateTime.thursday);
     final u = FirebaseAuth.instance.currentUser;
     var display = u?.displayName ?? 'الإدارة';
     if (u != null) { final p = await db.collection('users').doc(u.uid).get(); display = (p.data()?['displayName'] ?? display).toString(); }
@@ -774,12 +799,12 @@ class _DutyRosterScreenState extends State<DutyRosterScreen>
         'hours': s == 'A' ? '08:00–16:00' : s == 'B' ? '16:00–00:00' : '00:00–08:00',
         'assignments': rows[s]!.where((r) => (r['officer'] ?? '').isNotEmpty && (r['location'] ?? '').isNotEmpty).toList(),
         'offNames': offs[s], 'annualNames': annuals[s], 'specialNames': specials[s], 'adminNote': notes[s], 'supervisorName': supervisors[s], 'siteManager': siteManager,
-        if (s == 'A') 'clinicAssignments': isClinicDay
+        if (s == 'A') 'clinicAssignments': clinicDay
             ? clinicRows.where((r) => (r['officer'] ?? '').isNotEmpty).toList()
             : <Map<String, String?>>[],
       };
     }
-    return {'dateKey': keyDay, 'siteManager': siteManager, 'shifts': blocks, 'status': status, 'updatedAt': FieldValue.serverTimestamp(), 'updatedBy': u?.uid, 'updatedByName': display,
+    return {'dateKey': targetDateKey, 'siteManager': siteManager, 'shifts': blocks, 'status': status, 'updatedAt': FieldValue.serverTimestamp(), 'updatedBy': u?.uid, 'updatedByName': display,
       if (copiedFromDateKey != null) 'copiedFromDateKey': copiedFromDateKey,
       if (status == 'approved') 'approvedAt': FieldValue.serverTimestamp(),
       if (status == 'published') 'publishedAt': FieldValue.serverTimestamp()};
@@ -903,7 +928,7 @@ class _DutyRosterScreenState extends State<DutyRosterScreen>
 
       // كل كشف يومي معتمد يصبح أساساً للمراجعة في نفس يوم الأسبوع القادم.
       // نجهّز الشفت المنشور فقط، ولا نستبدل أي شفت سبق أن أُعد للأسبوع القادم.
-      final nextWeekDate = day.add(const Duration(days: 7));
+      final nextWeekDate = rosterDate.add(const Duration(days: 7));
       final nextWeekKey = DateFormat('yyyy-MM-dd').format(nextWeekDate);
       final nextWeekRoster = db.collection('daily_duty_rosters').doc(nextWeekKey);
       final nextWeekSnapshot = await nextWeekRoster.get();
