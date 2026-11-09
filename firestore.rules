@@ -1081,8 +1081,13 @@ service cloud.firestore {
           && parentMessage().requestReply == true
           && parentMessage().replyStatus == 'pending'
           && request.resource.data.keys().hasOnly([
-            'replyId', 'senderUid', 'senderName', 'senderRole', 'body', 'createdAt'
+            'replyId', 'senderUid', 'senderName', 'senderRole', 'body', 'attachments', 'createdAt'
           ])
+          && request.resource.data.keys().hasAll([
+            'replyId', 'senderUid', 'senderName', 'senderRole', 'body', 'attachments', 'createdAt'
+          ])
+          && request.resource.data.attachments is list
+          && request.resource.data.attachments.size() <= 10
           && request.resource.data.replyId == replyId
           && request.resource.data.senderUid == request.auth.uid
           && request.resource.data.senderRole == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role
