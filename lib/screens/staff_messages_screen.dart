@@ -23,6 +23,33 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
   bool get admin => widget.userRole == 'admin';
   bool get supervisor => widget.userRole == 'supervisor';
 
+  String personName(Map<String, dynamic> data) {
+    for (final key in ['displayName', 'fullName', 'name', 'username']) {
+      final value = data[key];
+      if (value is String && value.trim().isNotEmpty && !value.contains('@')) {
+        return value.trim();
+      }
+    }
+    return 'مستخدم';
+  }
+
+  String roleSignature(String? role, Map<String, dynamic> data) {
+    final designation = [
+      data['jobTitle'], data['position'], data['accountTitle'],
+      data['displayRole'], data['specialization'], data['unit'],
+    ].whereType<String>().join(' ').toLowerCase();
+    final isSwat = role == 'swat' ||
+        data['isSwat'] == true ||
+        data['swat'] == true ||
+        designation.contains('سوات') ||
+        designation.contains('swat');
+    if (role == 'admin') return 'مدير الموقع';
+    if (isSwat) return 'سوات/SWAT';
+    if (role == 'supervisor') return 'المشرف';
+    if (role == 'security_officer') return 'ضابط الأمن';
+    return 'مستخدم';
+  }
+
   @override
   void initState() {
     super.initState();
@@ -166,11 +193,13 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
                           'messageId': ref.id,
                           'threadId': threadId,
                           'senderUid': uid,
-                          'senderName': (sender['displayName'] ?? auth.currentUser?.email ?? 'مستخدم').toString(),
+                          'senderName': personName(sender),
                           'senderRole': widget.userRole,
+                          'senderLabel': roleSignature(widget.userRole, sender),
                           'recipientUid': recipient.id,
-                          'recipientName': (recipient.data()['displayName'] ?? 'مستخدم').toString(),
+                          'recipientName': personName(recipient.data()),
                           'recipientRole': recipient.data()['role'],
+                          'recipientLabel': roleSignature(recipient.data()['role']?.toString(), recipient.data()),
                           'locationName': currentLocation,
                           'title': title.text.trim(),
                           'body': body.text.trim(),
@@ -260,9 +289,9 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
                       await replyRef.set({
                         'replyId': replyRef.id,
                         'senderUid': uid,
-                        'senderName': (profile.data()?['displayName'] ??
-                          auth.currentUser?.email ?? 'مستخدم').toString(),
+                        'senderName': personName(profile.data() ?? {}),
                         'senderRole': widget.userRole,
+                        'senderLabel': roleSignature(widget.userRole, profile.data() ?? {}),
                         'body': body.text.trim(),
                         'attachments': <Map<String, dynamic>>[],
                         'createdAt': FieldValue.serverTimestamp(),
@@ -310,15 +339,16 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
             children: [
               Text((d['title'] ?? 'ملاحظة').toString(),
                 style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: navy)),
-              Text('من: ' + (d['senderName'] ?? '').toString() + ' • ' +
-                (d['senderRole'] ?? '').toString()),
+              Text('من: ' + (d['senderName'] ?? 'مستخدم').toString() + ' — ' +
+                (d['senderLabel'] ?? roleSignature(d['senderRole']?.toString(), d)).toString(),
+                style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
               if ((d['locationName'] ?? '').toString().isNotEmpty)
                 Text('موقع المناوبة: ' + d['locationName'].toString()),
               const Divider(),
               Expanded(
                 child: ListView(children: [
                   SelectableText((d['body'] ?? '').toString(),
-                    style: const TextStyle(fontSize: 15, height: 1.7)),
+                    style: const TextStyle(fontSize: 17, height: 1.8, fontWeight: FontWeight.w700, color: Color(0xFF172B45))),
                   const Divider(),
                   const Text('الردود', style: TextStyle(fontWeight: FontWeight.w900)),
                   StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
@@ -332,8 +362,11 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
                         return ListTile(
                           contentPadding: EdgeInsets.zero,
                           leading: const Icon(Icons.reply),
-                          title: Text((replyData['senderName'] ?? 'مستخدم').toString()),
-                          subtitle: Text((replyData['body'] ?? '').toString()),
+                          title: Text((replyData['senderName'] ?? 'مستخدم').toString() + ' — ' +
+                            (replyData['senderLabel'] ?? roleSignature(replyData['senderRole']?.toString(), replyData)).toString(),
+                            style: const TextStyle(fontWeight: FontWeight.w800)),
+                          subtitle: Text((replyData['body'] ?? '').toString(),
+                            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, height: 1.6)),
                         );
                       }).toList());
                     },
@@ -448,10 +481,16 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
               color: d['priority'] == 'urgent' ? Colors.red : teal),
           ),
           title: Text((d['title'] ?? 'ملاحظة').toString(),
-            style: TextStyle(fontWeight: read ? FontWeight.w600 : FontWeight.w900, color: navy)),
+            style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900, color: navy)),
           subtitle: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(sent ? 'إلى: ' + (d['recipientName'] ?? '').toString() : 'من: ' + (d['senderName'] ?? '').toString()),
-            Text((d['body'] ?? '').toString(), maxLines: 2, overflow: TextOverflow.ellipsis),
+            Text(sent
+              ? 'إلى: ' + (d['recipientName'] ?? 'مستخدم').toString() + ' — ' +
+                (d['recipientLabel'] ?? roleSignature(d['recipientRole']?.toString(), d)).toString()
+              : 'من: ' + (d['senderName'] ?? 'مستخدم').toString() + ' — ' +
+                (d['senderLabel'] ?? roleSignature(d['senderRole']?.toString(), d)).toString(),
+              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF263B55))),
+            Text((d['body'] ?? '').toString(), maxLines: 2, overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Color(0xFF172B45), height: 1.5)),
             if (created is Timestamp) Text(DateFormat('yyyy/MM/dd HH:mm').format(created.toDate())),
             if (d['requestReply'] == true) Text(d['replyStatus'] == 'replied' ? 'تم الرد' : 'بانتظار الرد',
               style: TextStyle(color: d['replyStatus'] == 'replied' ? Colors.green : Colors.deepOrange)),
@@ -501,7 +540,23 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
         IconButton(tooltip: 'معلومة حول الحذف التلقائي', onPressed: archiveSettings, icon: const Icon(Icons.settings_outlined)),
         IconButton(tooltip: 'إخفاء كل الأرشيف', onPressed: hideAllArchive, icon: const Icon(Icons.delete_sweep_outlined)),
       ],
-      bottom: TabBar(controller: tabs, tabs: const [Tab(text: 'الوارد'), Tab(text: 'الصادر'), Tab(text: 'الأرشيف')])),
+      bottom: PreferredSize(
+        preferredSize: const Size.fromHeight(54),
+        child: Container(
+          width: double.infinity,
+          color: navy,
+          child: TabBar(
+            controller: tabs,
+            labelColor: Colors.white,
+            unselectedLabelColor: Colors.white,
+            labelStyle: const TextStyle(fontSize: 17, fontWeight: FontWeight.w900),
+            unselectedLabelStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+            indicatorColor: Colors.white,
+            indicatorWeight: 3,
+            tabs: const [Tab(text: 'الوارد'), Tab(text: 'الصادر'), Tab(text: 'الأرشيف')],
+          ),
+        ),
+      )),
     floatingActionButton: FloatingActionButton.extended(
       onPressed: compose, backgroundColor: teal, foregroundColor: Colors.white,
       icon: const Icon(Icons.edit_notifications), label: const Text('إرسال ملاحظة')),
