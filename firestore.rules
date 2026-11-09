@@ -191,7 +191,7 @@ service cloud.firestore {
         function isOwner() {
           return isActiveUser()
             && request.auth.uid == uid
-            && get(/databases/$(database)/documents/users/$(uid)).data.role == 'security_officer';
+            && get(/databases/$(database)/documents/users/$(uid)).data.role in ['security_officer', 'supervisor'];
         }
 
         allow get, list: if isOwner();
