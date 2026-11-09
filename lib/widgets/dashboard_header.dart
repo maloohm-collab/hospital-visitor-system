@@ -4,6 +4,7 @@ import 'dart:ui' show FontFeature;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import '../screens/auth_screen.dart';
@@ -47,12 +48,15 @@ class DashboardHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
+    final topInset = MediaQuery.of(context).padding.top;
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: const SystemUiOverlayStyle(statusBarColor: _navy, statusBarIconBrightness: Brightness.light, statusBarBrightness: Brightness.dark),
+      child: Column(
       mainAxisSize: MainAxisSize.min,
       children: [
         SizedBox(
           width: double.infinity,
-          height: 82,
+          height: 82 + topInset,
           child: ClipPath(
             clipper: const _OceanWaveClipper(),
             child: DecoratedBox(
@@ -86,7 +90,7 @@ class DashboardHeader extends StatelessWidget {
                 ),
                 Positioned(
                   left: 8,
-                  top: 7,
+                  top: topInset + 7,
                   child: _headerAction(
                     tooltip: 'الإشعارات',
                     child: _notificationButton(context),
@@ -94,7 +98,7 @@ class DashboardHeader extends StatelessWidget {
                 ),
                 Positioned(
                   right: 8,
-                  top: 7,
+                  top: topInset + 7,
                   child: _headerAction(
                     tooltip: 'قفل التطبيق',
                     child: IconButton(
@@ -170,7 +174,7 @@ class DashboardHeader extends StatelessWidget {
                 initialData: DateTime.now(),
                 builder: (context, timeSnapshot) {
                   final now = timeSnapshot.data ?? DateTime.now();
-                  final time = '${_two(now.hour)}:${_two(now.minute)}';
+                  final time = '${_two(now.hour)}:${_two(now.minute)}:${_two(now.second)}';
                   final date = '${_weekdays[now.weekday - 1]} ${now.day}/${now.month}/${now.year}';
                   return Row(
                     textDirection: TextDirection.rtl,
@@ -181,7 +185,7 @@ class DashboardHeader extends StatelessWidget {
                           '${_roleLabel(userRole)}: $shownName',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(color: _ink, fontSize: 15, fontWeight: FontWeight.w900),
+                          style: const TextStyle(color: _ink, fontSize: 13, fontWeight: FontWeight.w900),
                         ),
                       ),
                       const SizedBox(width: 7),
@@ -190,7 +194,7 @@ class DashboardHeader extends StatelessWidget {
                       Text(
                         time,
                         textDirection: TextDirection.ltr,
-                        style: const TextStyle(color: _ink, fontSize: 14, fontWeight: FontWeight.w900, fontFeatures: [FontFeature.tabularFigures()]),
+                        style: const TextStyle(color: _ink, fontSize: 13, fontWeight: FontWeight.w900, fontFeatures: [FontFeature.tabularFigures()]),
                       ),
                       const SizedBox(width: 8),
                       Container(width: 1, height: 20, color: const Color(0xFFD3DDE6)),
@@ -202,7 +206,7 @@ class DashboardHeader extends StatelessWidget {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           textAlign: TextAlign.end,
-                          style: const TextStyle(color: _muted, fontSize: 10.5, fontWeight: FontWeight.w800),
+                          style: const TextStyle(color: _muted, fontSize: 13, fontWeight: FontWeight.w800),
                         ),
                       ),
                     ],
@@ -213,6 +217,7 @@ class DashboardHeader extends StatelessWidget {
           ),
         ),
       ],
+      ),
     );
   }
 
