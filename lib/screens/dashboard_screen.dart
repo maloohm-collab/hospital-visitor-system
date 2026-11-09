@@ -305,19 +305,7 @@ class DashboardScreen extends StatelessWidget {
           if (userRole == 'security_officer')
             _buildSecurityCategories(context, actions)
           else
-            GridView.builder(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: actions.length,
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 3,
-                crossAxisSpacing: 12,
-                mainAxisSpacing: 12,
-                childAspectRatio: 0.90,
-              ),
-              itemBuilder: (context, index) => _AdminActionCard(action: actions[index]),
-            ),
+            _buildSupervisorCategories(context, actions),
           const SizedBox(height: 18),
           const Padding(
             padding: EdgeInsets.symmetric(horizontal: 16),
@@ -373,7 +361,96 @@ class DashboardScreen extends StatelessWidget {
         actionTitles: const ['حسابي', 'عن التطبيق والمؤسس'],
       ),
     ];
+    return _buildGroupedCategories(context, actions, categories);
+  }
 
+  Widget _buildSupervisorCategories(BuildContext context, List<_AdminAction> actions) {
+    final categories = <_ActionCategory>[
+      _ActionCategory(
+        icon: Icons.admin_panel_settings_outlined,
+        title: 'الإشراف الميداني',
+        subtitle: 'متابعة مواقع الضباط والطوارئ وتسليم المناوبات',
+        color: const Color(0xFF087E78),
+        actionTitles: const ['مواقع الضباط والملاحظات', 'الطوارئ وتسليم المناوبة'],
+      ),
+      _ActionCategory(
+        icon: Icons.assignment_rounded,
+        title: 'التقارير والمناوبات',
+        subtitle: 'تقارير الضباط وكشوفات المناوبات والإحصاءات',
+        color: const Color(0xFF6D3FA8),
+        actionTitles: const ['تقارير ضباط الأمن', 'تقارير المناوبة PDF', 'مناوبات اليوم', 'المناوبات السابقة', 'التقارير والإحصاءات'],
+      ),
+      _ActionCategory(
+        icon: Icons.meeting_room_outlined,
+        title: 'الزيارات والسجلات',
+        subtitle: 'مراجعة سجل الزيارات',
+        color: const Color(0xFF047857),
+        actionTitles: const ['سجل الزيارات'],
+      ),
+      _ActionCategory(
+        icon: Icons.forum_outlined,
+        title: 'المراسلات والتنبيهات',
+        subtitle: 'تنبيهات المشرف والرسائل والإشعارات',
+        color: const Color(0xFFB45309),
+        actionTitles: const ['تنبيهات المشرف المناوب', 'الإشعارات والملحوظات'],
+      ),
+      _ActionCategory(
+        icon: Icons.account_circle_outlined,
+        title: 'حسابي ومعلومات التطبيق',
+        subtitle: 'بيانات الحساب والتعريف بالتطبيق',
+        color: const Color(0xFF1D4F91),
+        actionTitles: const ['حسابي', 'عن التطبيق والمؤسس'],
+      ),
+    ];
+    return _buildGroupedCategories(context, actions, categories);
+  }
+
+  Widget _buildAdminCategories(BuildContext context, List<_AdminAction> actions) {
+    final categories = <_ActionCategory>[
+      _ActionCategory(
+        icon: Icons.policy_outlined,
+        title: 'العمليات والإشراف الميداني',
+        subtitle: 'متابعة مواقع العمل والتعامل مع الحالات الطارئة',
+        color: const Color(0xFF087E78),
+        actionTitles: const ['الطوارئ', 'ملاحظات مواقع العمل'],
+      ),
+      _ActionCategory(
+        icon: Icons.analytics_outlined,
+        title: 'التقارير والسجلات',
+        subtitle: 'تقارير الإدارة والزيارات والموظفين والإحصاءات',
+        color: const Color(0xFF6D3FA8),
+        actionTitles: const ['تقارير الإدارة', 'أرشيف PDF', 'سجل الزيارات', 'الإحصاءات', 'سجل الموظفين والتقارير'],
+      ),
+      _ActionCategory(
+        icon: Icons.manage_accounts_outlined,
+        title: 'إدارة الموظفين والمناوبات',
+        subtitle: 'طلبات الحسابات وإدارة الكادر وجدولة المناوبات',
+        color: const Color(0xFF047857),
+        actionTitles: const ['طلبات الحسابات', 'الموظفون', 'جدول المناوبات'],
+      ),
+      _ActionCategory(
+        icon: Icons.mark_chat_unread_outlined,
+        title: 'المراسلات والتنبيهات',
+        subtitle: 'رسائل الإدارة والتنبيهات الواردة',
+        color: const Color(0xFFB45309),
+        actionTitles: const ['تنبيهات الإدارة / مدير الموقع'],
+      ),
+      _ActionCategory(
+        icon: Icons.info_outline_rounded,
+        title: 'معلومات التطبيق',
+        subtitle: 'التعريف بالتطبيق والمؤسس',
+        color: const Color(0xFF1D4F91),
+        actionTitles: const ['عن التطبيق والمؤسس'],
+      ),
+    ];
+    return _buildGroupedCategories(context, actions, categories);
+  }
+
+  Widget _buildGroupedCategories(
+    BuildContext context,
+    List<_AdminAction> actions,
+    List<_ActionCategory> categories,
+  ) {
     _ActionCategoryTile buildTile(_ActionCategory category, {required bool featured}) {
       final groupedActions = actions
           .where((action) => category.actionTitles.contains(action.title))
@@ -410,7 +487,6 @@ class DashboardScreen extends StatelessWidget {
           ),
           buildTile(categories[0], featured: true),
           const SizedBox(height: 12),
-          // الصف الأول: الزيارات (يمين) + التقارير (يسار) — كما في التصميم المرجعي
           IntrinsicHeight(
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -422,7 +498,6 @@ class DashboardScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 12),
-          // الصف الثاني: المراسلات (يمين) + الحساب (يسار)
           IntrinsicHeight(
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -526,27 +601,7 @@ class DashboardScreen extends StatelessWidget {
                 onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const WorkLocationScreen(userRole: 'admin'))),
               ),
             ];
-            // Reserve the remaining grid cells so the final card stays at the far right.
-            final hasTrailingCapacity = actions.length == 8;
-            return GridView.builder(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: hasTrailingCapacity ? 9 : actions.length,
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 3,
-                crossAxisSpacing: 12,
-                mainAxisSpacing: 12,
-                childAspectRatio: 0.90,
-              ),
-              itemBuilder: (context, index) {
-                if (hasTrailingCapacity && index > 7) {
-                  return const SizedBox.shrink();
-                }
-                final actionIndex = index;
-                return _AdminActionCard(action: actions[actionIndex]);
-              },
-            );
+            return _buildAdminCategories(context, actions);
           },
         ),
         const SizedBox(height: 18),
