@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -25,6 +26,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   bool sending = false;
   String _searchTerm = '';
   late final Stream<QuerySnapshot<Map<String, dynamic>>> _notificationsStream;
+  Timer? _messageExpiryTimer;
   bool get admin => widget.userRole == 'admin';
   String get uid => FirebaseAuth.instance.currentUser?.uid ?? '';
   @override
@@ -32,9 +34,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     super.initState();
     _notificationsStream = FirebaseFirestore.instance.collection('notifications')
         .where('recipientUid', isEqualTo: uid).snapshots();
+    _messageExpiryTimer = Timer.periodic(const Duration(minutes: 1), (_) { if (mounted) setState(() {}); });
   }
   @override
-  void dispose() { title.dispose(); body.dispose(); super.dispose(); }
+  void dispose() { _messageExpiryTimer?.cancel(); title.dispose(); body.dispose(); super.dispose(); }
   void message(String s) { if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(s))); }
 
   Future<void> compose() async {
@@ -201,6 +204,11 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         if (snap.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
         final docs = (snap.data?.docs ?? []).where((doc) {
           final d = doc.data();
+          final kind = (d['kind'] ?? '').toString();
+          if (kind == 'staff_message' || kind == 'staff_message_reply') {
+            final created = d['createdAt'];
+            if (created is! Timestamp || DateTime.now().isAfter(created.toDate().add(const Duration(hours: 24)))) return false;
+          }
           return matchesSearchText(_searchTerm, [d['title'], d['body'], d['senderEmail'], d['senderName'], d['senderUid']]);
         }).toList()..sort((a, b) {
           final at = a.data()['createdAt']; final bt = b.data()['createdAt'];
