@@ -13,6 +13,7 @@ import 'local_operations_log_screen.dart';
 import 'admin_approval_screen.dart';
 import 'report_center_screen.dart';
 import 'notifications_screen.dart';
+import 'staff_messages_screen.dart';
 import 'emergency_duty_screen.dart';
 import 'work_location_screen.dart';
 import 'duty_roster_screen.dart';
@@ -219,6 +220,12 @@ class DashboardScreen extends StatelessWidget {
 
     actions.addAll([
       _AdminAction(
+        icon: Icons.mark_chat_unread_rounded,
+        title: userRole == 'admin' ? 'تنبيهات الإدارة / مدير الموقع' : userRole == 'supervisor' ? 'تنبيهات المشرف المناوب' : 'ملاحظاتي ومراسلاتي',
+        color: const Color(0xFF087E78),
+        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => StaffMessagesScreen(userRole: userRole))),
+      ),
+      _AdminAction(
         icon: Icons.notifications_active_rounded,
         title: 'الإشعارات والملحوظات',
         color: const Color(0xFFD28A25),
@@ -289,6 +296,12 @@ class DashboardScreen extends StatelessWidget {
           builder: (context, snapshot) {
             final pending = snapshot.data?.docs.length ?? 0;
             final actions = <_AdminAction>[
+              _AdminAction(
+                icon: Icons.mark_chat_unread_rounded,
+                title: 'تنبيهات الإدارة / مدير الموقع',
+                color: const Color(0xFF087E78),
+                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => StaffMessagesScreen(userRole: userRole))),
+              ),
               _AdminAction(
                 icon: Icons.emergency_share_rounded,
                 title: 'الطوارئ',
