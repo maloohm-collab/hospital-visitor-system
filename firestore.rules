@@ -236,18 +236,28 @@ service cloud.firestore {
       // Personal retention settings for the staff-message archive.
       match /message_archive_preferences/{preferenceId} {
         function isOwner() {
-          return isActiveUser() && request.auth.uid == uid;
+          return isActiveUser() && resource.data.ownerUid == request.auth.uid;
         }
         allow get, list: if isOwner();
-        allow create, update: if isOwner()
-          && preferenceId == 'settings'
+        allow create: if isActiveUser()
+          && preferenceId == request.auth.uid
           && request.resource.data.keys().hasOnly([
             'ownerUid', 'autoDeleteEnabled', 'retentionDays', 'updatedAt'
           ])
           && request.resource.data.keys().hasAll([
             'ownerUid', 'autoDeleteEnabled', 'retentionDays', 'updatedAt'
           ])
-          && request.resource.data.ownerUid == uid
+          && request.resource.data.ownerUid == request.auth.uid
+          && request.resource.data.autoDeleteEnabled is bool
+          && request.resource.data.retentionDays is int
+          && request.resource.data.retentionDays >= 1
+          && request.resource.data.retentionDays <= 3650
+          && request.resource.data.updatedAt == request.time;
+        allow update: if isOwner()
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'autoDeleteEnabled', 'retentionDays', 'updatedAt'
+          ])
+          && request.resource.data.ownerUid == resource.data.ownerUid
           && request.resource.data.autoDeleteEnabled is bool
           && request.resource.data.retentionDays is int
           && request.resource.data.retentionDays >= 1
