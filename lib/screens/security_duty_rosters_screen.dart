@@ -253,7 +253,7 @@ class _SecurityDutyRostersScreenState extends State<SecurityDutyRostersScreen> {
         final elapsed = now.difference(at);
         if (archive != (elapsed >= archiveAfter)) continue;
         if (hidden.contains(_id(doc.id,shift))) continue;
-        if (archive && autoDelete && elapsed >= Duration(days: retentionDays)) continue;
+        if (archive && autoDelete && elapsed >= archiveAfter + Duration(days: retentionDays)) continue;
         items.add(_RosterItem(dateKey: doc.id, shift: shift, block: block,
           actualDate: _actualDate(doc.id,shift), publishedAt: at));
       }
@@ -315,7 +315,7 @@ class _SecurityDutyRostersScreenState extends State<SecurityDutyRostersScreen> {
                     final block = Map<String,dynamic>.from(raw);
                     final published = block['status'] == 'published' || (block['status'] == null && roster['status'] == 'published');
                     final at = published ? _publishedAt(block,roster) : null;
-                    if (!published || at == null || DateTime.now().difference(at) < Duration(days:days)) continue;
+                    if (!published || at == null || DateTime.now().difference(at) < archiveAfter + Duration(days:days)) continue;
                     if (hidden.contains(_id(doc.id,shift))) continue;
                     expired.add(_RosterItem(dateKey:doc.id,shift:shift,block:block,actualDate:_actualDate(doc.id,shift),publishedAt:at));
                   }
