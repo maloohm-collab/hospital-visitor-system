@@ -1,4 +1,5 @@
 
+import 'dart:async';
 import 'dart:typed_data';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -28,6 +29,8 @@ class _SecurityDutyRostersScreenState extends State<SecurityDutyRostersScreen> {
   String searchTerm = '';
   bool _openingInitial = false;
   bool _autoCleanupRunning = false;
+  Timer? _expiryTimer;
+  DateTime? _scheduledExpiryAt;
   String get uid => FirebaseAuth.instance.currentUser?.uid ?? '';
   CollectionReference<Map<String, dynamic>> get preferences => db.collection('users').doc(uid).collection('duty_roster_preferences');
 
@@ -49,6 +52,37 @@ class _SecurityDutyRostersScreenState extends State<SecurityDutyRostersScreen> {
   DateTime? _publishedAt(Map<String, dynamic> block, Map<String, dynamic> roster) {
     final value = block['publishedAt'] ?? roster['updatedAt'];
     return value is Timestamp ? value.toDate() : null;
+  }
+
+  void _scheduleNextExpiry(QuerySnapshot<Map<String, dynamic>> snapshot) {
+    final now = DateTime.now();
+    DateTime? nextExpiry;
+    for (final doc in snapshot.docs) {
+      final roster = doc.data();
+      final shifts = Map<String, dynamic>.from(roster['shifts'] ?? {});
+      for (final shift in const ['A', 'B', 'C']) {
+        final raw = shifts[shift];
+        if (raw is! Map) continue;
+        final block = Map<String, dynamic>.from(raw);
+        final published = block['status'] == 'published' ||
+            (block['status'] == null && roster['status'] == 'published');
+        final sentAt = published ? _publishedAt(block, roster) : null;
+        if (sentAt == null) continue;
+        final expiry = sentAt.add(archiveAfter);
+        if (expiry.isAfter(now) &&
+            (nextExpiry == null || expiry.isBefore(nextExpiry))) {
+          nextExpiry = expiry;
+        }
+      }
+    }
+    if (nextExpiry == _scheduledExpiryAt) return;
+    _expiryTimer?.cancel();
+    _scheduledExpiryAt = nextExpiry;
+    if (nextExpiry == null) return;
+    final delay = nextExpiry.difference(now) + const Duration(milliseconds: 100);
+    _expiryTimer = Timer(delay.isNegative ? Duration.zero : delay, () {
+      if (mounted) setState(() {});
+    });
   }
 
   void _message(String value) {
@@ -244,6 +278,7 @@ class _SecurityDutyRostersScreenState extends State<SecurityDutyRostersScreen> {
           if (rosterSnap.hasError) return const _RosterMessage(icon: Icons.cloud_off_rounded,
             title: 'تعذر تحميل كشوف المناوبات', subtitle: 'تحقق من الاتصال وقواعد Firestore ثم أعد المحاولة.');
           if (rosterSnap.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
+          _scheduleNextExpiry(rosterSnap.data!);
           return StreamBuilder<QuerySnapshot<Map<String,dynamic>>>(
             stream: preferences.snapshots(),
             builder: (context,prefSnap) {
