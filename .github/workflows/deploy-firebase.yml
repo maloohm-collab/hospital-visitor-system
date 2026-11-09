@@ -1,0 +1,43 @@
+name: Deploy Firebase (manual)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: firebase-production-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy Firebase resources
+    if: github.ref == 'refs/heads/work/next-release-development-2026-11-09'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout development branch
+        uses: actions/checkout@v5
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: '20'
+
+      - name: Authenticate to Google Cloud using GitHub OIDC
+        uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: 'projects/226732172294/locations/global/workloadIdentityPools/hospital-visitor-system-github/providers/github-actions'
+          service_account: 'github-firebase-deployer@hospital-visitor-system.iam.gserviceaccount.com'
+          project_id: 'hospital-visitor-system'
+
+      - name: Install Firebase CLI
+        run: npm install --global firebase-tools
+
+      - name: Validate Cloud Functions JavaScript
+        run: node --check functions/index.js
+
+      - name: Deploy Firestore rules and indexes, Storage rules, and Cloud Functions
+        run: firebase deploy --project hospital-visitor-system --only firestore:rules,firestore:indexes,storage,functions --non-interactive
