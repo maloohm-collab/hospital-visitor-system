@@ -102,7 +102,7 @@ exports.cleanupPersonalDutyRosterArchives = onSchedule(
 
       const retentionDays = Number(settings.retentionDays);
       if (!Number.isInteger(retentionDays) || retentionDays < 1 || retentionDays > 3650) continue;
-      const cutoffMillis = now.toMillis() - retentionDays * 24 * 60 * 60 * 1000;
+      const cutoffMillis = now.toMillis() - (22 * 60 * 60 * 1000) - retentionDays * 24 * 60 * 60 * 1000;
       const existingPreferences = await preferences.get();
       const hiddenIds = new Set(existingPreferences.docs.map((doc) => doc.id));
       const expired = [];
