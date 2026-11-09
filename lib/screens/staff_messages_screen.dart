@@ -4,6 +4,7 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'dart:async';
 import 'package:url_launcher/url_launcher.dart';
 
 class StaffMessagesScreen extends StatefulWidget {
@@ -18,15 +19,15 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
   final db = FirebaseFirestore.instance;
   final auth = FirebaseAuth.instance;
   late final TabController tabs;
-  String search = '';
+  String search = '';\n  Timer? archiveRefreshTimer;
   String get uid => auth.currentUser?.uid ?? '';
   bool get admin => widget.userRole == 'admin';
   bool get supervisor => widget.userRole == 'supervisor';
 
   @override
-  void initState() { super.initState(); tabs = TabController(length: 3, vsync: this); }
+  void initState() { super.initState(); tabs = TabController(length: 3, vsync: this); archiveRefreshTimer = Timer.periodic(const Duration(minutes: 1), (_) { if (mounted) setState(() {}); }); }
   @override
-  void dispose() { tabs.dispose(); super.dispose(); }
+  void dispose() { archiveRefreshTimer?.cancel(); tabs.dispose(); super.dispose(); }
   void toast(String value) {
     if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(value)));
   }
@@ -52,7 +53,7 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
         child: SizedBox(height: MediaQuery.of(ctx).size.height * .88,
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             const Text('إرسال ملاحظة أو تنبيه', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: navy)),
-            Text('اختر المستلمين (حد أقصى 5) — المختار: ' + selected.length.toString()),
+            Text('اختر المستلمين — المختار: ' + selected.length.toString()),\n            Wrap(spacing: 6, children: [\n              TextButton(onPressed: () => refresh(() => selected.addAll(users.map((u) => u.id))), child: const Text('اختيار الجميع')),\n              if (admin) TextButton(onPressed: () => refresh(() => selected.addAll(users.where((u) => u.data()['role'] == 'security_officer').map((u) => u.id))), child: const Text('جميع ضباط الأمن')),\n              if (admin) TextButton(onPressed: () => refresh(() => selected.addAll(users.where((u) => u.data()['role'] == 'supervisor').map((u) => u.id))), child: const Text('جميع المشرفين')),\n              TextButton(onPressed: () => refresh(selected.clear), child: const Text('إلغاء التحديد')),\n            ]),
             Expanded(child: ListView(children: users.map((d) {
               final data = d.data();
               final role = data['role'] == 'admin' ? 'الإدارة' : data['role'] == 'supervisor' ? 'مشرف' : 'ضابط أمن';
@@ -60,7 +61,7 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
                 dense: true, value: selected.contains(d.id),
                 title: Text((data['displayName'] ?? 'مستخدم').toString()), subtitle: Text(role),
                 onChanged: (v) => refresh(() {
-                  if (v == true && selected.length < 5) selected.add(d.id);
+                  if (v == true) selected.add(d.id);
                   if (v == false) selected.remove(d.id);
                 }),
               );
