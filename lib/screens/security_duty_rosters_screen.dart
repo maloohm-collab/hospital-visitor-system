@@ -301,8 +301,14 @@ class _SecurityDutyRostersScreenState extends State<SecurityDutyRostersScreen> {
                 final isoDate = DateFormat('yyyy-MM-dd').format(item.actualDate);
                 final term = searchTerm.trim();
                 final shortDate = DateFormat('d/M/yyyy').format(item.actualDate);
-                final searchable = item.shift + ' شفت ' + date + ' ' + shortDate + ' ' + isoDate + ' ' + _dayName(item.actualDate);
-                return term.isEmpty || searchable.contains(term);
+                return term.isEmpty || matchesSearchText(term, [
+                  item.shift,
+                  'شفت ' + item.shift,
+                  date,
+                  shortDate,
+                  isoDate,
+                  _dayName(item.actualDate),
+                ]);
               }).toList();
 
               if (widget.archive && auto && !_autoCleanupRunning) {
