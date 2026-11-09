@@ -257,6 +257,83 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
     );
   }
 
+  Future<void> archiveSettings() async {
+    final ref = db.collection('users').doc(uid).collection('message_archive_preferences').doc('settings');
+    final snapshot = await ref.get();
+    final data = snapshot.data() ?? <String, dynamic>{};
+    bool enabled = data['autoDeleteEnabled'] == true;
+    int days = (data['retentionDays'] as num?)?.toInt() ?? 30;
+    if (!mounted) return;
+    await showDialog<void>(context: context, builder: (ctx) => StatefulBuilder(
+      builder: (dialogContext, refresh) => AlertDialog(
+        title: const Text('إعدادات أرشيف المراسلات'),
+        content: Column(mainAxisSize: MainAxisSize.min, children: [
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            title: const Text('الحذف التلقائي من أرشيفي'),
+            subtitle: const Text('يخفي الرسائل القديمة من أرشيف هذا الحساب فقط'),
+            value: enabled, onChanged: (v) => refresh(() => enabled = v),
+          ),
+          DropdownButtonFormField<int>(
+            value: days,
+            decoration: const InputDecoration(labelText: 'مدة الاحتفاظ بعد الأرشفة'),
+            items: [7, 14, 30, 60, 90, 180, 365].map((v) =>
+              DropdownMenuItem(value: v, child: Text(v.toString() + ' يوم'))).toList(),
+            onChanged: (v) => refresh(() => days = v ?? 30),
+          ),
+          const SizedBox(height: 8),
+          const Text('لن يؤثر الحذف أو الإخفاء على نسخة الطرف الآخر.', style: TextStyle(fontSize: 12)),
+        ]),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('إلغاء')),
+          FilledButton(onPressed: () async {
+            try {
+              await ref.set({
+                'ownerUid': uid, 'autoDeleteEnabled': enabled,
+                'retentionDays': days, 'updatedAt': FieldValue.serverTimestamp(),
+              });
+              if (ctx.mounted) Navigator.pop(ctx);
+              toast('تم حفظ إعدادات الأرشيف.');
+            } on FirebaseException catch (e) { toast('تعذر حفظ الإعدادات (' + e.code + ').'); }
+          }, child: const Text('حفظ')),
+        ],
+      ),
+    ));
+  }
+
+  Future<void> hideAllArchive() async {
+    final sent = await db.collection('staff_messages').where('senderUid', isEqualTo: uid).get();
+    final received = await db.collection('staff_messages').where('recipientUid', isEqualTo: uid).get();
+    final all = <String, QueryDocumentSnapshot<Map<String, dynamic>>>{};
+    for (final doc in sent.docs) { all[doc.id] = doc; }
+    for (final doc in received.docs) { all[doc.id] = doc; }
+    final expired = all.values.where((doc) {
+      final d = doc.data();
+      return archived(d) && !((d['hiddenFor'] as List<dynamic>? ?? []).contains(uid));
+    }).toList();
+    if (expired.isEmpty) { toast('لا توجد رسائل في الأرشيف لإخفائها.'); return; }
+    if (!mounted) return;
+    final yes = await showDialog<bool>(context: context, builder: (ctx) => AlertDialog(
+      title: const Text('إخفاء كامل الأرشيف؟'),
+      content: Text('سيتم إخفاء ' + expired.length.toString() + ' رسالة من حسابك فقط. تبقى محفوظة لدى بقية المستلمين.'),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('إلغاء')),
+        FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('إخفاء الكل')),
+      ],
+    ));
+    if (yes != true) return;
+    try {
+      for (var start = 0; start < expired.length; start += 400) {
+        final batch = db.batch();
+        for (final doc in expired.skip(start).take(400)) {
+          batch.update(doc.reference, {'hiddenFor': FieldValue.arrayUnion([uid])});
+        }
+        await batch.commit();
+      }
+      toast('تم إخفاء الأرشيف من حسابك.');
+    } on FirebaseException catch (e) { toast('تعذر إخفاء الأرشيف (' + e.code + ').'); }
+  }
+
   Future<void> hideFromArchive(DocumentSnapshot<Map<String, dynamic>> doc) async {
     final yes = await showDialog<bool>(context: context, builder: (ctx) => AlertDialog(
       title: const Text('إخفاء من الأرشيف؟'),
