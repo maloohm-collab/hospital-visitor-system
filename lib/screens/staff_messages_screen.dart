@@ -160,6 +160,15 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
                 try {
                   final senderSnap = await db.collection('users').doc(uid).get();
                   final sender = senderSnap.data() ?? {};
+                  String currentLocation = '';
+                  if (widget.userRole == 'security_officer') {
+                    final pointer = await db.collection('active_work_shifts').doc(uid).get();
+                    final shiftId = pointer.data()?['shiftId'];
+                    if (shiftId is String && shiftId.isNotEmpty) {
+                      final shift = await db.collection('work_shifts').doc(shiftId).get();
+                      currentLocation = (shift.data()?['activeLocationName'] ?? '').toString();
+                    }
+                  }
                   final threadId = db.collection('staff_messages').doc().id;
                   final attachments = <Map<String, dynamic>>[];
                   for (final file in files) {
@@ -186,7 +195,7 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
                       'senderName': (sender['displayName'] ?? auth.currentUser?.email ?? 'مستخدم').toString(),
                       'senderRole': widget.userRole, 'recipientUid': recipient.id,
                       'recipientName': (recipient.data()['displayName'] ?? 'مستخدم').toString(),
-                      'recipientRole': recipient.data()['role'], 'title': title.text.trim(),
+                      'recipientRole': recipient.data()['role'], 'locationName': currentLocation, 'title': title.text.trim(),
                       'body': body.text.trim(), 'priority': priority, 'requestReply': requestReply,
                       'replyStatus': requestReply ? 'pending' : 'not_required',
                       'attachments': attachments, 'read': false, 'hiddenFor': <String>[],
@@ -283,6 +292,7 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             Text((d['title'] ?? 'ملاحظة').toString(), style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: navy)),
             Text('من: ' + (d['senderName'] ?? '').toString() + ' • ' + (d['senderRole'] ?? '').toString()),
+            if ((d['locationName'] ?? '').toString().isNotEmpty) Text('موقع المناوبة: ' + d['locationName'].toString()),
             const Divider(),
             Expanded(child: ListView(children: [
               SelectableText((d['body'] ?? '').toString(), style: const TextStyle(fontSize: 15, height: 1.7)),
