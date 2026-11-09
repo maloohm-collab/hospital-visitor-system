@@ -182,7 +182,7 @@ class DashboardScreen extends StatelessWidget {
       ]);
     }
 
-    if (userRole == 'security_officer') {
+    if (userRole == 'security_officer' || userRole == 'supervisor') {
       actions.addAll([
         _AdminAction(
           icon: Icons.picture_as_pdf_rounded,
