@@ -262,8 +262,10 @@ class _SecurityDutyRostersScreenState extends State<SecurityDutyRostersScreen> {
               final visible = _readItems(rosterSnap.data!,hidden,widget.archive,days,auto);
               final items = visible.where((item) {
                 final date = DateFormat('dd/MM/yyyy').format(item.actualDate);
+                final isoDate = DateFormat('yyyy-MM-dd').format(item.actualDate);
                 final term = searchTerm.trim();
-                return term.isEmpty || (item.shift + ' ' + date + ' ' + _dayName(item.actualDate)).contains(term);
+                final searchable = item.shift + ' ' + date + ' ' + isoDate + ' ' + _dayName(item.actualDate);
+                return term.isEmpty || searchable.contains(term);
               }).toList();
 
               if (widget.archive && auto && !_autoCleanupRunning) {
@@ -441,7 +443,7 @@ class _SecurityDutyRosterPdfScreenState extends State<SecurityDutyRosterPdfScree
     try {
       final pdf=await pdfFuture;
       final Uint8List bytes;
-      final extension;
+      late final String extension;
       if(image) {
         final raster=await Printing.raster(pdf,pages:const [0],dpi:220).first;
         bytes=Uint8List.fromList(await raster.toPng());
