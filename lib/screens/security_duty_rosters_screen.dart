@@ -324,7 +324,7 @@ class _SecurityDutyRostersScreenState extends State<SecurityDutyRostersScreen> {
                     final at = published ? _publishedAt(block,roster) : null;
                     if (!published || at == null || DateTime.now().difference(at) < archiveAfter + Duration(days:days)) continue;
                     if (hidden.contains(_id(doc.id,shift))) continue;
-                    expired.add(_RosterItem(dateKey:doc.id,shift:shift,block:block,actualDate:_actualDate(doc.id,shift),publishedAt:at));
+                    expired.add(_RosterItem(dateKey:doc.id,shift:shift,block:block,actualDate:_actualDate(doc.id),publishedAt:at));
                   }
                 }
                 if (expired.isNotEmpty) {
