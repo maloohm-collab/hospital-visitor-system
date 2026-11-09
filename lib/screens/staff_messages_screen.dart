@@ -40,10 +40,11 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
     final snapshot = await db.collection('users').where('status', isEqualTo: 'active').get();
     if (!mounted) return;
     final users = snapshot.docs.where((d) {
+      if (d.id == uid) return false;
       final role = d.data()['role'];
       if (admin) return ['admin', 'supervisor', 'security_officer'].contains(role);
       if (supervisor) return role == 'security_officer';
-      return role == 'supervisor' || role == 'admin';
+      return ['admin', 'supervisor', 'security_officer'].contains(role);
     }).toList();
     final title = TextEditingController(), body = TextEditingController();
     final selected = <String>{};
@@ -130,6 +131,7 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
             const SizedBox(height: 8),
             FilledButton.icon(
               onPressed: busy ? null : () async {
+                if (recording) { toast('أوقف التسجيل الصوتي قبل الإرسال.'); return; }
                 if (selected.isEmpty) { toast('اختر مستلماً واحداً على الأقل.'); return; }
                 if (files.length > 10) { toast('الحد الأقصى عشرة مرفقات في الرسالة الواحدة.'); return; }
                 if (title.text.trim().length < 3 || (body.text.trim().length < 3 && files.isEmpty)) {
