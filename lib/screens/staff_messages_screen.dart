@@ -149,14 +149,33 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
                 if (selected.isEmpty) { toast('اختر مستلماً واحداً على الأقل.'); return; }
                 if (selected.length > 450) { toast('يمكن إرسال الرسالة إلى 450 مستلماً كحد أقصى في المرة الواحدة.'); return; }
                 if (files.length > 10) { toast('الحد الأقصى عشرة مرفقات في الرسالة الواحدة.'); return; }
+                if (files.any((f) => f.bytes!.lengthInBytes > 20 * 1024 * 1024)) {
+                  toast('حجم كل مرفق يجب ألا يتجاوز 20 ميغابايت.'); return;
+                }
                 if (title.text.trim().length < 3 || (body.text.trim().length < 3 && files.isEmpty)) {
                   toast('أدخل عنواناً ونصاً أو أرفق ملفاً.'); return;
                 }
                 refresh(() => busy = true);
+                final uploadedRefs = <Reference>[];
                 try {
                   final senderSnap = await db.collection('users').doc(uid).get();
                   final sender = senderSnap.data() ?? {};
                   final threadId = db.collection('staff_messages').doc().id;
+                  final attachments = <Map<String, dynamic>>[];
+                  for (final file in files) {
+                    final bytes = file.bytes!;
+                    final storageRef = FirebaseStorage.instance.ref(
+                      'staff_message_media/' + threadId + '/' + uid + '/' + Uri.encodeComponent(file.name),
+                    );
+                    final uploaded = await storageRef.putData(
+                      bytes, SettableMetadata(contentType: contentType(file.name)),
+                    );
+                    uploadedRefs.add(storageRef);
+                    attachments.add({
+                      'name': file.name, 'url': await uploaded.ref.getDownloadURL(),
+                      'path': uploaded.ref.fullPath, 'size': bytes.lengthInBytes, 'type': mediaType(file.name),
+                    });
+                  }
                   final refs = <DocumentReference<Map<String, dynamic>>>[];
                   final messageBatch = db.batch();
                   for (final recipient in users.where((d) => selected.contains(d.id))) {
@@ -170,33 +189,19 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
                       'recipientRole': recipient.data()['role'], 'title': title.text.trim(),
                       'body': body.text.trim(), 'priority': priority, 'requestReply': requestReply,
                       'replyStatus': requestReply ? 'pending' : 'not_required',
-                      'attachments': <Map<String, dynamic>>[], 'read': false, 'hiddenFor': <String>[],
+                      'attachments': attachments, 'read': false, 'hiddenFor': <String>[],
                       'createdAt': FieldValue.serverTimestamp(),
                     });
                   }
                   await messageBatch.commit();
-                  final attachments = <Map<String, dynamic>>[];
-                  for (final file in files) {
-                    final bytes = file.bytes!;
-                    if (bytes.lengthInBytes > 20 * 1024 * 1024) throw StateError('الملف ' + file.name + ' يتجاوز 20 ميغابايت.');
-                    final ref = FirebaseStorage.instance.ref('staff_message_media/' + threadId + '/' + uid + '/' + Uri.encodeComponent(file.name));
-                    final uploaded = await ref.putData(bytes, SettableMetadata(contentType: contentType(file.name)));
-                    attachments.add({
-                      'name': file.name, 'url': await uploaded.ref.getDownloadURL(),
-                      'path': uploaded.ref.fullPath, 'size': bytes.lengthInBytes, 'type': mediaType(file.name),
-                    });
-                  }
-                  if (attachments.isNotEmpty) {
-                    final batch = db.batch();
-                    for (final ref in refs) { batch.update(ref, {'attachments': attachments}); }
-                    await batch.commit();
-                  }
                   if (ctx.mounted) Navigator.pop(sheet);
                   toast('تم إرسال الملاحظة إلى ' + refs.length.toString() + ' مستلم.');
                 } on FirebaseException catch (e) {
+                  for (final ref in uploadedRefs) { try { await ref.delete(); } catch (_) {} }
                   refresh(() => busy = false);
                   toast('تعذر الإرسال (' + e.code + '). تأكد من نشر قواعد Firestore والتخزين.');
                 } catch (e) {
+                  for (final ref in uploadedRefs) { try { await ref.delete(); } catch (_) {} }
                   refresh(() => busy = false);
                   toast(e.toString().replaceFirst('Bad state: ', ''));
                 }
