@@ -24,27 +24,8 @@ class DashboardHeader extends StatelessWidget {
   static const _navy = Color(0xFF1B3555);
   static const _navyLight = Color(0xFF315579);
   static const _gold = Color(0xFFD8B65A);
-  static const _ink = Color(0xFF17324D);
-  static const _muted = Color(0xFF536B82);
   static const _secureStorage = FlutterSecureStorage();
   static const _lockKey = 'hospital_visitor_local_lock_';
-
-  static const _weekdays = <String>[
-    'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس',
-    'الجمعة', 'السبت', 'الأحد',
-  ];
-  String _two(int value) => value.toString().padLeft(2, '0');
-
-  String _roleLabel(String role) {
-    switch (role) {
-      case 'admin':
-        return 'المسؤول الإداري';
-      case 'supervisor':
-        return 'المشرف';
-      default:
-        return 'ضابط الأمن';
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -156,64 +137,6 @@ class DashboardHeader extends StatelessWidget {
               ],
             ),
             ),
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(12, 8, 12, 9),
-          child: StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-            stream: currentUid == null
-                ? null
-                : FirebaseFirestore.instance.collection('users').doc(currentUid).snapshots(),
-            builder: (context, userSnapshot) {
-              final rawName = (userSnapshot.data?.data()?['displayName'] ?? '').toString().trim();
-              final shownName = rawName.isEmpty
-                  ? (userRole == 'admin' ? 'المسؤول' : 'الموظف')
-                  : rawName;
-              return StreamBuilder<DateTime>(
-                stream: Stream<DateTime>.periodic(const Duration(seconds: 1), (_) => DateTime.now()),
-                initialData: DateTime.now(),
-                builder: (context, timeSnapshot) {
-                  final now = timeSnapshot.data ?? DateTime.now();
-                  final time = '${_two(now.hour)}:${_two(now.minute)}:${_two(now.second)}';
-                  final date = '${_weekdays[now.weekday - 1]} ${now.day}/${now.month}/${now.year}';
-                  return Row(
-                    textDirection: TextDirection.rtl,
-                    children: [
-                      Expanded(
-                        flex: 5,
-                        child: Text(
-                          '${_roleLabel(userRole)}: $shownName',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(color: _ink, fontSize: 13, fontWeight: FontWeight.w900),
-                        ),
-                      ),
-                      const SizedBox(width: 7),
-                      Container(width: 1, height: 20, color: const Color(0xFFD3DDE6)),
-                      const SizedBox(width: 7),
-                      Text(
-                        time,
-                        textDirection: TextDirection.ltr,
-                        style: const TextStyle(color: _ink, fontSize: 13, fontWeight: FontWeight.w900, fontFeatures: [FontFeature.tabularFigures()]),
-                      ),
-                      const SizedBox(width: 8),
-                      Container(width: 1, height: 20, color: const Color(0xFFD3DDE6)),
-                      const SizedBox(width: 7),
-                      Expanded(
-                        flex: 4,
-                        child: Text(
-                          date,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          textAlign: TextAlign.end,
-                          style: const TextStyle(color: _muted, fontSize: 13, fontWeight: FontWeight.w800),
-                        ),
-                      ),
-                    ],
-                  );
-                },
-              );
-            },
           ),
         ),
       ],
@@ -332,6 +255,111 @@ class DashboardHeader extends StatelessWidget {
   }
 }
 
+
+
+
+/// Independent account identity card displayed below the company header.
+class DashboardAccountCard extends StatelessWidget {
+  const DashboardAccountCard({super.key, required this.userRole, required this.currentUid});
+
+  final String userRole;
+  final String? currentUid;
+
+  static const _weekdays = <String>['الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت', 'الأحد'];
+  static const _ink = Color(0xFF17324D);
+  String _two(int value) => value.toString().padLeft(2, '0');
+
+  String _roleLabel() {
+    switch (userRole) {
+      case 'admin':
+        return 'المسؤول الإداري';
+      case 'supervisor':
+        return 'المشرف';
+      default:
+        return 'ضابط الأمن';
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 2, 16, 10),
+      child: Material(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(22),
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(15, 13, 15, 13),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(22),
+            border: Border.all(color: const Color(0xFFE0E7EE)),
+            boxShadow: const [BoxShadow(color: Color(0x10082B55), blurRadius: 16, offset: Offset(0, 5))],
+          ),
+          child: StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+            stream: currentUid == null ? null : FirebaseFirestore.instance.collection('users').doc(currentUid).snapshots(),
+            builder: (context, userSnapshot) {
+              final rawName = (userSnapshot.data?.data()?['displayName'] ?? '').toString().trim();
+              final shownName = rawName.isEmpty ? (userRole == 'admin' ? 'المسؤول' : 'الموظف') : rawName;
+              return StreamBuilder<DateTime>(
+                stream: Stream<DateTime>.periodic(const Duration(seconds: 1), (_) => DateTime.now()),
+                initialData: DateTime.now(),
+                builder: (context, timeSnapshot) {
+                  final now = timeSnapshot.data ?? DateTime.now();
+                  final time = '${_two(now.hour)}:${_two(now.minute)}:${_two(now.second)}';
+                  final date = '${_weekdays[now.weekday - 1]} ${now.day}/${now.month}/${now.year}';
+                  return Column(
+                    children: [
+                      Row(
+                        textDirection: TextDirection.rtl,
+                        children: [
+                          Container(
+                            width: 47,
+                            height: 47,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFFF5D9),
+                              shape: BoxShape.circle,
+                              border: Border.all(color: const Color(0xFFD8B65A), width: 1.5),
+                            ),
+                            child: const Icon(Icons.security_rounded, color: Color(0xFF173653), size: 25),
+                          ),
+                          const SizedBox(width: 11),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(_roleLabel(), style: const TextStyle(color: Color(0xFF718397), fontSize: 11, fontWeight: FontWeight.w700)),
+                                const SizedBox(height: 2),
+                                Text(shownName, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: _ink, fontSize: 15, fontWeight: FontWeight.w900)),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 11),
+                      const Divider(height: 1, color: Color(0xFFE9EEF3)),
+                      const SizedBox(height: 9),
+                      Row(
+                        textDirection: TextDirection.rtl,
+                        children: [
+                          const Icon(Icons.access_time_rounded, color: Color(0xFFB58D35), size: 17),
+                          const SizedBox(width: 5),
+                          Text(time, textDirection: TextDirection.ltr, style: const TextStyle(color: _ink, fontSize: 13, fontWeight: FontWeight.w900, fontFeatures: [FontFeature.tabularFigures()])),
+                          const Spacer(),
+                          const Icon(Icons.calendar_month_rounded, color: Color(0xFFB58D35), size: 16),
+                          const SizedBox(width: 5),
+                          Flexible(child: Text(date, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Color(0xFF536B82), fontSize: 12, fontWeight: FontWeight.w800))),
+                        ],
+                      ),
+                    ],
+                  );
+                },
+              );
+            },
+          ),
+        ),
+      ),
+    );
+  }
+}
 
 
 /// Clips the header background itself into a soft ocean-wave bottom edge.
