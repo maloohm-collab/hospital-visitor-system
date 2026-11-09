@@ -300,7 +300,8 @@ class _SecurityDutyRostersScreenState extends State<SecurityDutyRostersScreen> {
                 final date = DateFormat('dd/MM/yyyy').format(item.actualDate);
                 final isoDate = DateFormat('yyyy-MM-dd').format(item.actualDate);
                 final term = searchTerm.trim();
-                final searchable = item.shift + ' ' + date + ' ' + isoDate + ' ' + _dayName(item.actualDate);
+                final shortDate = DateFormat('d/M/yyyy').format(item.actualDate);
+                final searchable = item.shift + ' شفت ' + date + ' ' + shortDate + ' ' + isoDate + ' ' + _dayName(item.actualDate);
                 return term.isEmpty || searchable.contains(term);
               }).toList();
 
@@ -463,6 +464,8 @@ class _SecurityDutyRosterPdfScreenState extends State<SecurityDutyRosterPdfScree
   static const navy=Color(0xFF123B63);
   static const page=Color(0xFFF1F6FC);
   late final Future<Uint8List> pdfFuture;
+  bool _savingPdf = false;
+  bool _savingImage = false;
   DateTime get actualDate {
     final date=DateTime.tryParse(widget.dateKey)??DateTime.now();
     return date;
@@ -474,6 +477,8 @@ class _SecurityDutyRosterPdfScreenState extends State<SecurityDutyRosterPdfScree
       shifts:{widget.shift:widget.block},onlyShift:widget.shift).then((v)=>Uint8List.fromList(v));
   }
   Future<void> _save({required bool image}) async {
+    if (image ? _savingImage : _savingPdf) return;
+    setState(() { if (image) { _savingImage = true; } else { _savingPdf = true; } });
     try {
       final pdf=await pdfFuture;
       final Uint8List bytes;
@@ -490,6 +495,8 @@ class _SecurityDutyRosterPdfScreenState extends State<SecurityDutyRosterPdfScree
         content:Text(image?'تم حفظ صورة الكشف على الهاتف.':'تم حفظ ملف PDF على الهاتف.'),behavior:SnackBarBehavior.floating));
     } catch(_) {
       if(mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('تعذر حفظ الكشف. حاول مرة أخرى.')));
+    } finally {
+      if (mounted) setState(() { if (image) { _savingImage = false; } else { _savingPdf = false; } });
     }
   }
   @override
@@ -512,12 +519,12 @@ class _SecurityDutyRosterPdfScreenState extends State<SecurityDutyRosterPdfScree
             Text('وقت الإرسال '+time+' • '+hours,style:const TextStyle(color:Color(0xFFE8F3FA),fontSize:13,fontWeight:FontWeight.w600)),
           ])),
         Padding(padding:const EdgeInsets.fromLTRB(12,0,12,10),child:Row(children:[
-          Expanded(child:FilledButton.icon(onPressed:()=>_save(image:false),icon:const Icon(Icons.picture_as_pdf_rounded),
-            label:const Text('حفظ PDF'),style:FilledButton.styleFrom(backgroundColor:navy,foregroundColor:Colors.white,
+          Expanded(child:FilledButton.icon(onPressed:_savingPdf?null:()=>_save(image:false),icon:const Icon(Icons.picture_as_pdf_rounded),
+            label:Text(_savingPdf?'جارٍ حفظ PDF...':'حفظ PDF'),style:FilledButton.styleFrom(backgroundColor:navy,foregroundColor:Colors.white,
               minimumSize:const Size.fromHeight(48),textStyle:const TextStyle(fontSize:14,fontWeight:FontWeight.w900)))),
           const SizedBox(width:9),
-          Expanded(child:FilledButton.icon(onPressed:()=>_save(image:true),icon:const Icon(Icons.image_rounded),
-            label:const Text('حفظ صورة'),style:FilledButton.styleFrom(backgroundColor:const Color(0xFF087E78),foregroundColor:Colors.white,
+          Expanded(child:FilledButton.icon(onPressed:_savingImage?null:()=>_save(image:true),icon:const Icon(Icons.image_rounded),
+            label:Text(_savingImage?'جارٍ حفظ الصورة...':'حفظ صورة'),style:FilledButton.styleFrom(backgroundColor:const Color(0xFF087E78),foregroundColor:Colors.white,
               minimumSize:const Size.fromHeight(48),textStyle:const TextStyle(fontSize:14,fontWeight:FontWeight.w900)))),
         ])),
         Expanded(child:Container(margin:const EdgeInsets.fromLTRB(8,0,8,8),
