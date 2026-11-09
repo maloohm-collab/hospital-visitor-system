@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -7,7 +8,6 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:record/record.dart';
 import 'package:path_provider/path_provider.dart';
-import 'dart:async';
 import 'package:url_launcher/url_launcher.dart';
 
 class StaffMessagesScreen extends StatefulWidget {
@@ -455,6 +455,10 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
   @override
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(title: const Text('المراسلات والتنبيهات'),
+      actions: [
+        IconButton(tooltip: 'إعدادات الأرشيف', onPressed: archiveSettings, icon: const Icon(Icons.settings_outlined)),
+        IconButton(tooltip: 'إخفاء كل الأرشيف', onPressed: hideAllArchive, icon: const Icon(Icons.delete_sweep_outlined)),
+      ],
       bottom: TabBar(controller: tabs, tabs: const [Tab(text: 'الوارد'), Tab(text: 'الصادر'), Tab(text: 'الأرشيف')])),
     floatingActionButton: FloatingActionButton.extended(
       onPressed: compose, backgroundColor: teal, foregroundColor: Colors.white,
