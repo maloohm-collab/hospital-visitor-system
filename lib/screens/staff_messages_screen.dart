@@ -1,14 +1,8 @@
 import 'dart:async';
-import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_storage/firebase_storage.dart';
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:record/record.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 class StaffMessagesScreen extends StatefulWidget {
   const StaffMessagesScreen({super.key, required this.userRole, this.initialMessageId});
@@ -58,193 +52,159 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
       final role = d.data()['role'];
       if (admin) return ['admin', 'supervisor', 'security_officer'].contains(role);
       if (supervisor) return role == 'security_officer';
-      // ضابط الأمن يرسل للإدارة أو المشرفين فقط؛ لا يرسل إلى حسابات ضباط أمن آخرين.
       return ['admin', 'supervisor'].contains(role);
     }).toList();
-    final title = TextEditingController(), body = TextEditingController();
+
+    final title = TextEditingController();
+    final body = TextEditingController();
     final selected = <String>{};
-    final files = <PlatformFile>[];
-    final recorder = AudioRecorder();
-    String? recordingPath;
-    bool recording = false;
     String priority = 'normal';
-    bool requestReply = false, busy = false;
+    bool requestReply = false;
+    bool busy = false;
+
     await showModalBottomSheet<void>(
-      context: context, isScrollControlled: true, useSafeArea: true,
-      builder: (sheet) => StatefulBuilder(builder: (ctx, refresh) => Padding(
-        padding: EdgeInsets.fromLTRB(16, 16, 16, MediaQuery.of(ctx).viewInsets.bottom + 16),
-        child: SizedBox(height: MediaQuery.of(ctx).size.height * .88,
-          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            const Text('إرسال ملاحظة أو تنبيه', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: navy)),
-            Text('اختر المستلمين — المختار: ' + selected.length.toString()),
-            Wrap(spacing: 6, children: [
-              TextButton(onPressed: () => refresh(() => selected.addAll(users.map((u) => u.id))), child: const Text('اختيار الجميع')),
-              if (admin) TextButton(onPressed: () => refresh(() => selected.addAll(users.where((u) => u.data()['role'] == 'security_officer').map((u) => u.id))), child: const Text('جميع ضباط الأمن')),
-              if (admin) TextButton(onPressed: () => refresh(() => selected.addAll(users.where((u) => u.data()['role'] == 'supervisor').map((u) => u.id))), child: const Text('جميع المشرفين')),
-              TextButton(onPressed: () => refresh(selected.clear), child: const Text('إلغاء التحديد')),
-            ]),
-            Expanded(child: ListView(children: users.map((d) {
-              final data = d.data();
-              final role = data['role'] == 'admin' ? 'الإدارة' : data['role'] == 'supervisor' ? 'مشرف' : 'ضابط أمن';
-              return CheckboxListTile(
-                dense: true, value: selected.contains(d.id),
-                title: Text((data['displayName'] ?? 'مستخدم').toString()), subtitle: Text(role),
-                onChanged: (v) => refresh(() {
-                  if (v == true) selected.add(d.id);
-                  if (v == false) selected.remove(d.id);
-                }),
-              );
-            }).toList())),
-            TextField(controller: title, decoration: const InputDecoration(labelText: 'عنوان الملاحظة')),
-            const SizedBox(height: 8),
-            TextField(controller: body, minLines: 2, maxLines: 4, decoration: const InputDecoration(labelText: 'التفاصيل')),
-            const SizedBox(height: 8),
-            DropdownButtonFormField<String>(
-              value: priority, decoration: const InputDecoration(labelText: 'الأهمية'),
-              items: const [
-                DropdownMenuItem(value: 'normal', child: Text('عادية')),
-                DropdownMenuItem(value: 'important', child: Text('مهمة')),
-                DropdownMenuItem(value: 'urgent', child: Text('عاجلة')),
-              ], onChanged: (v) => refresh(() => priority = v ?? 'normal'),
-            ),
-            SwitchListTile(
-              contentPadding: EdgeInsets.zero, title: const Text('طلب الرد على الملاحظة'),
-              value: requestReply, onChanged: (v) => refresh(() => requestReply = v),
-            ),
-            OutlinedButton.icon(
-              onPressed: busy ? null : () async {
-                try {
-                  if (!recording) {
-                    if (!await recorder.hasPermission()) { toast('يرجى السماح باستخدام الميكروفون.'); return; }
-                    final dir = await getTemporaryDirectory();
-                    recordingPath = dir.path + '/staff_voice_' + DateTime.now().millisecondsSinceEpoch.toString() + '.m4a';
-                    await recorder.start(const RecordConfig(encoder: AudioEncoder.aacLc), path: recordingPath!);
-                    refresh(() => recording = true);
-                  } else {
-                    final path = await recorder.stop();
-                    if (path != null) {
-                      final bytes = await File(path).readAsBytes();
-                      refresh(() {
-                        files.add(PlatformFile(name: 'تسجيل صوتي.m4a', size: bytes.length, bytes: bytes, path: path));
-                        recording = false;
-                      });
-                    } else { refresh(() => recording = false); }
-                  }
-                } catch (_) { toast('تعذر تسجيل الصوت. تحقق من إذن الميكروفون.'); refresh(() => recording = false); }
-              },
-              icon: Icon(recording ? Icons.stop_circle : Icons.mic),
-              label: Text(recording ? 'إيقاف التسجيل وإرفاقه' : 'تسجيل صوتي'),
-            ),
-            OutlinedButton.icon(
-              onPressed: busy ? null : () async {
-                final result = await FilePicker.platform.pickFiles(allowMultiple: true, withData: true);
-                if (result != null) refresh(() => files.addAll(result.files.where((f) => f.bytes != null)));
-              },
-              icon: const Icon(Icons.attach_file), label: const Text('إرفاق صورة أو فيديو أو صوت أو ملف'),
-            ),
-            if (files.isNotEmpty) Text('المرفقات المختارة: ' + files.map((f) => f.name).join('، '), maxLines: 2, overflow: TextOverflow.ellipsis),
-            const SizedBox(height: 8),
-            FilledButton.icon(
-              onPressed: busy ? null : () async {
-                if (recording) { toast('أوقف التسجيل الصوتي قبل الإرسال.'); return; }
-                if (selected.isEmpty) { toast('اختر مستلماً واحداً على الأقل.'); return; }
-                if (selected.length > 450) { toast('يمكن إرسال الرسالة إلى 450 مستلماً كحد أقصى في المرة الواحدة.'); return; }
-                if (files.length > 10) { toast('الحد الأقصى عشرة مرفقات في الرسالة الواحدة.'); return; }
-                if (files.any((f) => f.bytes!.lengthInBytes > 20 * 1024 * 1024)) {
-                  toast('حجم كل مرفق يجب ألا يتجاوز 20 ميغابايت.'); return;
-                }
-                if (title.text.trim().length < 3 || (body.text.trim().length < 3 && files.isEmpty)) {
-                  toast('أدخل عنواناً ونصاً أو أرفق ملفاً.'); return;
-                }
-                refresh(() => busy = true);
-                final uploadedRefs = <Reference>[];
-                try {
-                  final senderSnap = await db.collection('users').doc(uid).get();
-                  final sender = senderSnap.data() ?? {};
-                  String currentLocation = '';
-                  if (widget.userRole == 'security_officer') {
-                    final pointer = await db.collection('active_work_shifts').doc(uid).get();
-                    final shiftId = pointer.data()?['shiftId'];
-                    if (shiftId is String && shiftId.isNotEmpty) {
-                      final shift = await db.collection('work_shifts').doc(shiftId).get();
-                      currentLocation = (shift.data()?['activeLocationName'] ?? '').toString();
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (sheet) => StatefulBuilder(
+        builder: (ctx, refresh) => Padding(
+          padding: EdgeInsets.fromLTRB(16, 16, 16, MediaQuery.of(ctx).viewInsets.bottom + 16),
+          child: SizedBox(
+            height: MediaQuery.of(ctx).size.height * .82,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const Text('إرسال ملاحظة أو تنبيه',
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: navy)),
+                Text('اختر المستلمين — المختار: ${selected.length}'),
+                Wrap(spacing: 6, children: [
+                  TextButton(
+                    onPressed: () => refresh(() => selected.addAll(users.map((u) => u.id))),
+                    child: const Text('اختيار الجميع')),
+                  if (admin) TextButton(
+                    onPressed: () => refresh(() => selected.addAll(
+                      users.where((u) => u.data()['role'] == 'security_officer').map((u) => u.id))),
+                    child: const Text('جميع ضباط الأمن')),
+                  if (admin) TextButton(
+                    onPressed: () => refresh(() => selected.addAll(
+                      users.where((u) => u.data()['role'] == 'supervisor').map((u) => u.id))),
+                    child: const Text('جميع المشرفين')),
+                  TextButton(onPressed: () => refresh(selected.clear), child: const Text('إلغاء التحديد')),
+                ]),
+                Expanded(child: ListView(children: users.map((d) {
+                  final data = d.data();
+                  final role = data['role'] == 'admin' ? 'الإدارة' :
+                    data['role'] == 'supervisor' ? 'مشرف' : 'ضابط أمن';
+                  return CheckboxListTile(
+                    dense: true,
+                    value: selected.contains(d.id),
+                    title: Text((data['displayName'] ?? 'مستخدم').toString()),
+                    subtitle: Text(role),
+                    onChanged: (v) => refresh(() {
+                      if (v == true) selected.add(d.id);
+                      if (v == false) selected.remove(d.id);
+                    }),
+                  );
+                }).toList())),
+                TextField(controller: title,
+                  decoration: const InputDecoration(labelText: 'عنوان الملاحظة')),
+                const SizedBox(height: 8),
+                TextField(controller: body, minLines: 3, maxLines: 5,
+                  decoration: const InputDecoration(labelText: 'التفاصيل النصية')),
+                const SizedBox(height: 8),
+                DropdownButtonFormField<String>(
+                  value: priority,
+                  decoration: const InputDecoration(labelText: 'الأهمية'),
+                  items: const [
+                    DropdownMenuItem(value: 'normal', child: Text('عادية')),
+                    DropdownMenuItem(value: 'important', child: Text('مهمة')),
+                    DropdownMenuItem(value: 'urgent', child: Text('عاجلة')),
+                  ],
+                  onChanged: (v) => refresh(() => priority = v ?? 'normal'),
+                ),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('طلب الرد على الملاحظة'),
+                  value: requestReply,
+                  onChanged: (v) => refresh(() => requestReply = v),
+                ),
+                const SizedBox(height: 8),
+                FilledButton.icon(
+                  onPressed: busy ? null : () async {
+                    if (selected.isEmpty) {
+                      toast('اختر مستلماً واحداً على الأقل.');
+                      return;
                     }
-                  }
-                  final threadId = db.collection('staff_messages').doc().id;
-                  final attachments = <Map<String, dynamic>>[];
-                  for (final file in files) {
-                    final bytes = file.bytes!;
-                    final storageRef = FirebaseStorage.instance.ref(
-                      'staff_message_media/' + threadId + '/' + uid + '/' + Uri.encodeComponent(file.name),
-                    );
-                    final uploaded = await storageRef.putData(
-                      bytes, SettableMetadata(contentType: contentType(file.name)),
-                    );
-                    uploadedRefs.add(storageRef);
-                    attachments.add({
-                      'name': file.name, 'url': await uploaded.ref.getDownloadURL(),
-                      'path': uploaded.ref.fullPath, 'size': bytes.lengthInBytes, 'type': mediaType(file.name),
-                    });
-                  }
-                  final refs = <DocumentReference<Map<String, dynamic>>>[];
-                  final messageBatch = db.batch();
-                  for (final recipient in users.where((d) => selected.contains(d.id))) {
-                    final ref = db.collection('staff_messages').doc(threadId + '_' + recipient.id);
-                    refs.add(ref);
-                    messageBatch.set(ref, {
-                      'messageId': ref.id, 'threadId': threadId, 'senderUid': uid,
-                      'senderName': (sender['displayName'] ?? auth.currentUser?.email ?? 'مستخدم').toString(),
-                      'senderRole': widget.userRole, 'recipientUid': recipient.id,
-                      'recipientName': (recipient.data()['displayName'] ?? 'مستخدم').toString(),
-                      'recipientRole': recipient.data()['role'], 'locationName': currentLocation, 'title': title.text.trim(),
-                      'body': body.text.trim(), 'priority': priority, 'requestReply': requestReply,
-                      'replyStatus': requestReply ? 'pending' : 'not_required',
-                      'attachments': attachments, 'read': false, 'hiddenFor': <String>[],
-                      'createdAt': FieldValue.serverTimestamp(),
-                    });
-                  }
-                  await messageBatch.commit();
-                  if (ctx.mounted) Navigator.pop(sheet);
-                  toast('تم إرسال الملاحظة إلى ' + refs.length.toString() + ' مستلم.');
-                } on FirebaseException catch (e) {
-                  for (final ref in uploadedRefs) { try { await ref.delete(); } catch (_) {} }
-                  refresh(() => busy = false);
-                  toast('تعذر الإرسال (' + e.code + '). تأكد من نشر قواعد Firestore والتخزين.');
-                } catch (e) {
-                  for (final ref in uploadedRefs) { try { await ref.delete(); } catch (_) {} }
-                  refresh(() => busy = false);
-                  toast(e.toString().replaceFirst('Bad state: ', ''));
-                }
-              },
-              icon: const Icon(Icons.send_rounded),
-              label: Text(busy ? 'جارٍ الإرسال ورفع الملفات...' : 'إرسال'),
+                    if (selected.length > 450) {
+                      toast('يمكن إرسال الرسالة إلى 450 مستلماً كحد أقصى في المرة الواحدة.');
+                      return;
+                    }
+                    if (title.text.trim().length < 3 || body.text.trim().length < 3) {
+                      toast('أدخل عنواناً وتفاصيل نصية لا تقل عن ثلاثة أحرف.');
+                      return;
+                    }
+                    refresh(() => busy = true);
+                    try {
+                      final senderSnap = await db.collection('users').doc(uid).get();
+                      final sender = senderSnap.data() ?? {};
+                      String currentLocation = '';
+                      if (widget.userRole == 'security_officer') {
+                        final pointer = await db.collection('active_work_shifts').doc(uid).get();
+                        final shiftId = pointer.data()?['shiftId'];
+                        if (shiftId is String && shiftId.isNotEmpty) {
+                          final shift = await db.collection('work_shifts').doc(shiftId).get();
+                          currentLocation = (shift.data()?['activeLocationName'] ?? '').toString();
+                        }
+                      }
+                      final threadId = db.collection('staff_messages').doc().id;
+                      final refs = <DocumentReference<Map<String, dynamic>>>[];
+                      final messageBatch = db.batch();
+                      for (final recipient in users.where((d) => selected.contains(d.id))) {
+                        final ref = db.collection('staff_messages').doc(threadId + '_' + recipient.id);
+                        refs.add(ref);
+                        messageBatch.set(ref, {
+                          'messageId': ref.id,
+                          'threadId': threadId,
+                          'senderUid': uid,
+                          'senderName': (sender['displayName'] ?? auth.currentUser?.email ?? 'مستخدم').toString(),
+                          'senderRole': widget.userRole,
+                          'recipientUid': recipient.id,
+                          'recipientName': (recipient.data()['displayName'] ?? 'مستخدم').toString(),
+                          'recipientRole': recipient.data()['role'],
+                          'locationName': currentLocation,
+                          'title': title.text.trim(),
+                          'body': body.text.trim(),
+                          'priority': priority,
+                          'requestReply': requestReply,
+                          'replyStatus': requestReply ? 'pending' : 'not_required',
+                          'attachments': <Map<String, dynamic>>[],
+                          'read': false,
+                          'hiddenFor': <String>[],
+                          'createdAt': FieldValue.serverTimestamp(),
+                        });
+                      }
+                      await messageBatch.commit();
+                      if (ctx.mounted) Navigator.pop(sheet);
+                      toast('تم إرسال الملاحظة النصية إلى ${refs.length} مستلم.');
+                    } on FirebaseException catch (e) {
+                      refresh(() => busy = false);
+                      toast('تعذر الإرسال (${e.code}). تحقق من قواعد Firestore.');
+                    } catch (e) {
+                      refresh(() => busy = false);
+                      toast(e.toString().replaceFirst('Bad state: ', ''));
+                    }
+                  },
+                  icon: const Icon(Icons.send_rounded),
+                  label: Text(busy ? 'جارٍ إرسال الرسالة...' : 'إرسال الرسالة النصية'),
+                ),
+              ],
             ),
-          ]),
+          ),
         ),
-      )),
+      ),
     );
-    if (recording) { try { await recorder.stop(); } catch (_) {} }
-    await recorder.dispose();
-    title.dispose(); body.dispose();
-  }
-
-  String mediaType(String name) {
-    final ext = name.split('.').last.toLowerCase();
-    if (['jpg', 'jpeg', 'png', 'webp', 'gif'].contains(ext)) return 'image';
-    if (['mp4', 'mov', 'm4v', 'webm'].contains(ext)) return 'video';
-    if (['mp3', 'm4a', 'aac', 'wav', 'ogg'].contains(ext)) return 'audio';
-    return 'file';
-  }
-
-  String contentType(String name) {
-    final ext = name.split('.').last.toLowerCase();
-    const types = {
-      'jpg':'image/jpeg','jpeg':'image/jpeg','png':'image/png','webp':'image/webp','gif':'image/gif',
-      'mp4':'video/mp4','mov':'video/quicktime','m4v':'video/x-m4v','webm':'video/webm',
-      'mp3':'audio/mpeg','m4a':'audio/mp4','aac':'audio/aac','wav':'audio/wav','ogg':'audio/ogg',
-      'pdf':'application/pdf',
-    };
-    return types[ext] ?? 'application/octet-stream';
+    title.dispose();
+    body.dispose();
   }
 
   bool archived(Map<String, dynamic> d) {
@@ -260,121 +220,76 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
 
   Future<void> reply(DocumentSnapshot<Map<String, dynamic>> doc) async {
     final message = doc.data() ?? {};
-    if (message['requestReply'] != true || message['replyStatus'] == 'replied' ||
+    if (message['requestReply'] != true ||
+        message['replyStatus'] == 'replied' ||
         message['recipientUid'] != uid) {
       toast('لا يوجد طلب رد متاح على هذه الملاحظة.');
       return;
     }
 
     final body = TextEditingController();
-    final files = <PlatformFile>[];
-    final recorder = AudioRecorder();
-    String? recordingPath;
-    bool recording = false;
     bool busy = false;
-    final uploadedRefs = <Reference>[];
-
     await showModalBottomSheet<void>(
-      context: context, isScrollControlled: true, useSafeArea: true,
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
       builder: (sheet) => StatefulBuilder(
         builder: (ctx, refresh) => Padding(
           padding: EdgeInsets.fromLTRB(16, 16, 16, MediaQuery.of(ctx).viewInsets.bottom + 16),
-          child: SizedBox(height: MediaQuery.of(ctx).size.height * .72,
-            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-              const Text('الرد على الملاحظة', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: navy)),
-              TextField(controller: body, minLines: 3, maxLines: 6,
-                decoration: const InputDecoration(labelText: 'اكتب الرد')),
-              const SizedBox(height: 10),
-              OutlinedButton.icon(
-                onPressed: busy ? null : () async {
-                  try {
-                    if (!recording) {
-                      if (!await recorder.hasPermission()) { toast('يرجى السماح باستخدام الميكروفون.'); return; }
-                      final dir = await getTemporaryDirectory();
-                      recordingPath = dir.path + '/staff_reply_' + DateTime.now().millisecondsSinceEpoch.toString() + '.m4a';
-                      await recorder.start(const RecordConfig(encoder: AudioEncoder.aacLc), path: recordingPath!);
-                      refresh(() => recording = true);
-                    } else {
-                      final path = await recorder.stop();
-                      if (path != null) {
-                        final bytes = await File(path).readAsBytes();
-                        refresh(() {
-                          files.add(PlatformFile(name: 'تسجيل الرد.m4a', size: bytes.length, bytes: bytes, path: path));
-                          recording = false;
-                        });
-                      } else { refresh(() => recording = false); }
+          child: SizedBox(
+            height: MediaQuery.of(ctx).size.height * .48,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const Text('الرد على الملاحظة',
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: navy)),
+                const SizedBox(height: 12),
+                TextField(controller: body, minLines: 4, maxLines: 7,
+                  decoration: const InputDecoration(labelText: 'اكتب الرد النصي')),
+                const Spacer(),
+                FilledButton.icon(
+                  onPressed: busy ? null : () async {
+                    if (body.text.trim().isEmpty) {
+                      toast('اكتب نص الرد قبل الإرسال.');
+                      return;
                     }
-                  } catch (_) { toast('تعذر تسجيل الصوت. تحقق من إذن الميكروفون.'); refresh(() => recording = false); }
-                },
-                icon: Icon(recording ? Icons.stop_circle : Icons.mic),
-                label: Text(recording ? 'إيقاف التسجيل وإرفاقه' : 'تسجيل صوتي'),
-              ),
-              OutlinedButton.icon(
-                onPressed: busy ? null : () async {
-                  final result = await FilePicker.platform.pickFiles(allowMultiple: true, withData: true);
-                  if (result != null) refresh(() => files.addAll(result.files.where((f) => f.bytes != null)));
-                },
-                icon: const Icon(Icons.attach_file), label: const Text('إرفاق صورة أو فيديو أو صوت أو ملف'),
-              ),
-              if (files.isNotEmpty) Text('المرفقات: ' + files.map((f) => f.name).join('، '),
-                maxLines: 2, overflow: TextOverflow.ellipsis),
-              const Spacer(),
-              FilledButton.icon(
-                onPressed: busy ? null : () async {
-                  if (recording) { toast('أوقف التسجيل قبل إرسال الرد.'); return; }
-                  if (body.text.trim().isEmpty && files.isEmpty) { toast('اكتب الرد أو أرفق ملفاً.'); return; }
-                  if (files.length > 10 || files.any((f) => f.bytes == null || f.bytes!.lengthInBytes > 20 * 1024 * 1024)) {
-                    toast('الحد الأقصى عشرة مرفقات، وحجم كل مرفق 20 ميغابايت.'); return;
-                  }
-                  refresh(() => busy = true);
-                  try {
-                    final profile = await db.collection('users').doc(uid).get();
-                    final replyRef = doc.reference.collection('replies').doc();
-                    final threadId = (message['threadId'] ?? '').toString();
-                    final attachments = <Map<String, dynamic>>[];
-                    for (final file in files) {
-                      final storageRef = FirebaseStorage.instance.ref(
-                        'staff_message_media/' + threadId + '/' + uid + '/' +
-                        Uri.encodeComponent(replyRef.id + '_' + file.name),
-                      );
-                      final uploaded = await storageRef.putData(
-                        file.bytes!, SettableMetadata(contentType: contentType(file.name)),
-                      );
-                      uploadedRefs.add(storageRef);
-                      attachments.add({
-                        'name': file.name, 'url': await uploaded.ref.getDownloadURL(),
-                        'path': uploaded.ref.fullPath, 'size': file.bytes!.lengthInBytes,
-                        'type': mediaType(file.name),
+                    refresh(() => busy = true);
+                    try {
+                      final profile = await db.collection('users').doc(uid).get();
+                      final replyRef = doc.reference.collection('replies').doc();
+                      await replyRef.set({
+                        'replyId': replyRef.id,
+                        'senderUid': uid,
+                        'senderName': (profile.data()?['displayName'] ??
+                          auth.currentUser?.email ?? 'مستخدم').toString(),
+                        'senderRole': widget.userRole,
+                        'body': body.text.trim(),
+                        'attachments': <Map<String, dynamic>>[],
+                        'createdAt': FieldValue.serverTimestamp(),
                       });
+                      await doc.reference.update({
+                        'replyStatus': 'replied',
+                        'lastReplyAt': FieldValue.serverTimestamp(),
+                      });
+                      if (ctx.mounted) Navigator.pop(sheet);
+                      toast('تم إرسال الرد النصي.');
+                    } on FirebaseException catch (e) {
+                      refresh(() => busy = false);
+                      toast('تعذر إرسال الرد (${e.code}).');
+                    } catch (e) {
+                      refresh(() => busy = false);
+                      toast(e.toString());
                     }
-                    await replyRef.set({
-                      'replyId': replyRef.id, 'senderUid': uid,
-                      'senderName': (profile.data()?['displayName'] ?? auth.currentUser?.email ?? 'مستخدم').toString(),
-                      'senderRole': widget.userRole, 'body': body.text.trim(),
-                      'attachments': attachments, 'createdAt': FieldValue.serverTimestamp(),
-                    });
-                    await doc.reference.update({'replyStatus': 'replied', 'lastReplyAt': FieldValue.serverTimestamp()});
-                    if (ctx.mounted) Navigator.pop(sheet);
-                    toast('تم إرسال الرد.');
-                  } on FirebaseException catch (e) {
-                    for (final ref in uploadedRefs) { try { await ref.delete(); } catch (_) {} }
-                    refresh(() => busy = false);
-                    toast('تعذر إرسال الرد (' + e.code + ').');
-                  } catch (e) {
-                    for (final ref in uploadedRefs) { try { await ref.delete(); } catch (_) {} }
-                    refresh(() => busy = false);
-                    toast(e.toString());
-                  }
-                },
-                icon: const Icon(Icons.send), label: Text(busy ? 'جارٍ إرسال الرد...' : 'إرسال الرد'),
-              ),
-            ]),
+                  },
+                  icon: const Icon(Icons.send),
+                  label: Text(busy ? 'جارٍ إرسال الرد...' : 'إرسال الرد'),
+                ),
+              ],
+            ),
           ),
         ),
       ),
     );
-    if (recording) { try { await recorder.stop(); } catch (_) {} }
-    await recorder.dispose();
     body.dispose();
   }
 
@@ -382,71 +297,59 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
     await markRead(doc);
     if (!mounted) return;
     final d = doc.data() ?? {};
-    await showModalBottomSheet<void>(context: context, isScrollControlled: true, useSafeArea: true,
-      builder: (ctx) => SizedBox(height: MediaQuery.of(ctx).size.height * .82,
-        child: Padding(padding: const EdgeInsets.all(18),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            Text((d['title'] ?? 'ملاحظة').toString(), style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: navy)),
-            Text('من: ' + (d['senderName'] ?? '').toString() + ' • ' + (d['senderRole'] ?? '').toString()),
-            if ((d['locationName'] ?? '').toString().isNotEmpty) Text('موقع المناوبة: ' + d['locationName'].toString()),
-            const Divider(),
-            Expanded(child: ListView(children: [
-              SelectableText((d['body'] ?? '').toString(), style: const TextStyle(fontSize: 15, height: 1.7)),
-              const SizedBox(height: 12),
-              ...((d['attachments'] as List<dynamic>? ?? []).map((raw) {
-                final a = Map<String, dynamic>.from(raw as Map);
-                return ListTile(
-                  leading: Icon(a['type'] == 'image' ? Icons.image : a['type'] == 'video' ? Icons.video_file : a['type'] == 'audio' ? Icons.audio_file : Icons.insert_drive_file),
-                  title: Text((a['name'] ?? 'مرفق').toString()),
-                  subtitle: Text('اضغط لفتح المرفق'),
-                  onTap: () async {
-                    final link = Uri.tryParse((a['url'] ?? '').toString());
-                    if (link != null) await launchUrl(link, mode: LaunchMode.externalApplication);
-                  },
-                );
-              })),
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (ctx) => SizedBox(
+        height: MediaQuery.of(ctx).size.height * .82,
+        child: Padding(
+          padding: const EdgeInsets.all(18),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text((d['title'] ?? 'ملاحظة').toString(),
+                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: navy)),
+              Text('من: ' + (d['senderName'] ?? '').toString() + ' • ' +
+                (d['senderRole'] ?? '').toString()),
+              if ((d['locationName'] ?? '').toString().isNotEmpty)
+                Text('موقع المناوبة: ' + d['locationName'].toString()),
               const Divider(),
-              const Text('الردود', style: TextStyle(fontWeight: FontWeight.w900)),
-              StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-                stream: doc.reference.collection('replies').orderBy('createdAt').snapshots(),
-                builder: (_, snap) {
-                  if (snap.hasError) return const Text('تعذر تحميل الردود.');
-                  if (!snap.hasData) return const Center(child: CircularProgressIndicator());
-                  if (snap.data!.docs.isEmpty) return const Text('لا توجد ردود حتى الآن.');
-                  return Column(children: snap.data!.docs.map((r) {
-                    final replyData = r.data();
-                    final attachments = (replyData['attachments'] as List<dynamic>? ?? []);
-                    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                      ListTile(
-                        contentPadding: EdgeInsets.zero, leading: const Icon(Icons.reply),
-                        title: Text((replyData['senderName'] ?? 'مستخدم').toString()),
-                        subtitle: Text((replyData['body'] ?? '').toString()),
-                      ),
-                      ...attachments.map((raw) {
-                        final attachment = Map<String, dynamic>.from(raw as Map);
+              Expanded(
+                child: ListView(children: [
+                  SelectableText((d['body'] ?? '').toString(),
+                    style: const TextStyle(fontSize: 15, height: 1.7)),
+                  const Divider(),
+                  const Text('الردود', style: TextStyle(fontWeight: FontWeight.w900)),
+                  StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+                    stream: doc.reference.collection('replies').orderBy('createdAt').snapshots(),
+                    builder: (_, snap) {
+                      if (snap.hasError) return const Text('تعذر تحميل الردود.');
+                      if (!snap.hasData) return const Center(child: CircularProgressIndicator());
+                      if (snap.data!.docs.isEmpty) return const Text('لا توجد ردود حتى الآن.');
+                      return Column(children: snap.data!.docs.map((r) {
+                        final replyData = r.data();
                         return ListTile(
-                          dense: true,
-                          leading: Icon(attachment['type'] == 'image' ? Icons.image :
-                            attachment['type'] == 'video' ? Icons.video_file :
-                            attachment['type'] == 'audio' ? Icons.audio_file : Icons.insert_drive_file),
-                          title: Text((attachment['name'] ?? 'مرفق الرد').toString()),
-                          subtitle: const Text('اضغط لفتح المرفق'),
-                          onTap: () async {
-                            final link = Uri.tryParse((attachment['url'] ?? '').toString());
-                            if (link != null) await launchUrl(link, mode: LaunchMode.externalApplication);
-                          },
+                          contentPadding: EdgeInsets.zero,
+                          leading: const Icon(Icons.reply),
+                          title: Text((replyData['senderName'] ?? 'مستخدم').toString()),
+                          subtitle: Text((replyData['body'] ?? '').toString()),
                         );
-                      }),
-                      const Divider(height: 1),
-                    ]);
-                  }).toList());
-                },
+                      }).toList());
+                    },
+                  ),
+                ]),
               ),
-            ])),
-            if (d['requestReply'] == true && d['recipientUid'] == uid && d['replyStatus'] != 'replied')
-              FilledButton.icon(onPressed: () { Navigator.pop(ctx); reply(doc); },
-                icon: const Icon(Icons.reply), label: const Text('الرد على الملاحظة')),
-          ]),
+              if (d['requestReply'] == true &&
+                  d['recipientUid'] == uid &&
+                  d['replyStatus'] != 'replied')
+                FilledButton.icon(
+                  onPressed: () { Navigator.pop(ctx); reply(doc); },
+                  icon: const Icon(Icons.reply),
+                  label: const Text('الرد على الملاحظة'),
+                ),
+            ],
+          ),
         ),
       ),
     );
