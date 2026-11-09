@@ -130,7 +130,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     final kind = (data['kind'] ?? '').toString();
     final relatedId = (data['relatedId'] ?? '').toString();
     if (kind == 'daily_duty_roster') {
-      if (widget.userRole != 'security_officer') {
+      if (widget.userRole != 'security_officer' && widget.userRole != 'supervisor') {
         await Navigator.push(context, MaterialPageRoute(
           builder: (_) => DutyRosterScreen(userRole: widget.userRole),
         ));
