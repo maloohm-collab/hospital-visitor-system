@@ -876,7 +876,7 @@ class _WorkLocationScreenState extends State<WorkLocationScreen> {
       );
     }
     return Scaffold(
-      appBar: AppBar(title: const Text('مباشرة العمل والملاحظات')),
+      appBar: AppBar(title: const Text('مباشرة العمل والملاحظات'), actions: [if (officer) IconButton(tooltip: 'إرسال ملاحظة مع مرفقات', icon: const Icon(Icons.attach_file_rounded), onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const StaffMessagesScreen(userRole: 'security_officer'))))]),
       backgroundColor: const Color(0xFFF3F6FA),
       body: StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
         stream: db.collection('active_work_shifts').doc(uid).snapshots(),
