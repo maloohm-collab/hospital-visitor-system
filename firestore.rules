@@ -1019,7 +1019,7 @@ service cloud.firestore {
         && request.resource.data.requestReply is bool
         && request.resource.data.replyStatus in ['pending', 'not_required']
         && request.resource.data.attachments is list
-        && request.resource.data.attachments.size() <= 10
+        && request.resource.data.attachments.size() == 0
         && request.resource.data.read == false
         && request.resource.data.hiddenFor is list
         && request.resource.data.createdAt == request.time
@@ -1041,12 +1041,6 @@ service cloud.firestore {
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read', 'readAt'])
           && request.resource.data.read == true
           && request.resource.data.readAt == request.time
-        )
-        || (
-          resource.data.senderUid == request.auth.uid
-          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['attachments'])
-          && request.resource.data.attachments is list
-          && request.resource.data.attachments.size() <= 10
         )
         || (
           isMessageParticipant()
@@ -1087,7 +1081,7 @@ service cloud.firestore {
             'replyId', 'senderUid', 'senderName', 'senderRole', 'body', 'attachments', 'createdAt'
           ])
           && request.resource.data.attachments is list
-          && request.resource.data.attachments.size() <= 10
+          && request.resource.data.attachments.size() == 0
           && request.resource.data.replyId == replyId
           && request.resource.data.senderUid == request.auth.uid
           && request.resource.data.senderRole == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role
