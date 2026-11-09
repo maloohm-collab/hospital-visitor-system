@@ -1,4 +1,5 @@
 const { onSchedule } = require("firebase-functions/v2/scheduler");
+const { onDocumentCreated } = require("firebase-functions/v2/firestore");
 const { initializeApp } = require("firebase-admin/app");
 const { getFirestore, FieldValue, Timestamp } = require("firebase-admin/firestore");
 
@@ -201,5 +202,65 @@ exports.cleanupPersonalStaffMessageArchives = onSchedule(
       }
       if (writes > 0) await batch.commit();
     }
+  },
+);
+
+
+// Create an in-app alert whenever a new staff message arrives.
+exports.notifyStaffMessageRecipient = onDocumentCreated(
+  "staff_messages/{messageId}",
+  async (event) => {
+    const message = event.data?.data();
+    if (!message || !message.recipientUid) return;
+    const notificationRef = db.collection("notifications").doc();
+    await notificationRef.set({
+      notificationId: notificationRef.id,
+      recipientUid: message.recipientUid,
+      recipientRole: message.recipientRole || "security_officer",
+      senderUid: message.senderUid || "",
+      senderEmail: "",
+      senderName: message.senderName || "مستخدم",
+      title: message.title || "ملاحظة جديدة",
+      body: message.body || "وصلتك ملاحظة جديدة مع مرفقات.",
+      priority: message.priority || "normal",
+      read: false,
+      kind: "staff_message",
+      relatedId: message.messageId || event.params.messageId,
+      createdAt: FieldValue.serverTimestamp(),
+    });
+  },
+);
+
+// Notify the other participant when a reply is added to a staff message.
+exports.notifyStaffMessageReply = onDocumentCreated(
+  "staff_messages/{messageId}/replies/{replyId}",
+  async (event) => {
+    const reply = event.data?.data();
+    if (!reply) return;
+    const messageSnapshot = await db.collection("staff_messages")
+      .doc(event.params.messageId).get();
+    if (!messageSnapshot.exists) return;
+    const message = messageSnapshot.data() || {};
+    const recipientUid = reply.senderUid === message.senderUid
+      ? message.recipientUid : message.senderUid;
+    if (!recipientUid) return;
+    const recipientSnapshot = await db.collection("users").doc(recipientUid).get();
+    if (!recipientSnapshot.exists || recipientSnapshot.data().status !== "active") return;
+    const notificationRef = db.collection("notifications").doc();
+    await notificationRef.set({
+      notificationId: notificationRef.id,
+      recipientUid,
+      recipientRole: recipientSnapshot.data().role || "security_officer",
+      senderUid: reply.senderUid || "",
+      senderEmail: "",
+      senderName: reply.senderName || "مستخدم",
+      title: "رد جديد على الملاحظة",
+      body: reply.body || "وصلك رد جديد.",
+      priority: "normal",
+      read: false,
+      kind: "staff_message_reply",
+      relatedId: event.params.messageId,
+      createdAt: FieldValue.serverTimestamp(),
+    });
   },
 );
