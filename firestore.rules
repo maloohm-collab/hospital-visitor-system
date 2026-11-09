@@ -1058,7 +1058,7 @@ service cloud.firestore {
           && !(request.auth.uid in resource.data.hiddenFor)
         )
         || (
-          isMessageParticipant()
+          resource.data.recipientUid == request.auth.uid
           && resource.data.requestReply == true
           && resource.data.replyStatus == 'pending'
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['replyStatus', 'lastReplyAt'])
@@ -1077,8 +1077,9 @@ service cloud.firestore {
           && (parentMessage().senderUid == request.auth.uid
             || parentMessage().recipientUid == request.auth.uid);
         allow create: if isActiveUser()
-          && (parentMessage().senderUid == request.auth.uid
-            || parentMessage().recipientUid == request.auth.uid)
+          && parentMessage().recipientUid == request.auth.uid
+          && parentMessage().requestReply == true
+          && parentMessage().replyStatus == 'pending'
           && request.resource.data.keys().hasOnly([
             'replyId', 'senderUid', 'senderName', 'senderRole', 'body', 'createdAt'
           ])
