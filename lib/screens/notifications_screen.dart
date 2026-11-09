@@ -130,7 +130,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     final relatedId = (data['relatedId'] ?? '').toString();
     if (kind == 'daily_duty_roster') {
       final bodyText = (data['body'] ?? '').toString();
-      final match = RegExp(r'شفت\\s*([ABC])', caseSensitive: false).firstMatch(bodyText);
+      final match = RegExp(r'شفت\s*([ABC])', caseSensitive: false).firstMatch(bodyText);
       final shift = (data['relatedShift'] ?? match?.group(1) ?? '').toString().toUpperCase();
       if (relatedId.isNotEmpty && ['A', 'B', 'C'].contains(shift)) {
         await Navigator.push(context, MaterialPageRoute(
@@ -256,7 +256,7 @@ class NotificationDetailsScreen extends StatelessWidget {
                 style: const TextStyle(color: Color(0xFFEAF4FC), fontWeight: FontWeight.w700)),
               if (created != null) ...[
                 const SizedBox(height: 5),
-                Text(DateFormat('EEEE، dd/MM/yyyy • HH:mm', 'ar').format(created),
+                Text(DateFormat('dd/MM/yyyy • HH:mm').format(created),
                   style: const TextStyle(color: Color(0xFFEAF4FC), fontSize: 13)),
               ],
             ]),
