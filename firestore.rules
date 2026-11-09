@@ -1009,6 +1009,7 @@ service cloud.firestore {
         && exists(/databases/$(database)/documents/users/$(request.resource.data.recipientUid))
         && get(/databases/$(database)/documents/users/$(request.resource.data.recipientUid)).data.status == 'active'
         && request.resource.data.recipientRole == get(/databases/$(database)/documents/users/$(request.resource.data.recipientUid)).data.role
+        && request.resource.data.locationName is string
         && request.resource.data.messageId == request.resource.data.threadId + '_' + request.resource.data.recipientUid
         && request.resource.data.title is string
         && request.resource.data.title.size() >= 3
