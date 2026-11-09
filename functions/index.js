@@ -85,7 +85,7 @@ exports.cleanupPersonalDutyRosterArchives = onSchedule(
     const now = Timestamp.now();
     const officers = await db
       .collection("users")
-      .where("role", "==", "security_officer")
+      .where("role", "in", ["security_officer", "supervisor"])
       .where("status", "==", "active")
       .get();
     const publishedRosters = await db
