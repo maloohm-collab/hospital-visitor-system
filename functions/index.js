@@ -221,7 +221,7 @@ exports.notifyStaffMessageRecipient = onDocumentCreated(
       senderEmail: "",
       senderName: message.senderName || "مستخدم",
       title: message.title || "ملاحظة جديدة",
-      body: message.body || "وصلتك ملاحظة جديدة مع مرفقات.",
+      body: message.body || "وصلتك ملاحظة جديدة.",
       priority: message.priority || "normal",
       read: false,
       kind: "staff_message",
