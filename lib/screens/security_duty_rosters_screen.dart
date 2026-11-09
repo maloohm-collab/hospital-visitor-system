@@ -42,7 +42,7 @@ class _SecurityDutyRostersScreenState extends State<SecurityDutyRostersScreen> {
   static String _dayName(DateTime date) => const ['الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت','الأحد'][date.weekday - 1];
   static DateTime _actualDate(String key, String shift) {
     final date = DateTime.tryParse(key) ?? DateTime.now();
-    return shift == 'A' ? date.add(const Duration(days: 1)) : date;
+    return date;
   }
   static String _hours(String shift) => shift == 'A' ? '08:00 – 16:00' : shift == 'B' ? '16:00 – 00:00' : '00:00 – 08:00';
   static String _id(String key, String shift) => key + '_' + shift;
@@ -148,8 +148,9 @@ class _SecurityDutyRostersScreenState extends State<SecurityDutyRostersScreen> {
     var unit = 'days';
     final daysNow = (current['retentionDays'] as num?)?.toInt() ?? 30;
     var amount = daysNow;
-    if (daysNow % 30 == 0) { amount = (daysNow ~/ 30).clamp(1,36); unit = 'months'; }
-    else if (daysNow % 7 == 0) { amount = (daysNow ~/ 7).clamp(1,156); unit = 'weeks'; }
+    if (daysNow % 30 == 0) { amount = (daysNow ~/ 30).clamp(1,36).toInt(); unit = 'months'; }
+    else if (daysNow % 7 == 0) { amount = (daysNow ~/ 7).clamp(1,156).toInt(); unit = 'weeks'; }
+    else { amount = daysNow.clamp(1,3650).toInt(); }
     final controller = TextEditingController(text: amount.toString());
     await showDialog<void>(context: context, builder: (d) => StatefulBuilder(builder: (ctx, refresh) => AlertDialog(
       title: const Text('إعدادات الحذف التلقائي'),
@@ -386,8 +387,6 @@ class _SecurityDutyRostersScreenState extends State<SecurityDutyRostersScreen> {
     );
   }
 
-  @override
-  void dispose() { super.dispose(); }
 }
 
 class _RosterItem {
@@ -431,7 +430,7 @@ class _SecurityDutyRosterPdfScreenState extends State<SecurityDutyRosterPdfScree
   late final Future<Uint8List> pdfFuture;
   DateTime get actualDate {
     final date=DateTime.tryParse(widget.dateKey)??DateTime.now();
-    return widget.shift=='A'?date.add(const Duration(days:1)):date;
+    return date;
   }
   @override
   void initState() {
@@ -493,7 +492,7 @@ class _SecurityDutyRosterPdfScreenState extends State<SecurityDutyRosterPdfScree
             if(snapshot.hasError) return const _RosterMessage(icon:Icons.picture_as_pdf_outlined,title:'تعذر تجهيز ملف PDF',subtitle:'أعد فتح الكشف أو تحقق من بيانات المناوبة.');
             if(!snapshot.hasData) return const Center(child:CircularProgressIndicator());
             return PdfPreview(build:(_)async=>snapshot.data!,canChangeOrientation:false,canChangePageFormat:false,
-              allowPrinting:false,allowSharing:false,pdfPreviewPageDecoration:const BoxDecoration(color:Colors.white));
+              allowPrinting:false,allowSharing:false);
           }))),
       ]));
   }
