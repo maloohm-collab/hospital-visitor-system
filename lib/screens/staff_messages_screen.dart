@@ -22,7 +22,8 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
   final db = FirebaseFirestore.instance;
   final auth = FirebaseAuth.instance;
   late final TabController tabs;
-  String search = '';\n  Timer? archiveRefreshTimer;
+  String search = '';
+  Timer? archiveRefreshTimer;
   String get uid => auth.currentUser?.uid ?? '';
   bool get admin => widget.userRole == 'admin';
   bool get supervisor => widget.userRole == 'supervisor';
@@ -59,7 +60,13 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
         child: SizedBox(height: MediaQuery.of(ctx).size.height * .88,
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             const Text('إرسال ملاحظة أو تنبيه', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: navy)),
-            Text('اختر المستلمين — المختار: ' + selected.length.toString()),\n            Wrap(spacing: 6, children: [\n              TextButton(onPressed: () => refresh(() => selected.addAll(users.map((u) => u.id))), child: const Text('اختيار الجميع')),\n              if (admin) TextButton(onPressed: () => refresh(() => selected.addAll(users.where((u) => u.data()['role'] == 'security_officer').map((u) => u.id))), child: const Text('جميع ضباط الأمن')),\n              if (admin) TextButton(onPressed: () => refresh(() => selected.addAll(users.where((u) => u.data()['role'] == 'supervisor').map((u) => u.id))), child: const Text('جميع المشرفين')),\n              TextButton(onPressed: () => refresh(selected.clear), child: const Text('إلغاء التحديد')),\n            ]),
+            Text('اختر المستلمين — المختار: ' + selected.length.toString()),
+            Wrap(spacing: 6, children: [
+              TextButton(onPressed: () => refresh(() => selected.addAll(users.map((u) => u.id))), child: const Text('اختيار الجميع')),
+              if (admin) TextButton(onPressed: () => refresh(() => selected.addAll(users.where((u) => u.data()['role'] == 'security_officer').map((u) => u.id))), child: const Text('جميع ضباط الأمن')),
+              if (admin) TextButton(onPressed: () => refresh(() => selected.addAll(users.where((u) => u.data()['role'] == 'supervisor').map((u) => u.id))), child: const Text('جميع المشرفين')),
+              TextButton(onPressed: () => refresh(selected.clear), child: const Text('إلغاء التحديد')),
+            ]),
             Expanded(child: ListView(children: users.map((d) {
               final data = d.data();
               final role = data['role'] == 'admin' ? 'الإدارة' : data['role'] == 'supervisor' ? 'مشرف' : 'ضابط أمن';
@@ -261,7 +268,10 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
                   leading: Icon(a['type'] == 'image' ? Icons.image : a['type'] == 'video' ? Icons.video_file : a['type'] == 'audio' ? Icons.audio_file : Icons.insert_drive_file),
                   title: Text((a['name'] ?? 'مرفق').toString()),
                   subtitle: Text('اضغط لفتح المرفق'),
-                  onTap: () async {\n                    final link = Uri.tryParse((a['url'] ?? '').toString());\n                    if (link != null) await launchUrl(link, mode: LaunchMode.externalApplication);\n                  },
+                  onTap: () async {
+                    final link = Uri.tryParse((a['url'] ?? '').toString());
+                    if (link != null) await launchUrl(link, mode: LaunchMode.externalApplication);
+                  },
                 );
               })),
               const Divider(),
