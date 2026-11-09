@@ -38,19 +38,6 @@ jobs:
       - name: Generate missing Android project files
         run: flutter create --platforms=android .
 
-      - name: Add microphone permission for voice messages
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          path = Path("android/app/src/main/AndroidManifest.xml")
-          content = path.read_text()
-          permission = '    <uses-permission android:name="android.permission.RECORD_AUDIO" />\n'
-          if "android.permission.RECORD_AUDIO" not in content:
-              content = content.replace("<application", permission + "    <application", 1)
-              path.write_text(content)
-          print("Configured microphone permission for voice messages.")
-          PY
-
       - name: Apply ROCK SECURITY launcher icon and app name
         run: |
           python3 -m pip install --user pillow
