@@ -2,17 +2,22 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
+import 'dart:ui' as ui;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:printing/printing.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../data/duty_roster_pdf.dart';
 import '../data/duty_roster_catalog.dart';
 import '../widgets/app_search_field.dart';
+import '../services/duty_roster_image_import_service.dart';
+import 'duty_roster_import_review_screen.dart';
 
 class DutyRosterScreen extends StatefulWidget {
   const DutyRosterScreen({super.key, required this.userRole});
@@ -845,6 +850,184 @@ class _DutyRosterScreenState extends State<DutyRosterScreen>
       if (status == 'published') 'publishedAt': FieldValue.serverTimestamp()};
   }
 
+  Future<void> _openGeminiForRoster() async {
+    if (!admin || busy) return;
+    final prompt = DutyRosterImageImportService.buildPrompt(shift);
+    await Clipboard.setData(ClipboardData(text: prompt));
+    final opened = await launchUrl(
+      Uri.parse('https://gemini.google.com/app'),
+      mode: LaunchMode.externalApplication,
+    );
+    if (!mounted) return;
+    if (!opened) {
+      msg('تعذر فتح Gemini. تم نسخ تعليمات استخراج الكشف؛ افتح Gemini والصق التعليمات ثم أرفق صورة الشفت.');
+      return;
+    }
+    msg('تم نسخ تعليمات الاستخراج. في Gemini الصق التعليمات، ثم أرفق صورة كشف الشفت المحدد واطلب إخراج JSON.');
+  }
+
+  Future<void> _importGeminiRosterResult() async {
+    if (!admin || busy) return;
+    final controller = TextEditingController();
+    final raw = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('استيراد نتيجة Gemini'),
+        content: SizedBox(
+          width: 520,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'الصق هنا JSON الذي أعاده Gemini بعد قراءة صورة هذا الشفت فقط.',
+                textAlign: TextAlign.right,
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: controller,
+                minLines: 6,
+                maxLines: 12,
+                textDirection: ui.TextDirection.ltr,
+                decoration: const InputDecoration(
+                  hintText: 'الصق JSON هنا…',
+                  border: OutlineInputBorder(),
+                  alignLabelWithHint: true,
+                ),
+              ),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: TextButton.icon(
+                  onPressed: () async {
+                    final data = await Clipboard.getData(Clipboard.kTextPlain);
+                    if (data?.text != null) controller.text = data!.text!;
+                  },
+                  icon: const Icon(Icons.content_paste),
+                  label: const Text('لصق من الحافظة'),
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('إلغاء'),
+          ),
+          FilledButton.icon(
+            onPressed: () => Navigator.pop(dialogContext, controller.text),
+            icon: const Icon(Icons.fact_check_outlined),
+            label: const Text('تحليل ومراجعة'),
+          ),
+        ],
+      ),
+    );
+    if (raw == null || raw.trim().isEmpty || !mounted) return;
+
+    final selectedShift = shift;
+    Map<String, dynamic> extracted;
+    try {
+      extracted = DutyRosterImageImportService.decode(
+        raw,
+        expectedShift: selectedShift,
+      );
+    } catch (error) {
+      msg('تعذر قراءة نتيجة Gemini: ${error.toString().replaceFirst('FormatException: ', '')}');
+      return;
+    }
+
+    final detectedShift = (extracted['shift'] ?? '').toString().toUpperCase();
+    if (const {'A', 'B', 'C'}.contains(detectedShift) &&
+        detectedShift != selectedShift) {
+      msg('البيانات المستوردة تخص الشفت $detectedShift، بينما الشفت المحدد هو $selectedShift. لم يتم إدخال أي بيانات.');
+      return;
+    }
+
+    final approved = await Navigator.of(context).push<Map<String, dynamic>>(
+      MaterialPageRoute(
+        builder: (_) => DutyRosterImportReviewScreen(
+          extracted: extracted,
+          expectedShift: selectedShift,
+        ),
+      ),
+    );
+    if (approved == null || !mounted) return;
+
+    final printedDate = DateTime.tryParse((approved['date'] ?? '').toString());
+    if (printedDate == null) {
+      msg('تاريخ الكشف غير صحيح. لم يتم إدخال أي بيانات.');
+      return;
+    }
+
+    await _flushPendingAutosaves();
+    for (final timer in _autosaveTimers.values) {
+      timer.cancel();
+    }
+    _autosaveTimers.clear();
+    _autosaveDateKeys.clear();
+
+    // In this screen, shift A is prepared one day before its printed duty date.
+    final targetScreenDay = selectedShift == 'A'
+        ? printedDate.subtract(const Duration(days: 1))
+        : printedDate;
+    setState(() {
+      busy = true;
+      _loaded = false;
+      day = targetScreenDay;
+    });
+
+    try {
+      await _load();
+      if (!_loaded || !mounted) {
+        msg('تعذر تحميل كشف التاريخ المحدد. لم تُدرج البيانات المستخرجة.');
+        return;
+      }
+
+      final importedAssignments =
+          (approved['assignments'] as List? ?? const []).whereType<Map>().map((row) {
+        return <String, String?>{
+          'officer': (row['officer'] ?? '').toString().trim(),
+          'location': (row['location'] ?? '').toString().trim(),
+        };
+      }).toList();
+      final importedClinics =
+          (approved['clinicAssignments'] as List? ?? const []).whereType<Map>().map((row) {
+        return <String, String?>{
+          'officer': (row['officer'] ?? '').toString().trim(),
+          'location': (row['location'] ?? '').toString().trim(),
+        };
+      }).toList();
+
+      setState(() {
+        rows[selectedShift] = importedAssignments;
+        offs[selectedShift] = List<String>.from(approved['offNames'] ?? const []);
+        annuals[selectedShift] =
+            List<String>.from(approved['annualNames'] ?? const []);
+        specials[selectedShift] =
+            List<String>.from(approved['specialNames'] ?? const []);
+        final importedSupervisor =
+            (approved['supervisorName'] ?? '').toString().trim();
+        if (importedSupervisor.isNotEmpty) {
+          supervisors[selectedShift] = importedSupervisor;
+        }
+        final importedSiteManager = (approved['siteManager'] ?? '').toString().trim();
+        if (importedSiteManager.isNotEmpty) {
+          siteManager = importedSiteManager;
+        }
+        if (selectedShift == 'A') {
+          clinicRows
+            ..clear()
+            ..addAll(importedClinics);
+        }
+      });
+      _draftChanged();
+      msg('تم إدخال البيانات المعتمدة في شفت $selectedShift بتاريخ $rosterDateLabel. يمكنك الآن استخدام معاينة PDF الحالية.');
+    } catch (_) {
+      msg('حدث خطأ أثناء إدخال البيانات. لم يتم تغيير ملف PDF أو تنسيقه.');
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
+  }
+
   Future<void> _save() async {
     if (!admin || busy) return;
     _autosaveTimers[shift]?.cancel();
@@ -1454,6 +1637,10 @@ class _DutyRosterScreenState extends State<DutyRosterScreen>
                 runSpacing: 10,
                 alignment: WrapAlignment.start,
                 children: [
+                  _actionButton(label: 'فتح Gemini واستخراج كشف الشفت', icon: Icons.auto_awesome,
+                    onPressed: busy ? null : _openGeminiForRoster, primary: true),
+                  _actionButton(label: 'استيراد نتيجة Gemini ولصق البيانات', icon: Icons.content_paste_go,
+                    onPressed: busy ? null : _importGeminiRosterResult),
                   _actionButton(label: 'تحديد نوع التعديل', icon: Icons.tune,
                     onPressed: busy ? null : _chooseEditTarget),
                   _actionButton(label: 'حفظ مسودة الشفت $shift', icon: Icons.save_outlined,

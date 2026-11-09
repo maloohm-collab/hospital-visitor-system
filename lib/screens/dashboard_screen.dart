@@ -16,6 +16,7 @@ import 'notifications_screen.dart';
 import 'emergency_duty_screen.dart';
 import 'work_location_screen.dart';
 import 'duty_roster_screen.dart';
+import 'security_duty_rosters_screen.dart';
 import 'staff_duty_history_screen.dart';
 import 'founder_screen.dart';
 
@@ -181,12 +182,33 @@ class DashboardScreen extends StatelessWidget {
       ]);
     }
 
-    actions.add(_AdminAction(
-      icon: Icons.calendar_month_rounded,
-      title: 'جدول المناوبات',
-      color: const Color(0xFF087E78),
-      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => DutyRosterScreen(userRole: userRole))),
-    ));
+    if (userRole == 'security_officer' || userRole == 'supervisor') {
+      actions.addAll([
+        _AdminAction(
+          icon: Icons.picture_as_pdf_rounded,
+          title: 'مناوبات اليوم',
+          color: const Color(0xFF087E78),
+          onTap: () => Navigator.push(context, MaterialPageRoute(
+            builder: (_) => const SecurityDutyRostersScreen(),
+          )),
+        ),
+        _AdminAction(
+          icon: Icons.archive_rounded,
+          title: 'المناوبات السابقة',
+          color: const Color(0xFF14558A),
+          onTap: () => Navigator.push(context, MaterialPageRoute(
+            builder: (_) => const SecurityDutyRostersScreen(archive: true),
+          )),
+        ),
+      ]);
+    } else {
+      actions.add(_AdminAction(
+        icon: Icons.calendar_month_rounded,
+        title: 'جدول المناوبات',
+        color: const Color(0xFF087E78),
+        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => DutyRosterScreen(userRole: userRole))),
+      ));
+    }
 
     actions.add(_AdminAction(
       icon: Icons.info_outline_rounded,

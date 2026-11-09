@@ -3,6 +3,11 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'emergency_duty_screen.dart';
+import 'security_duty_rosters_screen.dart';
+import 'duty_roster_screen.dart';
+import 'report_center_screen.dart';
+import 'work_location_screen.dart';
+import 'visitor_logs_screen.dart';
 import '../widgets/app_search_field.dart';
 
 class NotificationsScreen extends StatefulWidget {
@@ -119,14 +124,62 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   }
 
   Future<void> openNotification(DocumentSnapshot<Map<String, dynamic>> doc) async {
+    final data = doc.data() ?? <String, dynamic>{};
     await markRead(doc);
     if (!mounted) return;
-    final kind = (doc.data()?['kind'] ?? '').toString();
+    final kind = (data['kind'] ?? '').toString();
+    final relatedId = (data['relatedId'] ?? '').toString();
+    if (kind == 'daily_duty_roster') {
+      if (widget.userRole != 'security_officer' && widget.userRole != 'supervisor') {
+        await Navigator.push(context, MaterialPageRoute(
+          builder: (_) => DutyRosterScreen(userRole: widget.userRole),
+        ));
+        return;
+      }
+      final bodyText = (data['body'] ?? '').toString();
+      final match = RegExp(r'شفت\s*([ABC])', caseSensitive: false).firstMatch(bodyText);
+      final shift = (data['relatedShift'] ?? match?.group(1) ?? '').toString().toUpperCase();
+      if (relatedId.isNotEmpty && ['A', 'B', 'C'].contains(shift)) {
+        await Navigator.push(context, MaterialPageRoute(
+          builder: (_) => SecurityDutyRostersScreen(
+            initialDateKey: relatedId,
+            initialShift: shift,
+          ),
+        ));
+      } else {
+        await Navigator.push(context, MaterialPageRoute(
+          builder: (_) => const SecurityDutyRostersScreen(),
+        ));
+      }
+      return;
+    }
     if (kind.startsWith('emergency_')) {
       await Navigator.push(context, MaterialPageRoute(
         builder: (_) => const EmergencyDutyScreen(),
       ));
+      return;
     }
+    if (kind.startsWith('work_location') || kind.startsWith('work_shift')) {
+      await Navigator.push(context, MaterialPageRoute(
+        builder: (_) => WorkLocationScreen(userRole: widget.userRole),
+      ));
+      return;
+    }
+    if (kind.startsWith('duty_report') || kind.startsWith('report_')) {
+      await Navigator.push(context, MaterialPageRoute(
+        builder: (_) => ReportCenterScreen(userRole: widget.userRole),
+      ));
+      return;
+    }
+    if (kind.startsWith('visitor')) {
+      await Navigator.push(context, MaterialPageRoute(
+        builder: (_) => VisitorLogsScreen(userRole: widget.userRole),
+      ));
+      return;
+    }
+    await Navigator.push(context, MaterialPageRoute(
+      builder: (_) => NotificationDetailsScreen(data: data),
+    ));
   }
 
   @override
@@ -172,4 +225,66 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         ]);
       }),
   );
+}
+
+
+class NotificationDetailsScreen extends StatelessWidget {
+  const NotificationDetailsScreen({super.key, required this.data});
+  final Map<String, dynamic> data;
+
+  @override
+  Widget build(BuildContext context) {
+    final created = data['createdAt'] is Timestamp
+        ? (data['createdAt'] as Timestamp).toDate()
+        : null;
+    final priority = (data['priority'] ?? 'normal').toString();
+    final priorityLabel = priority == 'urgent' ? 'عاجل' : priority == 'important' ? 'مهم' : 'عادي';
+    return Scaffold(
+      backgroundColor: const Color(0xFFF1F6FC),
+      appBar: AppBar(title: const Text('تفاصيل الإشعار'),
+        backgroundColor: const Color(0xFF123B63), foregroundColor: Colors.white),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          Container(
+            padding: const EdgeInsets.all(18),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [Color(0xFF174A75), Color(0xFF087E78)],
+                begin: Alignment.topRight, end: Alignment.bottomLeft,
+              ),
+              borderRadius: BorderRadius.circular(18),
+            ),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text((data['title'] ?? 'إشعار').toString(),
+                style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w900)),
+              const SizedBox(height: 12),
+              Text('الأولوية: ' + priorityLabel,
+                style: const TextStyle(color: Color(0xFFEAF4FC), fontWeight: FontWeight.w700)),
+              if (created != null) ...[
+                const SizedBox(height: 5),
+                Text(DateFormat('dd/MM/yyyy • HH:mm').format(created),
+                  style: const TextStyle(color: Color(0xFFEAF4FC), fontSize: 13)),
+              ],
+            ]),
+          ),
+          const SizedBox(height: 14),
+          Card(
+            color: Colors.white,
+            elevation: 0,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16),
+              side: const BorderSide(color: Color(0xFFD9E4EF))),
+            child: Padding(
+              padding: const EdgeInsets.all(18),
+              child: SelectableText((data['body'] ?? '').toString(),
+                style: const TextStyle(fontSize: 16, height: 1.8, color: Color(0xFF33485C))),
+            ),
+          ),
+          const SizedBox(height: 10),
+          Text('المرسل: ' + (data['senderName'] ?? data['senderEmail'] ?? 'الإدارة').toString(),
+            style: const TextStyle(fontSize: 13, color: Color(0xFF65788A))),
+        ],
+      ),
+    );
+  }
 }
