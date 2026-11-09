@@ -356,47 +356,23 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
   }
 
   Future<void> archiveSettings() async {
-    final ref = db.collection('message_archive_preferences').doc(uid);
-    final snapshot = await ref.get();
-    final data = snapshot.data() ?? <String, dynamic>{};
-    bool enabled = data['autoDeleteEnabled'] == true;
-    int days = (data['retentionDays'] as num?)?.toInt() ?? 30;
-    if (!mounted) return;
-    await showDialog<void>(context: context, builder: (ctx) => StatefulBuilder(
-      builder: (dialogContext, refresh) => AlertDialog(
-        title: const Text('إعدادات أرشيف المراسلات'),
-        content: Column(mainAxisSize: MainAxisSize.min, children: [
-          SwitchListTile(
-            contentPadding: EdgeInsets.zero,
-            title: const Text('الحذف التلقائي من أرشيفي'),
-            subtitle: const Text('يخفي الرسائل القديمة من أرشيف هذا الحساب فقط'),
-            value: enabled, onChanged: (v) => refresh(() => enabled = v),
-          ),
-          DropdownButtonFormField<int>(
-            value: days,
-            decoration: const InputDecoration(labelText: 'مدة الاحتفاظ بعد الأرشفة'),
-            items: [7, 14, 30, 60, 90, 180, 365].map((v) =>
-              DropdownMenuItem(value: v, child: Text(v.toString() + ' يوم'))).toList(),
-            onChanged: (v) => refresh(() => days = v ?? 30),
-          ),
-          const SizedBox(height: 8),
-          const Text('لن يؤثر الحذف أو الإخفاء على نسخة الطرف الآخر.', style: TextStyle(fontSize: 12)),
-        ]),
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('الحذف التلقائي للأرشيف'),
+        content: const Text(
+          'الأرشفة بعد 24 ساعة تعمل داخل التطبيق. أما الحذف التلقائي بعد مدة الاحتفاظ '
+          'فمؤجل حالياً لأنه يحتاج إلى Cloud Functions وخطة Blaze. '
+          'يمكنك إخفاء الرسائل من أرشيف حسابك يدوياً في الوقت الحالي.',
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('إلغاء')),
-          FilledButton(onPressed: () async {
-            try {
-              await ref.set({
-                'ownerUid': uid, 'autoDeleteEnabled': enabled,
-                'retentionDays': days, 'updatedAt': FieldValue.serverTimestamp(),
-              });
-              if (ctx.mounted) Navigator.pop(ctx);
-              toast('تم حفظ إعدادات الأرشيف.');
-            } on FirebaseException catch (e) { toast('تعذر حفظ الإعدادات (' + e.code + ').'); }
-          }, child: const Text('حفظ')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('حسناً'),
+          ),
         ],
       ),
-    ));
+    );
   }
 
   Future<void> hideAllArchive() async {
@@ -522,7 +498,7 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(title: const Text('المراسلات والتنبيهات'),
       actions: [
-        IconButton(tooltip: 'إعدادات الأرشيف', onPressed: archiveSettings, icon: const Icon(Icons.settings_outlined)),
+        IconButton(tooltip: 'معلومة حول الحذف التلقائي', onPressed: archiveSettings, icon: const Icon(Icons.settings_outlined)),
         IconButton(tooltip: 'إخفاء كل الأرشيف', onPressed: hideAllArchive, icon: const Icon(Icons.delete_sweep_outlined)),
       ],
       bottom: TabBar(controller: tabs, tabs: const [Tab(text: 'الوارد'), Tab(text: 'الصادر'), Tab(text: 'الأرشيف')])),
