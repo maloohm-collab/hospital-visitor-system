@@ -194,7 +194,7 @@ service cloud.firestore {
             && get(/databases/$(database)/documents/users/$(uid)).data.role == 'security_officer';
         }
 
-        allow get, list: if isOwner() && resource.data.ownerUid == uid;
+        allow get, list: if isOwner();
 
         allow create, update: if isOwner()
           && request.resource.data.ownerUid == uid
