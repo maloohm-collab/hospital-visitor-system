@@ -4,6 +4,7 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class StaffMessagesScreen extends StatefulWidget {
   const StaffMessagesScreen({super.key, required this.userRole});
@@ -120,7 +121,7 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
                   for (final file in files) {
                     final bytes = file.bytes!;
                     if (bytes.lengthInBytes > 20 * 1024 * 1024) throw StateError('الملف ' + file.name + ' يتجاوز 20 ميغابايت.');
-                    final ref = FirebaseStorage.instance.ref('staff_message_media/' + threadId + '/' + Uri.encodeComponent(file.name));
+                    final ref = FirebaseStorage.instance.ref('staff_message_media/' + threadId + '/' + uid + '/' + Uri.encodeComponent(file.name));
                     final uploaded = await ref.putData(bytes, SettableMetadata(contentType: contentType(file.name)));
                     attachments.add({
                       'name': file.name, 'url': await uploaded.ref.getDownloadURL(),
@@ -227,7 +228,7 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
                   leading: Icon(a['type'] == 'image' ? Icons.image : a['type'] == 'video' ? Icons.video_file : a['type'] == 'audio' ? Icons.audio_file : Icons.insert_drive_file),
                   title: Text((a['name'] ?? 'مرفق').toString()),
                   subtitle: Text('اضغط لفتح المرفق'),
-                  onTap: () => toast((a['url'] ?? '').toString()),
+                  onTap: () async {\n                    final link = Uri.tryParse((a['url'] ?? '').toString());\n                    if (link != null) await launchUrl(link, mode: LaunchMode.externalApplication);\n                  },
                 );
               })),
               const Divider(),
