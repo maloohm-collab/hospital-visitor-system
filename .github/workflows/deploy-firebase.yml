@@ -39,5 +39,5 @@ jobs:
       - name: Validate Cloud Functions JavaScript
         run: node --check functions/index.js
 
-      - name: Deploy Firestore rules and indexes, Storage rules, and Cloud Functions
-        run: firebase deploy --project hospital-visitor-system --only firestore:rules,firestore:indexes,storage,functions --non-interactive
+      - name: Deploy Firestore rules and indexes, and Cloud Functions (Storage deferred until Blaze is enabled)
+        run: firebase deploy --project hospital-visitor-system --only firestore:rules,firestore:indexes,functions --non-interactive
