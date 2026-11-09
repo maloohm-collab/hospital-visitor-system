@@ -271,40 +271,75 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
     on FirebaseException catch (e) { toast('تعذر الإخفاء (' + e.code + ').'); }
   }
 
+  Widget messageCards(List<QueryDocumentSnapshot<Map<String, dynamic>>> source, {required bool archive}) {
+    final docs = source.where((doc) {
+      final d = doc.data();
+      final hidden = (d['hiddenFor'] as List<dynamic>? ?? []).contains(uid);
+      final text = (d['title'] ?? '').toString() + ' ' + (d['body'] ?? '').toString() + ' ' +
+          (d['senderName'] ?? '').toString() + ' ' + (d['recipientName'] ?? '').toString();
+      return !hidden && archived(d) == archive && text.toLowerCase().contains(search.toLowerCase());
+    }).toList()..sort((a, b) {
+      final x = a.data()['createdAt'], y = b.data()['createdAt'];
+      return x is Timestamp && y is Timestamp ? y.compareTo(x) : 0;
+    });
+    if (docs.isEmpty) return Center(child: Text(archive ? 'الأرشيف فارغ.' : 'لا توجد مراسلات حديثة.'));
+    return ListView.builder(
+      padding: const EdgeInsets.all(12), itemCount: docs.length,
+      itemBuilder: (_, i) {
+        final doc = docs[i], d = doc.data();
+        final sent = d['senderUid'] == uid;
+        final read = d['read'] == true, created = d['createdAt'];
+        return Card(child: ListTile(
+          onTap: () => openMessage(doc),
+          leading: CircleAvatar(
+            backgroundColor: d['priority'] == 'urgent' ? const Color(0xFFFFE5E5) : const Color(0xFFE4F5F2),
+            child: Icon(d['priority'] == 'urgent' ? Icons.priority_high : Icons.mark_email_unread,
+              color: d['priority'] == 'urgent' ? Colors.red : teal),
+          ),
+          title: Text((d['title'] ?? 'ملاحظة').toString(),
+            style: TextStyle(fontWeight: read ? FontWeight.w600 : FontWeight.w900, color: navy)),
+          subtitle: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(sent ? 'إلى: ' + (d['recipientName'] ?? '').toString() : 'من: ' + (d['senderName'] ?? '').toString()),
+            Text((d['body'] ?? '').toString(), maxLines: 2, overflow: TextOverflow.ellipsis),
+            if (created is Timestamp) Text(DateFormat('yyyy/MM/dd HH:mm').format(created.toDate())),
+            if (d['requestReply'] == true) Text(d['replyStatus'] == 'replied' ? 'تم الرد' : 'بانتظار الرد',
+              style: TextStyle(color: d['replyStatus'] == 'replied' ? Colors.green : Colors.deepOrange)),
+          ]),
+          trailing: archive
+              ? IconButton(icon: const Icon(Icons.delete_outline, color: Colors.red), onPressed: () => hideFromArchive(doc))
+              : (!read && !sent ? const Icon(Icons.circle, size: 9, color: teal) : null),
+        ));
+      },
+    );
+  }
+
   Widget messageList({required bool sent, required bool archive}) {
+    if (archive) {
+      return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+        stream: db.collection('staff_messages').where('senderUid', isEqualTo: uid).snapshots(),
+        builder: (context, sentSnap) {
+          if (sentSnap.hasError) return const Center(child: Text('تعذر تحميل الأرشيف.'));
+          if (!sentSnap.hasData) return const Center(child: CircularProgressIndicator());
+          return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+            stream: db.collection('staff_messages').where('recipientUid', isEqualTo: uid).snapshots(),
+            builder: (context, receivedSnap) {
+              if (receivedSnap.hasError) return const Center(child: Text('تعذر تحميل الأرشيف.'));
+              if (!receivedSnap.hasData) return const Center(child: CircularProgressIndicator());
+              final combined = <String, QueryDocumentSnapshot<Map<String, dynamic>>>{};
+              for (final doc in sentSnap.data!.docs) { combined[doc.id] = doc; }
+              for (final doc in receivedSnap.data!.docs) { combined[doc.id] = doc; }
+              return messageCards(combined.values.toList(), archive: true);
+            },
+          );
+        },
+      );
+    }
     final stream = db.collection('staff_messages')
         .where(sent ? 'senderUid' : 'recipientUid', isEqualTo: uid).snapshots();
     return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(stream: stream, builder: (context, snap) {
       if (snap.hasError) return const Center(child: Text('تعذر تحميل المراسلات. تحقق من قواعد Firestore.'));
       if (!snap.hasData) return const Center(child: CircularProgressIndicator());
-      final docs = snap.data!.docs.where((doc) {
-        final d = doc.data();
-        final hidden = (d['hiddenFor'] as List<dynamic>? ?? []).contains(uid);
-        final text = (d['title'].toString() + ' ' + d['body'].toString() + ' ' + d['senderName'].toString() + ' ' + d['recipientName'].toString()).toLowerCase();
-        return !hidden && archived(d) == archive && text.contains(search.toLowerCase());
-      }).toList()..sort((a,b) {
-        final x=a.data()['createdAt'], y=b.data()['createdAt'];
-        return x is Timestamp && y is Timestamp ? y.compareTo(x) : 0;
-      });
-      if (docs.isEmpty) return Center(child: Text(archive ? 'الأرشيف فارغ.' : 'لا توجد مراسلات حديثة.'));
-      return ListView.builder(padding: const EdgeInsets.all(12), itemCount: docs.length, itemBuilder: (_, i) {
-        final doc=docs[i], d=doc.data(), read=d['read']==true, created=d['createdAt'];
-        return Card(child: ListTile(
-          onTap: () => openMessage(doc),
-          leading: CircleAvatar(backgroundColor: d['priority']=='urgent' ? const Color(0xFFFFE5E5) : const Color(0xFFE4F5F2),
-            child: Icon(d['priority']=='urgent' ? Icons.priority_high : Icons.mark_email_unread, color: d['priority']=='urgent' ? Colors.red : teal)),
-          title: Text((d['title'] ?? 'ملاحظة').toString(), style: TextStyle(fontWeight: read ? FontWeight.w600 : FontWeight.w900, color: navy)),
-          subtitle: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(sent ? 'إلى: ' + (d['recipientName'] ?? '').toString() : 'من: ' + (d['senderName'] ?? '').toString()),
-            Text((d['body'] ?? '').toString(), maxLines: 2, overflow: TextOverflow.ellipsis),
-            if (created is Timestamp) Text(DateFormat('yyyy/MM/dd HH:mm').format(created.toDate())),
-            if (d['requestReply']==true) Text(d['replyStatus']=='replied' ? 'تم الرد' : 'بانتظار الرد',
-              style: TextStyle(color: d['replyStatus']=='replied' ? Colors.green : Colors.deepOrange)),
-          ]),
-          trailing: archive ? IconButton(icon: const Icon(Icons.delete_outline, color: Colors.red), onPressed: () => hideFromArchive(doc))
-              : (!read && !sent ? const Icon(Icons.circle, size: 9, color: teal) : null),
-        ));
-      });
+      return messageCards(snap.data!.docs, archive: false);
     });
   }
 
