@@ -160,121 +160,59 @@ class DashboardHeader extends StatelessWidget {
           ),
         ),
         Padding(
-          padding: const EdgeInsets.fromLTRB(14, 5, 14, 2),
+          padding: const EdgeInsets.fromLTRB(12, 8, 12, 9),
           child: StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
             stream: currentUid == null
                 ? null
-                : FirebaseFirestore.instance
-                    .collection('users')
-                    .doc(currentUid)
-                    .snapshots(),
-            builder: (context, snapshot) {
-              final rawName =
-                  (snapshot.data?.data()?['displayName'] ?? '').toString().trim();
+                : FirebaseFirestore.instance.collection('users').doc(currentUid).snapshots(),
+            builder: (context, userSnapshot) {
+              final rawName = (userSnapshot.data?.data()?['displayName'] ?? '').toString().trim();
               final shownName = rawName.isEmpty
                   ? (userRole == 'admin' ? 'المسؤول' : 'الموظف')
                   : rawName;
-              return Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Flexible(
-                    child: Text(
-                      _roleLabel(userRole),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: _ink,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                  ),
-                  const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 7),
-                    child: Text(
-                      '•',
-                      style: TextStyle(color: Color(0xFF65788A), fontSize: 12),
-                    ),
-                  ),
-                  Flexible(
-                    child: Text(
-                      shownName,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: _ink,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                  ),
-                ],
-              );
-            },
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(14, 1, 14, 7),
-          child: StreamBuilder<DateTime>(
-            stream: Stream<DateTime>.periodic(
-              const Duration(seconds: 1),
-              (_) => DateTime.now(),
-            ),
-            initialData: DateTime.now(),
-            builder: (context, snapshot) {
-              final now = snapshot.data ?? DateTime.now();
-              final time =
-                  '${_two(now.hour)}:${_two(now.minute)}:${_two(now.second)}';
-              final date =
-                  '${_weekdays[now.weekday - 1]}، ${now.day} ${_months[now.month - 1]} ${now.year}';
-              return Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Divider(
-                    height: 7,
-                    thickness: 0.8,
-                    color: Color(0xFFDCE4EB),
-                  ),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
+              return StreamBuilder<DateTime>(
+                stream: Stream<DateTime>.periodic(const Duration(seconds: 1), (_) => DateTime.now()),
+                initialData: DateTime.now(),
+                builder: (context, timeSnapshot) {
+                  final now = timeSnapshot.data ?? DateTime.now();
+                  final time = '${_two(now.hour)}:${_two(now.minute)}';
+                  final date = '${_weekdays[now.weekday - 1]} ${now.day}/${now.month}/${now.year}';
+                  return Row(
+                    textDirection: TextDirection.rtl,
                     children: [
+                      Expanded(
+                        flex: 5,
+                        child: Text(
+                          '${_roleLabel(userRole)}: $shownName',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(color: _ink, fontSize: 15, fontWeight: FontWeight.w900),
+                        ),
+                      ),
+                      const SizedBox(width: 7),
+                      Container(width: 1, height: 20, color: const Color(0xFFD3DDE6)),
+                      const SizedBox(width: 7),
                       Text(
                         time,
                         textDirection: TextDirection.ltr,
-                        style: const TextStyle(
-                          color: _ink,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w900,
-                          fontFeatures: [FontFeature.tabularFigures()],
-                        ),
+                        style: const TextStyle(color: _ink, fontSize: 14, fontWeight: FontWeight.w900, fontFeatures: [FontFeature.tabularFigures()]),
                       ),
-                      const SizedBox(width: 9),
-                      Container(
-                        width: 1,
-                        height: 14,
-                        color: const Color(0xFFD3DDE6),
-                      ),
-                      const SizedBox(width: 9),
-                      Flexible(
+                      const SizedBox(width: 8),
+                      Container(width: 1, height: 20, color: const Color(0xFFD3DDE6)),
+                      const SizedBox(width: 7),
+                      Expanded(
+                        flex: 4,
                         child: Text(
                           date,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            color: _muted,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                          ),
+                          textAlign: TextAlign.end,
+                          style: const TextStyle(color: _muted, fontSize: 10.5, fontWeight: FontWeight.w800),
                         ),
                       ),
                     ],
-                  ),
-                  const Divider(
-                    height: 10,
-                    thickness: 0.8,
-                    color: Color(0xFFDCE4EB),
-                  ),
-                ],
+                  );
+                },
               );
             },
           ),
