@@ -1,0 +1,129 @@
+name: Build APK
+
+on:
+  # بناء APK يدوي عند الحاجة، وبناء تلقائي على فرع التطوير لمراجعة كل تعديل.
+  workflow_dispatch:
+  push:
+    branches:
+      - work/next-release-development-2026-11-09
+
+permissions:
+  contents: read
+
+# Keep only the newest APK validation running for this branch.
+concurrency:
+  group: build-apk-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v5
+
+      - name: Set up Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Generate missing Android project files
+        run: flutter create --platforms=android .
+
+      - name: Apply ROCK SECURITY launcher icon and app name
+        run: |
+          python3 -m pip install --user pillow
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          from PIL import Image
+
+          source = Path("assets/images/ROCK_SECURITY_icon.png")
+          if not source.exists():
+              raise SystemExit(f"Launcher icon not found: {source}")
+
+          image = Image.open(source).convert("RGBA")
+          side = min(image.width, image.height)
+          left = (image.width - side) // 2
+          top = (image.height - side) // 2
+          image = image.crop((left, top, left + side, top + side))
+
+          sizes = {
+              "mdpi": 48,
+              "hdpi": 72,
+              "xhdpi": 96,
+              "xxhdpi": 144,
+              "xxxhdpi": 192,
+          }
+          for density, size in sizes.items():
+              output_dir = Path(f"android/app/src/main/res/mipmap-{density}")
+              output_dir.mkdir(parents=True, exist_ok=True)
+              image.resize((size, size), Image.Resampling.LANCZOS).save(output_dir / "ic_launcher.png", optimize=True)
+
+          manifest = Path("android/app/src/main/AndroidManifest.xml")
+          content = manifest.read_text()
+          content, icon_count = re.subn(r'android:icon="[^"]+"', 'android:icon="@mipmap/ic_launcher"', content, count=1)
+          content, label_count = re.subn(r'android:label="[^"]+"', 'android:label="ROCK SECURITY"', content, count=1)
+          if icon_count != 1:
+              raise SystemExit("Could not locate Android app icon setting in generated manifest")
+          if label_count != 1:
+              raise SystemExit("Could not locate Android app label setting in generated manifest")
+          manifest.write_text(content)
+          print("Applied ROCK SECURITY PNG launcher icons and app display name.")
+          PY
+
+      - name: Set Android compile SDK to 36
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          path = Path("android/app/build.gradle.kts")
+          content = path.read_text()
+          updated, count = re.subn(
+              r"(?m)^\s*compileSdk\s*=.*$",
+              "    compileSdk = 36",
+              content,
+              count=1,
+          )
+          if count != 1:
+              raise SystemExit("Could not find compileSdk setting in android/app/build.gradle.kts")
+          path.write_text(updated)
+          print("Configured compileSdk = 36")
+          PY
+
+      - name: Configure Google Services Gradle plugin
+        run: |
+          sed -i '/^plugins {/a\    id("com.google.gms.google-services") version "4.4.3" apply false' android/settings.gradle.kts
+          sed -i '/^plugins {/a\    id("com.google.gms.google-services")' android/app/build.gradle.kts
+
+      - name: Validate Firebase Cloud Functions syntax
+        run: node --check functions/index.js
+
+      - name: Resolve dependencies
+        run: flutter pub get
+
+      - name: Analyze Dart and Flutter code
+        run: flutter analyze --no-fatal-infos
+
+      - name: Run Flutter tests
+        run: flutter test --reporter expanded
+
+      - name: Build release APK
+        run: flutter build apk --release
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: hospital-visitor-system-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
+          if-no-files-found: error
+          retention-days: 7

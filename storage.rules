@@ -1,0 +1,34 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /staff_message_media/{threadId}/{senderUid}/{fileName} {
+      function signedIn() {
+        return request.auth != null;
+      }
+      function isActiveUser() {
+        return signedIn()
+          && firestore.exists(/databases/(default)/documents/users/$(request.auth.uid))
+          && firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.status == 'active';
+      }
+      function recipientMessage() {
+        return firestore.exists(/databases/(default)/documents/staff_messages/$(threadId + '_' + request.auth.uid));
+      }
+      function replyMessage() {
+        return firestore.exists(/databases/(default)/documents/staff_messages/$(threadId + '_' + senderUid))
+          && firestore.get(/databases/(default)/documents/staff_messages/$(threadId + '_' + senderUid)).data.senderUid == request.auth.uid
+          && firestore.get(/databases/(default)/documents/staff_messages/$(threadId + '_' + senderUid)).data.recipientUid == senderUid;
+      }
+      allow write: if isActiveUser()
+        && request.auth.uid == senderUid
+        && request.resource.size <= 20 * 1024 * 1024
+        && request.resource.contentType.matches('(image/.*|video/.*|audio/.*|application/pdf|application/msword|application/vnd\\..*|text/plain|application/zip|application/octet-stream)');
+      allow read: if isActiveUser() && (
+        request.auth.uid == senderUid
+        || (recipientMessage()
+          && firestore.get(/databases/(default)/documents/staff_messages/$(threadId + '_' + request.auth.uid)).data.senderUid == senderUid)
+        || replyMessage()
+      );
+      allow delete: if isActiveUser() && request.auth.uid == senderUid;
+    }
+  }
+}
