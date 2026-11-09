@@ -13,6 +13,11 @@ service firebase.storage {
       function recipientMessage() {
         return firestore.exists(/databases/(default)/documents/staff_messages/$(threadId + '_' + request.auth.uid));
       }
+      function replyMessage() {
+        return firestore.exists(/databases/(default)/documents/staff_messages/$(threadId + '_' + senderUid))
+          && firestore.get(/databases/(default)/documents/staff_messages/$(threadId + '_' + senderUid)).data.senderUid == request.auth.uid
+          && firestore.get(/databases/(default)/documents/staff_messages/$(threadId + '_' + senderUid)).data.recipientUid == senderUid;
+      }
       allow write: if isActiveUser()
         && request.auth.uid == senderUid
         && request.resource.size <= 20 * 1024 * 1024
@@ -21,6 +26,7 @@ service firebase.storage {
         request.auth.uid == senderUid
         || (recipientMessage()
           && firestore.get(/databases/(default)/documents/staff_messages/$(threadId + '_' + request.auth.uid)).data.senderUid == senderUid)
+        || replyMessage()
       );
       allow delete: if isActiveUser() && request.auth.uid == senderUid;
     }
