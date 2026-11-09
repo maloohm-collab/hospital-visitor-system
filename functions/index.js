@@ -148,3 +148,57 @@ exports.cleanupPersonalDutyRosterArchives = onSchedule(
     }
   },
 );
+
+
+// Hide expired staff-message archive entries for each account independently.
+// The shared message and its other recipients' copies remain untouched.
+exports.cleanupPersonalStaffMessageArchives = onSchedule(
+  {
+    schedule: "every 60 minutes",
+    timeZone: "Asia/Amman",
+    region: "us-central1",
+    timeoutSeconds: 300,
+  },
+  async () => {
+    const now = Timestamp.now();
+    const users = await db.collection("users")
+      .where("status", "==", "active")
+      .get();
+
+    for (const user of users.docs) {
+      const settingsSnap = await user.ref
+        .collection("message_archive_preferences").doc("settings").get();
+      if (!settingsSnap.exists) continue;
+      const settings = settingsSnap.data() || {};
+      if (settings.autoDeleteEnabled !== true) continue;
+      const days = Number(settings.retentionDays);
+      if (!Number.isInteger(days) || days < 1 || days > 3650) continue;
+
+      const [sent, received] = await Promise.all([
+        db.collection("staff_messages").where("senderUid", "==", user.id).get(),
+        db.collection("staff_messages").where("recipientUid", "==", user.id).get(),
+      ]);
+      const unique = new Map();
+      for (const doc of sent.docs) unique.set(doc.id, doc);
+      for (const doc of received.docs) unique.set(doc.id, doc);
+
+      const cutoff = now.toMillis() - (24 + days * 24) * 60 * 60 * 1000;
+      const batch = db.batch();
+      let writes = 0;
+      for (const doc of unique.values()) {
+        const message = doc.data() || {};
+        if (!(message.createdAt instanceof Timestamp)) continue;
+        if (message.createdAt.toMillis() > cutoff) continue;
+        const hiddenFor = Array.isArray(message.hiddenFor) ? message.hiddenFor : [];
+        if (hiddenFor.includes(user.id)) continue;
+        batch.update(doc.ref, { hiddenFor: FieldValue.arrayUnion(user.id) });
+        writes += 1;
+        if (writes === 400) {
+          await batch.commit();
+          writes = 0;
+        }
+      }
+      if (writes > 0) await batch.commit();
+    }
+  },
+);
