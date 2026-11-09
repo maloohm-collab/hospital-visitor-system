@@ -252,19 +252,22 @@ class DashboardScreen extends StatelessWidget {
         children: [
           DashboardHeader(userRole: userRole, currentUid: currentUid),
           const SizedBox(height: 4),
-          GridView.builder(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: actions.length,
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 3,
-              crossAxisSpacing: 12,
-              mainAxisSpacing: 12,
-              childAspectRatio: 0.90,
+          if (userRole == 'security_officer')
+            _buildSecurityCategories(context, actions)
+          else
+            GridView.builder(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: actions.length,
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 3,
+                crossAxisSpacing: 12,
+                mainAxisSpacing: 12,
+                childAspectRatio: 0.90,
+              ),
+              itemBuilder: (context, index) => _AdminActionCard(action: actions[index]),
             ),
-            itemBuilder: (context, index) => _AdminActionCard(action: actions[index]),
-          ),
           const SizedBox(height: 18),
           const Padding(
             padding: EdgeInsets.symmetric(horizontal: 16),
@@ -278,6 +281,70 @@ class DashboardScreen extends StatelessWidget {
           ),
           const SizedBox(height: 20),
         ],
+      ),
+    );
+  }
+
+  Widget _buildSecurityCategories(BuildContext context, List<_AdminAction> actions) {
+    final categories = <_ActionCategory>[
+      _ActionCategory(
+        icon: Icons.shield_rounded,
+        title: 'العمليات الميدانية',
+        subtitle: 'مباشرة العمل، الطوارئ، والحالات الخاصة',
+        color: const Color(0xFF087E78),
+        actionTitles: const ['مباشرة العمل', 'الطوارئ وتسليم المناوبة', 'حالات الإنعاش CPR'],
+      ),
+      _ActionCategory(
+        icon: Icons.meeting_room_rounded,
+        title: 'الزيارات والسجلات',
+        subtitle: 'تسجيل الزوار ومراجعة سجل الزيارات',
+        color: const Color(0xFF27865B),
+        actionTitles: const ['تسجيل زائر', 'سجل زياراتي'],
+      ),
+      _ActionCategory(
+        icon: Icons.assignment_rounded,
+        title: 'التقارير والمناوبات',
+        subtitle: 'تقاريرك، كشوفات المناوبة، والأرشيف والإحصاءات',
+        color: const Color(0xFF8757A5),
+        actionTitles: const ['تقاريري', 'تقارير المناوبة PDF', 'مناوبات اليوم', 'المناوبات السابقة', 'التقارير والإحصاءات'],
+      ),
+      _ActionCategory(
+        icon: Icons.forum_rounded,
+        title: 'المراسلات والتنبيهات',
+        subtitle: 'ملاحظاتك، الرسائل الواردة والصادرة، والإشعارات',
+        color: const Color(0xFFD28A25),
+        actionTitles: const ['ملاحظاتي ومراسلاتي', 'الإشعارات والملحوظات'],
+      ),
+      _ActionCategory(
+        icon: Icons.account_circle_rounded,
+        title: 'حسابي ومعلومات التطبيق',
+        subtitle: 'بيانات حسابك والتعريف بالتطبيق',
+        color: const Color(0xFF14558A),
+        actionTitles: const ['حسابي', 'عن التطبيق والمؤسس'],
+      ),
+    ];
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Column(
+        children: categories.map((category) {
+          final groupedActions = actions
+              .where((action) => category.actionTitles.contains(action.title))
+              .toList();
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: _DashboardCategoryCard(
+              category: category,
+              count: groupedActions.length,
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => _ActionCategoryScreen(category: category, actions: groupedActions),
+                ),
+              ),
+            ),
+          );
+        }).toList(),
       ),
     );
   }
@@ -409,6 +476,144 @@ class DashboardScreen extends StatelessWidget {
     );
   }
 
+}
+
+
+class _ActionCategory {
+  const _ActionCategory({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.color,
+    required this.actionTitles,
+  });
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final Color color;
+  final List<String> actionTitles;
+}
+
+class _DashboardCategoryCard extends StatelessWidget {
+  const _DashboardCategoryCard({
+    required this.category,
+    required this.count,
+    required this.onTap,
+  });
+  final _ActionCategory category;
+  final int count;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Align(
+      alignment: Alignment.center,
+      child: FractionallySizedBox(
+        widthFactor: 0.92,
+        child: Material(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(22),
+          child: InkWell(
+            onTap: onTap,
+            borderRadius: BorderRadius.circular(22),
+            child: Container(
+              constraints: const BoxConstraints(minHeight: 104),
+              padding: const EdgeInsets.symmetric(horizontal: 17, vertical: 15),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(22),
+                border: Border.all(color: const Color(0xFFE0E8EF)),
+                boxShadow: const [BoxShadow(color: Color(0x0C082B55), blurRadius: 14, offset: Offset(0, 4))],
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 58,
+                    height: 58,
+                    decoration: BoxDecoration(
+                      color: category.color.withOpacity(0.10),
+                      borderRadius: BorderRadius.circular(18),
+                    ),
+                    child: Icon(category.icon, color: category.color, size: 31),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(category.title, style: const TextStyle(color: Color(0xFF173653), fontSize: 18, fontWeight: FontWeight.w900)),
+                        const SizedBox(height: 5),
+                        Text(category.subtitle, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Color(0xFF65788A), fontSize: 12, height: 1.4, fontWeight: FontWeight.w600)),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text('$count', style: TextStyle(color: category.color, fontSize: 17, fontWeight: FontWeight.w900)),
+                      const Icon(Icons.chevron_left_rounded, color: Color(0xFF7A8DA0)),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ActionCategoryScreen extends StatelessWidget {
+  const _ActionCategoryScreen({required this.category, required this.actions});
+  final _ActionCategory category;
+  final List<_AdminAction> actions;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF3F6FA),
+      appBar: AppBar(
+        title: Text(category.title),
+        backgroundColor: const Color(0xFF1B3555),
+      ),
+      body: ListView(
+        padding: const EdgeInsets.symmetric(vertical: 18),
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(22, 0, 22, 16),
+            child: Text(category.subtitle, textAlign: TextAlign.center, style: const TextStyle(color: Color(0xFF65788A), fontSize: 14, fontWeight: FontWeight.w600)),
+          ),
+          ...actions.map((action) => Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
+            child: Material(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(17),
+              child: InkWell(
+                onTap: action.onTap,
+                borderRadius: BorderRadius.circular(17),
+                child: Container(
+                  constraints: const BoxConstraints(minHeight: 76),
+                  padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 12),
+                  decoration: BoxDecoration(borderRadius: BorderRadius.circular(17), border: Border.all(color: const Color(0xFFE0E8EF))),
+                  child: Row(
+                    children: [
+                      Container(width: 46, height: 46, decoration: BoxDecoration(color: action.color.withOpacity(0.10), borderRadius: BorderRadius.circular(14)), child: Icon(action.icon, color: action.color, size: 25)),
+                      const SizedBox(width: 13),
+                      Expanded(child: Text(action.title, style: const TextStyle(color: Color(0xFF173653), fontSize: 16, fontWeight: FontWeight.w800))),
+                      if (action.badge != null) Text(action.badge!, style: const TextStyle(color: Color(0xFFD92D20), fontWeight: FontWeight.w900)),
+                      const Icon(Icons.chevron_left_rounded, color: Color(0xFF7A8DA0)),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          )),
+        ],
+      ),
+    );
+  }
 }
 
 class _AdminAction {
