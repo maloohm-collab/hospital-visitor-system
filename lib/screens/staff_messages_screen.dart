@@ -266,7 +266,6 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
       return;
     }
 
-    final title = TextEditingController();
     final body = TextEditingController();
     final files = <PlatformFile>[];
     final recorder = AudioRecorder();
@@ -376,7 +375,7 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
     );
     if (recording) { try { await recorder.stop(); } catch (_) {} }
     await recorder.dispose();
-    title.dispose();
+    body.dispose();
   }
 
   Future<void> openMessage(DocumentSnapshot<Map<String, dynamic>> doc) async {
