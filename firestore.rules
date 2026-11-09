@@ -238,7 +238,8 @@ service cloud.firestore {
         function isOwner() {
           return isActiveUser() && resource.data.ownerUid == request.auth.uid;
         }
-        allow get, list: if isOwner();
+        allow get: if isActiveUser() && preferenceId == request.auth.uid;
+        allow list: if isOwner();
         allow create: if isActiveUser()
           && preferenceId == request.auth.uid
           && request.resource.data.keys().hasOnly([
