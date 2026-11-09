@@ -83,10 +83,10 @@ class DashboardScreen extends StatelessWidget {
           }
         },
         destinations: const [
-          NavigationDestination(icon: Icon(Icons.home_rounded), label: 'الرئيسية'),
+          NavigationDestination(icon: Icon(Icons.home_outlined), label: 'الرئيسية'),
           NavigationDestination(icon: Icon(Icons.meeting_room_outlined), label: 'الزيارات'),
           NavigationDestination(icon: Icon(Icons.account_circle_outlined), label: 'حسابي'),
-          NavigationDestination(icon: Icon(Icons.contact_phone_rounded), label: 'تواصل مباشر'),
+          NavigationDestination(icon: Icon(Icons.videocam_outlined), label: 'تواصل مباشر'),
         NavigationDestination(icon: Icon(Icons.info_outline_rounded), label: 'عن التطبيق'),
         ],
             ),
@@ -338,38 +338,38 @@ class DashboardScreen extends StatelessWidget {
   Widget _buildSecurityCategories(BuildContext context, List<_AdminAction> actions) {
     final categories = <_ActionCategory>[
       _ActionCategory(
-        icon: Icons.shield_rounded,
+        icon: Icons.verified_user_outlined,
         title: 'العمليات الميدانية',
         subtitle: 'مباشرة العمل، الطوارئ، والحالات الخاصة',
         color: const Color(0xFF087E78),
         actionTitles: const ['مباشرة العمل', 'الطوارئ وتسليم المناوبة', 'حالات الإنعاش CPR'],
       ),
       _ActionCategory(
-        icon: Icons.assignment_rounded,
+        icon: Icons.assignment_outlined,
         title: 'التقارير والمناوبات',
-        subtitle: 'تقاريرك وكشوفات المناوبة والأرشيف',
-        color: const Color(0xFF8757A5),
+        subtitle: 'تقاريرك، كشوفات المناوبة، والأرشيف والإحصاءات',
+        color: const Color(0xFF6D3FA8),
         actionTitles: const ['تقاريري', 'تقارير المناوبة PDF', 'مناوبات اليوم', 'المناوبات السابقة', 'التقارير والإحصاءات'],
       ),
       _ActionCategory(
-        icon: Icons.meeting_room_rounded,
+        icon: Icons.meeting_room_outlined,
         title: 'الزيارات والسجلات',
         subtitle: 'تسجيل الزوار ومراجعة سجل الزيارات',
-        color: const Color(0xFF27865B),
+        color: const Color(0xFF047857),
         actionTitles: const ['تسجيل زائر', 'سجل زياراتي'],
       ),
       _ActionCategory(
-        icon: Icons.forum_rounded,
+        icon: Icons.forum_outlined,
         title: 'المراسلات والتنبيهات',
-        subtitle: 'الرسائل والملاحظات والإشعارات',
-        color: const Color(0xFFD28A25),
+        subtitle: 'ملاحظاتك، الرسائل الواردة والصادرة، والإشعارات',
+        color: const Color(0xFFB45309),
         actionTitles: const ['ملاحظاتي ومراسلاتي', 'الإشعارات والملحوظات'],
       ),
       _ActionCategory(
-        icon: Icons.account_circle_rounded,
+        icon: Icons.account_circle_outlined,
         title: 'حسابي ومعلومات التطبيق',
         subtitle: 'بيانات حسابك والتعريف بالتطبيق',
-        color: const Color(0xFF14558A),
+        color: const Color(0xFF1D4F91),
         actionTitles: const ['حسابي', 'عن التطبيق والمؤسس'],
       ),
     ];
@@ -392,13 +392,13 @@ class DashboardScreen extends StatelessWidget {
     }
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
       child: Column(
         children: [
           Align(
             alignment: Alignment.centerRight,
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(5, 0, 5, 12),
+              padding: const EdgeInsets.fromLTRB(4, 0, 4, 12),
               child: Row(
                 children: [
                   Container(width: 22, height: 3, decoration: BoxDecoration(color: const Color(0xFFC9A24B), borderRadius: BorderRadius.circular(2))),
@@ -410,19 +410,28 @@ class DashboardScreen extends StatelessWidget {
           ),
           buildTile(categories[0], featured: true),
           const SizedBox(height: 12),
-          GridView.count(
-            crossAxisCount: 2,
-            crossAxisSpacing: 12,
-            mainAxisSpacing: 12,
-            childAspectRatio: 1.0,
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            children: [
-              buildTile(categories[1], featured: false),
-              buildTile(categories[2], featured: false),
-              buildTile(categories[3], featured: false),
-              buildTile(categories[4], featured: false),
-            ],
+          // الصف الأول: الزيارات (يمين) + التقارير (يسار) — كما في التصميم المرجعي
+          IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(child: buildTile(categories[2], featured: false)),
+                const SizedBox(width: 12),
+                Expanded(child: buildTile(categories[1], featured: false)),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          // الصف الثاني: المراسلات (يمين) + الحساب (يسار)
+          IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(child: buildTile(categories[3], featured: false)),
+                const SizedBox(width: 12),
+                Expanded(child: buildTile(categories[4], featured: false)),
+              ],
+            ),
           ),
         ],
       ),
@@ -558,6 +567,7 @@ class DashboardScreen extends StatelessWidget {
 
 }
 
+
 class _ActionCategoryTile extends StatefulWidget {
   const _ActionCategoryTile({
     required this.category,
@@ -630,7 +640,7 @@ class _ActionCategoryTileState extends State<_ActionCategoryTile> {
                     ),
                   Container(
                     width: double.infinity,
-                    constraints: BoxConstraints(minHeight: featured ? 108 : 132),
+                    constraints: BoxConstraints(minHeight: featured ? 108 : 0),
                     padding: EdgeInsets.all(featured ? 16 : 14),
                     child: featured
                         ? Row(
@@ -663,7 +673,10 @@ class _ActionCategoryTileState extends State<_ActionCategoryTile> {
                               const SizedBox(width: 8),
                               _CategoryCount(count: widget.count, featured: true, color: category.color),
                               const SizedBox(width: 4),
-                              const Icon(Icons.chevron_left_rounded, color: Color(0xFFE8CB84), size: 24),
+                              const Directionality(
+                                textDirection: TextDirection.ltr,
+                                child: Icon(Icons.chevron_left_rounded, color: Color(0xFFE8CB84), size: 24),
+                              ),
                             ],
                           )
                         : Column(
@@ -684,10 +697,10 @@ class _ActionCategoryTileState extends State<_ActionCategoryTile> {
                                   _CategoryCount(count: widget.count, featured: false, color: category.color),
                                 ],
                               ),
-                              const Spacer(),
-                              Text(category.title, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Color(0xFF0A1B33), fontSize: 14.5, height: 1.25, fontWeight: FontWeight.w900)),
+                              const SizedBox(height: 12),
+                              Text(category.title, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Color(0xFF0A1B33), fontSize: 15, height: 1.3, fontWeight: FontWeight.w900)),
                               const SizedBox(height: 4),
-                              Text(category.subtitle, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Color(0xFF5B6B82), fontSize: 11, height: 1.4)),
+                              Text(category.subtitle, maxLines: 3, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Color(0xFF5B6B82), fontSize: 11.5, height: 1.5)),
                             ],
                           ),
                   ),
