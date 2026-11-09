@@ -1018,7 +1018,7 @@ service cloud.firestore {
         && request.resource.data.requestReply is bool
         && request.resource.data.replyStatus in ['pending', 'not_required']
         && request.resource.data.attachments is list
-        && request.resource.data.attachments.size() == 0
+        && request.resource.data.attachments.size() <= 10
         && request.resource.data.read == false
         && request.resource.data.hiddenFor is list
         && request.resource.data.createdAt == request.time
