@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'emergency_duty_screen.dart';
 import 'security_duty_rosters_screen.dart';
+import 'duty_roster_screen.dart';
 import 'report_center_screen.dart';
 import 'work_location_screen.dart';
 import 'visitor_logs_screen.dart';
@@ -129,6 +130,12 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     final kind = (data['kind'] ?? '').toString();
     final relatedId = (data['relatedId'] ?? '').toString();
     if (kind == 'daily_duty_roster') {
+      if (widget.userRole != 'security_officer') {
+        await Navigator.push(context, MaterialPageRoute(
+          builder: (_) => DutyRosterScreen(userRole: widget.userRole),
+        ));
+        return;
+      }
       final bodyText = (data['body'] ?? '').toString();
       final match = RegExp(r'شفت\s*([ABC])', caseSensitive: false).firstMatch(bodyText);
       final shift = (data['relatedShift'] ?? match?.group(1) ?? '').toString().toUpperCase();
