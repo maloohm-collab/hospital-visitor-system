@@ -147,6 +147,7 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
               onPressed: busy ? null : () async {
                 if (recording) { toast('أوقف التسجيل الصوتي قبل الإرسال.'); return; }
                 if (selected.isEmpty) { toast('اختر مستلماً واحداً على الأقل.'); return; }
+                if (selected.length > 450) { toast('يمكن إرسال الرسالة إلى 450 مستلماً كحد أقصى في المرة الواحدة.'); return; }
                 if (files.length > 10) { toast('الحد الأقصى عشرة مرفقات في الرسالة الواحدة.'); return; }
                 if (title.text.trim().length < 3 || (body.text.trim().length < 3 && files.isEmpty)) {
                   toast('أدخل عنواناً ونصاً أو أرفق ملفاً.'); return;
@@ -157,10 +158,11 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
                   final sender = senderSnap.data() ?? {};
                   final threadId = db.collection('staff_messages').doc().id;
                   final refs = <DocumentReference<Map<String, dynamic>>>[];
+                  final messageBatch = db.batch();
                   for (final recipient in users.where((d) => selected.contains(d.id))) {
                     final ref = db.collection('staff_messages').doc(threadId + '_' + recipient.id);
                     refs.add(ref);
-                    await ref.set({
+                    messageBatch.set(ref, {
                       'messageId': ref.id, 'threadId': threadId, 'senderUid': uid,
                       'senderName': (sender['displayName'] ?? auth.currentUser?.email ?? 'مستخدم').toString(),
                       'senderRole': widget.userRole, 'recipientUid': recipient.id,
@@ -172,6 +174,7 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
                       'createdAt': FieldValue.serverTimestamp(),
                     });
                   }
+                  await messageBatch.commit();
                   final attachments = <Map<String, dynamic>>[];
                   for (final file in files) {
                     final bytes = file.bytes!;
