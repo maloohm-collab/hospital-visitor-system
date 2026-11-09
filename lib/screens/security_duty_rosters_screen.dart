@@ -43,7 +43,7 @@ class _SecurityDutyRostersScreenState extends State<SecurityDutyRostersScreen> {
   }
 
   static String _dayName(DateTime date) => const ['الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت','الأحد'][date.weekday - 1];
-  static DateTime _actualDate(String key, String shift) {
+  static DateTime _actualDate(String key) {
     final date = DateTime.tryParse(key) ?? DateTime.now();
     return date;
   }
@@ -255,7 +255,7 @@ class _SecurityDutyRostersScreenState extends State<SecurityDutyRostersScreen> {
         if (hidden.contains(_id(doc.id,shift))) continue;
         if (archive && autoDelete && elapsed >= archiveAfter + Duration(days: retentionDays)) continue;
         items.add(_RosterItem(dateKey: doc.id, shift: shift, block: block,
-          actualDate: _actualDate(doc.id,shift), publishedAt: at));
+          actualDate: _actualDate(doc.id), publishedAt: at));
       }
     }
     items.sort((a,b) {
@@ -423,6 +423,11 @@ class _SecurityDutyRostersScreenState extends State<SecurityDutyRostersScreen> {
     );
   }
 
+  @override
+  void dispose() {
+    _expiryTimer?.cancel();
+    super.dispose();
+  }
 }
 
 class _RosterItem {
