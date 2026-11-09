@@ -58,7 +58,8 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
       final role = d.data()['role'];
       if (admin) return ['admin', 'supervisor', 'security_officer'].contains(role);
       if (supervisor) return role == 'security_officer';
-      return ['admin', 'supervisor', 'security_officer'].contains(role);
+      // ضابط الأمن يرسل للإدارة أو المشرفين فقط؛ لا يرسل إلى حسابات ضباط أمن آخرين.
+      return ['admin', 'supervisor'].contains(role);
     }).toList();
     final title = TextEditingController(), body = TextEditingController();
     final selected = <String>{};
