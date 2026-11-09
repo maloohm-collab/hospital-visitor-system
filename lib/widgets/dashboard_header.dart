@@ -1,4 +1,3 @@
-import 'dart:math' as math;
 import 'dart:ui' show FontFeature;
 
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -21,9 +20,10 @@ class DashboardHeader extends StatelessWidget {
   final String userRole;
   final String? currentUid;
 
-  static const _navy = Color(0xFF1B3555);
-  static const _navyLight = Color(0xFF315579);
-  static const _gold = Color(0xFFD8B65A);
+  static const _navy = Color(0xFF0A1B33);
+  static const _navyLight = Color(0xFF12305A);
+  static const _gold = Color(0xFFE8CB84);
+  static const _goldDeep = Color(0xFFC9A24B);
   static const _secureStorage = FlutterSecureStorage();
   static const _lockKey = 'hospital_visitor_local_lock_';
 
@@ -31,115 +31,107 @@ class DashboardHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final topInset = MediaQuery.of(context).padding.top;
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: const SystemUiOverlayStyle(statusBarColor: _navy, statusBarIconBrightness: Brightness.light, statusBarBrightness: Brightness.dark),
-      child: Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        SizedBox(
-          width: double.infinity,
-          height: 82 + topInset,
-          child: ClipPath(
-            clipper: const _OceanWaveClipper(),
-            child: DecoratedBox(
+      value: const SystemUiOverlayStyle(
+        statusBarColor: _navy,
+        statusBarIconBrightness: Brightness.light,
+        statusBarBrightness: Brightness.dark,
+      ),
+      child: SizedBox(
+        width: double.infinity,
+        height: 118 + topInset,
+        child: ClipRRect(
+          borderRadius: const BorderRadius.vertical(bottom: Radius.circular(36)),
+          child: DecoratedBox(
             decoration: const BoxDecoration(
               gradient: LinearGradient(
-                begin: Alignment.centerRight,
-                end: Alignment.centerLeft,
-                colors: [_navyLight, _navy, Color(0xFF244565)],
+                begin: Alignment.topRight,
+                end: Alignment.bottomLeft,
+                colors: [_navy, _navyLight],
               ),
-              boxShadow: [
-                BoxShadow(
-                  color: Color(0x1A08152B),
-                  blurRadius: 12,
-                  offset: Offset(0, 4),
-                ),
-              ],
             ),
             child: Stack(
               fit: StackFit.expand,
               children: [
-                const Positioned(
-                  left: 0,
-                  right: 0,
-                  bottom: 0,
-                  height: 7,
+                const Positioned.fill(
                   child: IgnorePointer(
-                    child: CustomPaint(
-                      painter: _OceanWaveEdgePainter(),
-                    ),
-                  ),
-                ),
-                Positioned(
-                  left: 8,
-                  top: topInset + 7,
-                  child: _headerAction(
-                    tooltip: 'الإشعارات',
-                    child: _notificationButton(context),
-                  ),
-                ),
-                Positioned(
-                  right: 8,
-                  top: topInset + 7,
-                  child: _headerAction(
-                    tooltip: 'قفل التطبيق',
-                    child: IconButton(
-                      tooltip: 'تسجيل الخروج',
-                      visualDensity: VisualDensity.compact,
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints.tightFor(
-                        width: 30,
-                        height: 28,
-                      ),
-                      onPressed: () => _confirmSignOut(context),
-                      icon: const Icon(
-                        Icons.logout_rounded,
-                        color: Color(0xFFFFE5A0),
-                        size: 17,
-                      ),
-                    ),
+                    child: CustomPaint(painter: _HeaderRingsPainter()),
                   ),
                 ),
                 Align(
-                  alignment: Alignment.center,
-                  child: SizedBox(
-                    width: MediaQuery.of(context).size.width - 92,
-                    child: FittedBox(
-                      fit: BoxFit.scaleDown,
-                      child: RichText(
-                        maxLines: 1,
-                        softWrap: false,
-                        textAlign: TextAlign.center,
-                        text: TextSpan(
-                          style: TextStyle(
-                            fontSize: 20,
-                            height: 1.0,
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: 0,
-                            shadows: [
-                              Shadow(
-                                color: Color(0x55000000),
-                                blurRadius: 5,
-                                offset: Offset(0, 1),
+                  alignment: Alignment.topCenter,
+                  child: Padding(
+                    padding: EdgeInsets.fromLTRB(20, topInset + 18, 20, 0),
+                    child: Directionality(
+                      textDirection: TextDirection.rtl,
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 46,
+                            height: 46,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(14),
+                              gradient: const LinearGradient(
+                                begin: Alignment.topRight,
+                                end: Alignment.bottomLeft,
+                                colors: [_gold, _goldDeep],
                               ),
-                            ],
-                          ),
-                          children: [
-                            TextSpan(
-                              text: 'الصخرة للخدمات والاستشارات الأمنية',
-                              style: TextStyle(color: Color(0xFFFFE5A0)),
                             ),
-                          ],
-                        ),
+                            child: const Icon(
+                              Icons.shield_rounded,
+                              color: _navy,
+                              size: 26,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          const Expanded(
+                            child: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              alignment: Alignment.centerRight,
+                              child: Text(
+                                'الصخرة للخدمات\nوالاستشارات الأمنية',
+                                textAlign: TextAlign.start,
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 17,
+                                  height: 1.35,
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: 0,
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          _headerAction(
+                            tooltip: 'الإشعارات',
+                            child: _notificationButton(context),
+                          ),
+                          const SizedBox(width: 10),
+                          _headerAction(
+                            tooltip: 'قفل التطبيق',
+                            child: IconButton(
+                              tooltip: 'تسجيل الخروج',
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints.tightFor(
+                                width: 44,
+                                height: 44,
+                              ),
+                              onPressed: () => _confirmSignOut(context),
+                              icon: const Icon(
+                                Icons.logout_rounded,
+                                color: _gold,
+                                size: 22,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
                 ),
               ],
             ),
-            ),
           ),
         ),
-      ],
       ),
     );
   }
@@ -147,11 +139,13 @@ class DashboardHeader extends StatelessWidget {
   Widget _headerAction({required String tooltip, required Widget child}) {
     return Tooltip(
       message: tooltip,
-      child: DecoratedBox(
+      child: Container(
+        width: 44,
+        height: 44,
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.09),
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: _gold.withOpacity(0.42)),
+          color: Colors.white.withOpacity(0.08),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: _gold.withOpacity(0.40)),
         ),
         child: child,
       ),
@@ -173,9 +167,8 @@ class DashboardHeader extends StatelessWidget {
             .length;
         return IconButton(
           tooltip: unread > 0 ? 'الإشعارات غير المقروءة: $unread' : 'الإشعارات',
-          visualDensity: VisualDensity.compact,
           padding: EdgeInsets.zero,
-          constraints: const BoxConstraints.tightFor(width: 30, height: 28),
+          constraints: const BoxConstraints.tightFor(width: 44, height: 44),
           onPressed: () => Navigator.push(
             context,
             MaterialPageRoute(
@@ -187,31 +180,32 @@ class DashboardHeader extends StatelessWidget {
             children: [
               const Icon(
                 Icons.notifications_none_rounded,
-                color: Color(0xFFFFE5A0),
-                size: 18,
+                color: _gold,
+                size: 23,
               ),
               if (unread > 0)
                 Positioned(
-                  top: -6,
-                  right: -7,
+                  top: -7,
+                  right: -8,
                   child: Container(
                     constraints: const BoxConstraints(
-                      minWidth: 16,
-                      minHeight: 16,
+                      minWidth: 17,
+                      minHeight: 17,
                     ),
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 3,
+                      horizontal: 4,
                       vertical: 1,
                     ),
-                    decoration: const BoxDecoration(
-                      color: Color(0xFFD92D20),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF59E0B),
                       shape: BoxShape.circle,
+                      border: Border.all(color: _navyLight, width: 1.5),
                     ),
                     child: Text(
                       unread > 9 ? '9+' : '$unread',
                       textAlign: TextAlign.center,
                       style: const TextStyle(
-                        color: Colors.white,
+                        color: _navy,
                         fontSize: 9,
                         fontWeight: FontWeight.w900,
                       ),
@@ -255,10 +249,7 @@ class DashboardHeader extends StatelessWidget {
   }
 }
 
-
-
-
-/// Independent account identity card displayed below the company header.
+/// Independent account identity card displayed over the bottom edge of the header.
 class DashboardAccountCard extends StatelessWidget {
   const DashboardAccountCard({super.key, required this.userRole, required this.currentUid});
 
@@ -266,7 +257,8 @@ class DashboardAccountCard extends StatelessWidget {
   final String? currentUid;
 
   static const _weekdays = <String>['الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت', 'الأحد'];
-  static const _ink = Color(0xFF17324D);
+  static const _ink = Color(0xFF0A1B33);
+  static const _muted = Color(0xFF5B6B82);
   String _two(int value) => value.toString().padLeft(2, '0');
 
   String _roleLabel() {
@@ -283,141 +275,109 @@ class DashboardAccountCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 2, 16, 10),
-      child: Material(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(22),
-        child: Container(
-          padding: const EdgeInsets.fromLTRB(15, 13, 15, 13),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(22),
-            border: Border.all(color: const Color(0xFFE0E7EE)),
-            boxShadow: const [BoxShadow(color: Color(0x10082B55), blurRadius: 16, offset: Offset(0, 5))],
-          ),
-          child: StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-            stream: currentUid == null ? null : FirebaseFirestore.instance.collection('users').doc(currentUid).snapshots(),
-            builder: (context, userSnapshot) {
-              final rawName = (userSnapshot.data?.data()?['displayName'] ?? '').toString().trim();
-              final shownName = rawName.isEmpty ? (userRole == 'admin' ? 'المسؤول' : 'الموظف') : rawName;
-              return StreamBuilder<DateTime>(
-                stream: Stream<DateTime>.periodic(const Duration(seconds: 1), (_) => DateTime.now()),
-                initialData: DateTime.now(),
-                builder: (context, timeSnapshot) {
-                  final now = timeSnapshot.data ?? DateTime.now();
-                  final time = '${_two(now.hour)}:${_two(now.minute)}:${_two(now.second)}';
-                  final date = '${_weekdays[now.weekday - 1]} ${now.day}/${now.month}/${now.year}';
-                  return Column(
-                    children: [
-                      Row(
-                        textDirection: TextDirection.rtl,
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(22),
+          boxShadow: const [
+            BoxShadow(color: Color(0x240A1B33), blurRadius: 28, offset: Offset(0, 10)),
+          ],
+        ),
+        child: StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+          stream: currentUid == null ? null : FirebaseFirestore.instance.collection('users').doc(currentUid).snapshots(),
+          builder: (context, userSnapshot) {
+            final rawName = (userSnapshot.data?.data()?['displayName'] ?? '').toString().trim();
+            final shownName = rawName.isEmpty ? (userRole == 'admin' ? 'المسؤول' : 'الموظف') : rawName;
+            final initial = String.fromCharCode(shownName.runes.first);
+            return StreamBuilder<DateTime>(
+              stream: Stream<DateTime>.periodic(const Duration(seconds: 1), (_) => DateTime.now()),
+              initialData: DateTime.now(),
+              builder: (context, timeSnapshot) {
+                final now = timeSnapshot.data ?? DateTime.now();
+                final time = '${_two(now.hour)}:${_two(now.minute)}:${_two(now.second)}';
+                final date = '${_weekdays[now.weekday - 1]} ${now.day}/${now.month}/${now.year}';
+                return Row(
+                  textDirection: TextDirection.rtl,
+                  children: [
+                    Container(
+                      width: 46,
+                      height: 46,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: const LinearGradient(
+                          begin: Alignment.topRight,
+                          end: Alignment.bottomLeft,
+                          colors: [Color(0xFF12305A), Color(0xFF0A1B33)],
+                        ),
+                        border: Border.all(color: const Color(0xFFF3E7C6), width: 3),
+                      ),
+                      child: Text(
+                        initial,
+                        style: const TextStyle(color: Color(0xFFE8CB84), fontSize: 20, fontWeight: FontWeight.w900, height: 1.1),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
                         children: [
-                          Container(
-                            width: 47,
-                            height: 47,
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFFFF5D9),
-                              shape: BoxShape.circle,
-                              border: Border.all(color: const Color(0xFFD8B65A), width: 1.5),
-                            ),
-                            child: const Icon(Icons.security_rounded, color: Color(0xFF173653), size: 25),
-                          ),
-                          const SizedBox(width: 11),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(_roleLabel(), style: const TextStyle(color: Color(0xFF718397), fontSize: 11, fontWeight: FontWeight.w700)),
-                                const SizedBox(height: 2),
-                                Text(shownName, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: _ink, fontSize: 15, fontWeight: FontWeight.w900)),
-                              ],
-                            ),
-                          ),
+                          Text(_roleLabel(), style: const TextStyle(color: _muted, fontSize: 12, fontWeight: FontWeight.w700)),
+                          const SizedBox(height: 2),
+                          Text(shownName, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: _ink, fontSize: 15.5, fontWeight: FontWeight.w900)),
                         ],
                       ),
-                      const SizedBox(height: 11),
-                      const Divider(height: 1, color: Color(0xFFE9EEF3)),
-                      const SizedBox(height: 9),
-                      Row(
-                        textDirection: TextDirection.rtl,
-                        children: [
-                          const Icon(Icons.access_time_rounded, color: Color(0xFFB58D35), size: 17),
-                          const SizedBox(width: 5),
-                          Text(time, textDirection: TextDirection.ltr, style: const TextStyle(color: _ink, fontSize: 13, fontWeight: FontWeight.w900, fontFeatures: [FontFeature.tabularFigures()])),
-                          const Spacer(),
-                          const Icon(Icons.calendar_month_rounded, color: Color(0xFFB58D35), size: 16),
-                          const SizedBox(width: 5),
-                          Flexible(child: Text(date, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Color(0xFF536B82), fontSize: 12, fontWeight: FontWeight.w800))),
-                        ],
-                      ),
-                    ],
-                  );
-                },
-              );
-            },
-          ),
+                    ),
+                    const SizedBox(width: 8),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          time,
+                          textDirection: TextDirection.ltr,
+                          style: const TextStyle(color: _ink, fontSize: 20, height: 1.2, fontWeight: FontWeight.w900, fontFeatures: [FontFeature.tabularFigures()]),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(date, maxLines: 1, style: const TextStyle(color: _muted, fontSize: 11.5, fontWeight: FontWeight.w700)),
+                      ],
+                    ),
+                  ],
+                );
+              },
+            );
+          },
         ),
       ),
     );
   }
 }
 
-
-/// Clips the header background itself into a soft ocean-wave bottom edge.
-class _OceanWaveClipper extends CustomClipper<Path> {
-  const _OceanWaveClipper();
-
-  @override
-  Path getClip(Size size) {
-    final path = Path()..moveTo(0, 0)..lineTo(size.width, 0)..lineTo(size.width, size.height);
-    const cycles = 2.0;
-    const amplitude = 2.0;
-    final baseY = size.height - 3.5;
-    for (var i = 100; i >= 0; i--) {
-      final x = size.width * i / 100;
-      final phase = (i / 100) * cycles * 2 * math.pi;
-      final y = baseY + math.sin(phase) * amplitude;
-      path.lineTo(x, y);
-    }
-    return path..close();
-  }
-
-  @override
-  bool shouldReclip(covariant _OceanWaveClipper oldClipper) => false;
-}
-
-/// A fine gold finish drawn exactly on the clipped lower edge, not inside the header.
-class _OceanWaveEdgePainter extends CustomPainter {
-  const _OceanWaveEdgePainter();
+/// Soft gold concentric rings drawn in the header's corner.
+class _HeaderRingsPainter extends CustomPainter {
+  const _HeaderRingsPainter();
 
   @override
   void paint(Canvas canvas, Size size) {
-    final path = Path();
-    const cycles = 2.0;
-    const amplitude = 2.0;
-    const centerY = 3.5;
-    for (var i = 0; i <= 100; i++) {
-      final x = size.width * i / 100;
-      final phase = (i / 100) * cycles * 2 * math.pi;
-      final y = centerY + math.sin(phase) * amplitude;
-      if (i == 0) {
-        path.moveTo(x, y);
-      } else {
-        path.lineTo(x, y);
-      }
+    const center = Offset(40, 30);
+    final radii = <double>[90, 130, 170];
+    final alphas = <double>[0.30, 0.20, 0.11];
+    for (var i = 0; i < radii.length; i++) {
+      canvas.drawCircle(
+        center,
+        radii[i],
+        Paint()
+          ..color = const Color(0xFFC9A24B).withOpacity(alphas[i])
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1
+          ..isAntiAlias = true,
+      );
     }
-    canvas.drawPath(
-      path,
-      Paint()
-        ..color = const Color(0xFFD8B65A)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 1.6
-        ..strokeCap = StrokeCap.round
-        ..isAntiAlias = true,
-    );
   }
 
   @override
-  bool shouldRepaint(covariant _OceanWaveEdgePainter oldDelegate) => false;
+  bool shouldRepaint(covariant _HeaderRingsPainter oldDelegate) => false;
 }
-
-

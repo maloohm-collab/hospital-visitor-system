@@ -32,10 +32,37 @@ class DashboardScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final currentUid = FirebaseAuth.instance.currentUser?.uid;
     return Scaffold(
-      bottomNavigationBar: NavigationBar(
+      backgroundColor: const Color(0xFFF2F4F8),
+      bottomNavigationBar: DecoratedBox(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
+          boxShadow: [
+            BoxShadow(color: Color(0x14082B55), blurRadius: 22, offset: Offset(0, -6)),
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(26)),
+          child: NavigationBarTheme(
+            data: NavigationBarThemeData(
+              backgroundColor: Colors.white,
+              surfaceTintColor: Colors.transparent,
+              elevation: 0,
+              height: 68,
+              indicatorColor: const Color(0xFF0A1B33),
+              indicatorShape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              iconTheme: WidgetStateProperty.resolveWith((states) => IconThemeData(
+                    size: 24,
+                    color: states.contains(WidgetState.selected) ? const Color(0xFFE8CB84) : const Color(0xFF5B6B82),
+                  )),
+              labelTextStyle: WidgetStateProperty.resolveWith((states) => TextStyle(
+                    fontSize: 11,
+                    fontWeight: states.contains(WidgetState.selected) ? FontWeight.w800 : FontWeight.w600,
+                    color: states.contains(WidgetState.selected) ? const Color(0xFF0A1B33) : const Color(0xFF5B6B82),
+                  )),
+            ),
+            child: NavigationBar(
         selectedIndex: 0,
-        backgroundColor: Colors.white,
-        indicatorColor: const Color(0xFFE5F3F3),
         onDestinationSelected: (index) {
           if (index == 1) {
             Navigator.push(context, MaterialPageRoute(
@@ -62,6 +89,9 @@ class DashboardScreen extends StatelessWidget {
           NavigationDestination(icon: Icon(Icons.contact_phone_rounded), label: 'تواصل مباشر'),
         NavigationDestination(icon: Icon(Icons.info_outline_rounded), label: 'عن التطبيق'),
         ],
+            ),
+          ),
+        ),
       ),
       body: SafeArea(
         top: false,
@@ -72,6 +102,25 @@ class DashboardScreen extends StatelessWidget {
     );
   }
 
+
+  /// الهيدر مع بطاقة الحساب المتداخلة على حافته السفلية.
+  Widget _buildHero(String? currentUid) {
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(bottom: 44),
+          child: DashboardHeader(userRole: userRole, currentUid: currentUid),
+        ),
+        Positioned(
+          left: 0,
+          right: 0,
+          bottom: 0,
+          child: DashboardAccountCard(userRole: userRole, currentUid: currentUid),
+        ),
+      ],
+    );
+  }
 
   Widget _buildStaffDashboard(BuildContext context, String? currentUid) {
     final actions = <_AdminAction>[
@@ -247,12 +296,11 @@ class DashboardScreen extends StatelessWidget {
     ]);
 
     return DecoratedBox(
-      decoration: const BoxDecoration(color: Color(0xFFEBF1F7)),
+      decoration: const BoxDecoration(color: Color(0xFFF2F4F8)),
       child: ListView(
         padding: EdgeInsets.zero,
         children: [
-          DashboardHeader(userRole: userRole, currentUid: currentUid),
-          DashboardAccountCard(userRole: userRole, currentUid: currentUid),
+          _buildHero(currentUid),
           const SizedBox(height: 4),
           if (userRole == 'security_officer')
             _buildSecurityCategories(context, actions)
@@ -353,9 +401,9 @@ class DashboardScreen extends StatelessWidget {
               padding: const EdgeInsets.fromLTRB(5, 0, 5, 12),
               child: Row(
                 children: [
-                  Container(width: 4, height: 23, decoration: BoxDecoration(color: const Color(0xFFD8B65A), borderRadius: BorderRadius.circular(4))),
-                  const SizedBox(width: 9),
-                  const Text('الخدمات الرئيسية', style: TextStyle(color: Color(0xFF173653), fontSize: 19, fontWeight: FontWeight.w900)),
+                  Container(width: 22, height: 3, decoration: BoxDecoration(color: const Color(0xFFC9A24B), borderRadius: BorderRadius.circular(2))),
+                  const SizedBox(width: 10),
+                  const Text('الخدمات الرئيسية', style: TextStyle(color: Color(0xFF0A1B33), fontSize: 16, fontWeight: FontWeight.w900)),
                 ],
               ),
             ),
@@ -366,7 +414,7 @@ class DashboardScreen extends StatelessWidget {
             crossAxisCount: 2,
             crossAxisSpacing: 12,
             mainAxisSpacing: 12,
-            childAspectRatio: 1.12,
+            childAspectRatio: 1.0,
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
             children: [
@@ -383,12 +431,11 @@ class DashboardScreen extends StatelessWidget {
 
   Widget _buildAdminDashboard(BuildContext context, String? currentUid) {
     return DecoratedBox(
-      decoration: const BoxDecoration(color: Color(0xFFF3F6FA)),
+      decoration: const BoxDecoration(color: Color(0xFFF2F4F8)),
       child: ListView(
         padding: EdgeInsets.zero,
         children: [
-        DashboardHeader(userRole: userRole, currentUid: currentUid),
-        DashboardAccountCard(userRole: userRole, currentUid: currentUid),
+        _buildHero(currentUid),
         const SizedBox(height: 4),
         StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
           stream: FirebaseFirestore.instance.collection('account_requests')
@@ -511,7 +558,6 @@ class DashboardScreen extends StatelessWidget {
 
 }
 
-
 class _ActionCategoryTile extends StatefulWidget {
   const _ActionCategoryTile({
     required this.category,
@@ -536,89 +582,118 @@ class _ActionCategoryTileState extends State<_ActionCategoryTile> {
   Widget build(BuildContext context) {
     final category = widget.category;
     final featured = widget.featured;
-    final foreground = featured ? Colors.white : const Color(0xFF173653);
+    final radius = BorderRadius.circular(22);
     return AnimatedScale(
       scale: _pressed ? 0.975 : 1,
       duration: Duration(milliseconds: _pressed ? 85 : 180),
       curve: _pressed ? Curves.easeOut : Curves.easeOutBack,
       child: Material(
-        color: featured ? const Color(0xFF173653) : Colors.white,
-        borderRadius: BorderRadius.circular(featured ? 23 : 20),
-        elevation: 0,
-        child: InkWell(
-          onTap: widget.onTap,
-          onHighlightChanged: (value) => setState(() => _pressed = value),
-          borderRadius: BorderRadius.circular(featured ? 23 : 20),
-          splashColor: category.color.withValues(alpha: 0.14),
-          child: Container(
-            width: double.infinity,
-            constraints: BoxConstraints(minHeight: featured ? 116 : 132),
-            padding: EdgeInsets.all(featured ? 17 : 13),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(featured ? 23 : 20),
-              border: Border.all(color: featured ? const Color(0xFFD8B65A).withValues(alpha: 0.65) : const Color(0xFFDCE5ED)),
-              boxShadow: [
-                BoxShadow(color: const Color(0xFF082B55).withValues(alpha: featured ? 0.13 : 0.07), blurRadius: featured ? 17 : 12, offset: const Offset(0, 5)),
-              ],
-            ),
-            child: featured
-                ? Row(
-                    children: [
-                      Container(
-                        width: 62,
-                        height: 62,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFD8B65A).withValues(alpha: 0.16),
-                          borderRadius: BorderRadius.circular(19),
-                          border: Border.all(color: const Color(0xFFD8B65A).withValues(alpha: 0.45)),
-                        ),
-                        child: const Icon(Icons.shield_rounded, color: Color(0xFFFFD979), size: 34),
-                      ),
-                      const SizedBox(width: 15),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text(category.title, style: TextStyle(color: foreground, fontSize: 18, fontWeight: FontWeight.w900)),
-                            const SizedBox(height: 5),
-                            Text(category.subtitle, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Color(0xFFD5E0EB), fontSize: 11, height: 1.35)),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      _CategoryCount(count: widget.count, featured: true),
-                    ],
+        color: Colors.transparent,
+        borderRadius: radius,
+        child: Ink(
+          decoration: BoxDecoration(
+            gradient: featured
+                ? const LinearGradient(
+                    begin: Alignment.topRight,
+                    end: Alignment.bottomLeft,
+                    colors: [Color(0xFF0A1B33), Color(0xFF1A3E6E)],
                   )
-                : Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Container(
-                            width: 45,
-                            height: 45,
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                                colors: [category.color.withValues(alpha: 0.17), category.color.withValues(alpha: 0.07)],
-                              ),
-                              borderRadius: BorderRadius.circular(15),
-                              border: Border.all(color: category.color.withValues(alpha: 0.12)),
-                            ),
-                            child: Icon(category.icon, color: category.color, size: 26),
-                          ),
-                          const Spacer(),
-                          _CategoryCount(count: widget.count, featured: false),
-                        ],
+                : null,
+            color: featured ? null : Colors.white,
+            borderRadius: radius,
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF0A1B33).withValues(alpha: featured ? 0.22 : 0.07),
+                blurRadius: featured ? 24 : 16,
+                offset: Offset(0, featured ? 10 : 4),
+              ),
+            ],
+          ),
+          child: InkWell(
+            onTap: widget.onTap,
+            onHighlightChanged: (value) => setState(() => _pressed = value),
+            borderRadius: radius,
+            splashColor: category.color.withValues(alpha: 0.14),
+            child: ClipRRect(
+              borderRadius: radius,
+              child: Stack(
+                children: [
+                  if (featured)
+                    Positioned(
+                      left: -26,
+                      bottom: -40,
+                      child: Icon(
+                        Icons.shield_outlined,
+                        size: 150,
+                        color: const Color(0xFFE8CB84).withValues(alpha: 0.13),
                       ),
-                      const Spacer(),
-                      Text(category.title, maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(color: foreground, fontSize: 14, height: 1.2, fontWeight: FontWeight.w900)),
-                      const SizedBox(height: 5),
-                      Text(category.subtitle, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Color(0xFF718397), fontSize: 10, height: 1.3)),
-                    ],
+                    ),
+                  Container(
+                    width: double.infinity,
+                    constraints: BoxConstraints(minHeight: featured ? 108 : 132),
+                    padding: EdgeInsets.all(featured ? 16 : 14),
+                    child: featured
+                        ? Row(
+                            children: [
+                              Container(
+                                width: 56,
+                                height: 56,
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(17),
+                                  gradient: const LinearGradient(
+                                    begin: Alignment.topRight,
+                                    end: Alignment.bottomLeft,
+                                    colors: [Color(0xFFE8CB84), Color(0xFFC9A24B)],
+                                  ),
+                                ),
+                                child: Icon(category.icon, color: const Color(0xFF0A1B33), size: 30),
+                              ),
+                              const SizedBox(width: 14),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Text(category.title, style: const TextStyle(color: Colors.white, fontSize: 17, height: 1.3, fontWeight: FontWeight.w900)),
+                                    const SizedBox(height: 3),
+                                    Text(category.subtitle, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Color(0xFFC9D6EA), fontSize: 12, height: 1.45)),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              _CategoryCount(count: widget.count, featured: true, color: category.color),
+                              const SizedBox(width: 4),
+                              const Icon(Icons.chevron_left_rounded, color: Color(0xFFE8CB84), size: 24),
+                            ],
+                          )
+                        : Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Container(
+                                    width: 44,
+                                    height: 44,
+                                    decoration: BoxDecoration(
+                                      color: category.color.withValues(alpha: 0.12),
+                                      borderRadius: BorderRadius.circular(14),
+                                    ),
+                                    child: Icon(category.icon, color: category.color, size: 24),
+                                  ),
+                                  const Spacer(),
+                                  _CategoryCount(count: widget.count, featured: false, color: category.color),
+                                ],
+                              ),
+                              const Spacer(),
+                              Text(category.title, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Color(0xFF0A1B33), fontSize: 14.5, height: 1.25, fontWeight: FontWeight.w900)),
+                              const SizedBox(height: 4),
+                              Text(category.subtitle, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Color(0xFF5B6B82), fontSize: 11, height: 1.4)),
+                            ],
+                          ),
                   ),
+                ],
+              ),
+            ),
           ),
         ),
       ),
@@ -627,18 +702,21 @@ class _ActionCategoryTileState extends State<_ActionCategoryTile> {
 }
 
 class _CategoryCount extends StatelessWidget {
-  const _CategoryCount({required this.count, required this.featured});
+  const _CategoryCount({required this.count, required this.featured, required this.color});
   final int count;
   final bool featured;
+  final Color color;
 
   @override
   Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+    constraints: const BoxConstraints(minWidth: 26, minHeight: 26),
+    alignment: Alignment.center,
+    padding: const EdgeInsets.symmetric(horizontal: 8),
     decoration: BoxDecoration(
-      color: featured ? const Color(0xFFD8B65A) : const Color(0xFFEAF0F5),
-      borderRadius: BorderRadius.circular(20),
+      color: featured ? const Color(0xFFE8CB84) : color.withValues(alpha: 0.12),
+      borderRadius: BorderRadius.circular(9),
     ),
-    child: Text('$count', style: TextStyle(color: featured ? const Color(0xFF173653) : const Color(0xFF526A80), fontSize: 12, fontWeight: FontWeight.w900)),
+    child: Text('$count', style: TextStyle(color: featured ? const Color(0xFF0A1B33) : color, fontSize: 13, fontWeight: FontWeight.w900)),
   );
 }
 
