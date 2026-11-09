@@ -1,4 +1,4 @@
-name: Deploy Firebase (manual)
+name: Deploy Firestore (manual)
 
 on:
   workflow_dispatch:
@@ -13,7 +13,7 @@ concurrency:
 
 jobs:
   deploy:
-    name: Deploy Firebase resources
+    name: Deploy Firestore rules and indexes
     if: github.ref == 'refs/heads/work/next-release-development-2026-11-09'
     runs-on: ubuntu-latest
     timeout-minutes: 45
@@ -39,5 +39,5 @@ jobs:
       - name: Validate Cloud Functions JavaScript
         run: node --check functions/index.js
 
-      - name: Deploy Firestore rules and indexes, and Cloud Functions (Storage deferred until Blaze is enabled)
-        run: firebase deploy --project hospital-visitor-system --only firestore:rules,firestore:indexes,functions --non-interactive
+      - name: Deploy Firestore rules and indexes only (Storage and Cloud Functions deferred until Blaze is enabled)
+        run: firebase deploy --project hospital-visitor-system --only firestore:rules,firestore:indexes --non-interactive
