@@ -258,7 +258,7 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
   }
 
   Future<void> archiveSettings() async {
-    final ref = db.collection('users').doc(uid).collection('message_archive_preferences').doc('settings');
+    final ref = db.collection('message_archive_preferences').doc(uid);
     final snapshot = await ref.get();
     final data = snapshot.data() ?? <String, dynamic>{};
     bool enabled = data['autoDeleteEnabled'] == true;
