@@ -11,8 +11,9 @@ import 'package:path_provider/path_provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class StaffMessagesScreen extends StatefulWidget {
-  const StaffMessagesScreen({super.key, required this.userRole});
+  const StaffMessagesScreen({super.key, required this.userRole, this.initialMessageId});
   final String userRole;
+  final String? initialMessageId;
   @override
   State<StaffMessagesScreen> createState() => _StaffMessagesScreenState();
 }
@@ -29,7 +30,20 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
   bool get supervisor => widget.userRole == 'supervisor';
 
   @override
-  void initState() { super.initState(); tabs = TabController(length: 3, vsync: this); archiveRefreshTimer = Timer.periodic(const Duration(minutes: 1), (_) { if (mounted) setState(() {}); }); }
+  void initState() {
+    super.initState();
+    tabs = TabController(length: 3, vsync: this);
+    archiveRefreshTimer = Timer.periodic(const Duration(minutes: 1), (_) { if (mounted) setState(() {}); });
+    final messageId = widget.initialMessageId;
+    if (messageId != null && messageId.isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        try {
+          final doc = await db.collection('staff_messages').doc(messageId).get();
+          if (mounted && doc.exists) await openMessage(doc);
+        } catch (_) { toast('تعذر فتح الملاحظة المرتبطة بالإشعار.'); }
+      });
+    }
+  }
   @override
   void dispose() { archiveRefreshTimer?.cancel(); tabs.dispose(); super.dispose(); }
   void toast(String value) {
