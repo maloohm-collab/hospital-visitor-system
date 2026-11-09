@@ -10,6 +10,9 @@ import '../screens/auth_screen.dart';
 import '../screens/notifications_screen.dart';
 
 /// Shared compact identity header for administration, supervisors and officers.
+///
+/// ملاحظة: بطاقة الحساب [DashboardAccountCard] تتداخل بصرياً مع أسفل الهيدر،
+/// وتم ضبط ذلك داخل dashboard_screen.dart عبر Stack (انظر _buildHero).
 class DashboardHeader extends StatelessWidget {
   const DashboardHeader({
     super.key,
@@ -65,6 +68,7 @@ class DashboardHeader extends StatelessWidget {
                       textDirection: TextDirection.rtl,
                       child: Row(
                         children: [
+                          // شعار الصخرة (الجهة اليمنى)
                           Container(
                             width: 46,
                             height: 46,
@@ -77,7 +81,7 @@ class DashboardHeader extends StatelessWidget {
                               ),
                             ),
                             child: const Icon(
-                              Icons.shield_rounded,
+                              Icons.verified_user_outlined,
                               color: _navy,
                               size: 26,
                             ),
@@ -101,6 +105,7 @@ class DashboardHeader extends StatelessWidget {
                             ),
                           ),
                           const SizedBox(width: 8),
+                          // الأزرار (الجهة اليسرى)
                           _headerAction(
                             tooltip: 'الإشعارات',
                             child: _notificationButton(context),
