@@ -992,13 +992,13 @@ service cloud.firestore {
       allow create: if isActiveUser()
         && request.resource.data.keys().hasOnly([
           'messageId', 'threadId', 'senderUid', 'senderName', 'senderRole',
-          'recipientUid', 'recipientName', 'recipientRole', 'title', 'body',
+          'recipientUid', 'recipientName', 'recipientRole', 'locationName', 'title', 'body',
           'priority', 'requestReply', 'replyStatus', 'attachments', 'read',
           'hiddenFor', 'createdAt'
         ])
         && request.resource.data.keys().hasAll([
           'messageId', 'threadId', 'senderUid', 'senderName', 'senderRole',
-          'recipientUid', 'recipientName', 'recipientRole', 'title', 'body',
+          'recipientUid', 'recipientName', 'recipientRole', 'locationName', 'title', 'body',
           'priority', 'requestReply', 'replyStatus', 'attachments', 'read',
           'hiddenFor', 'createdAt'
         ])
