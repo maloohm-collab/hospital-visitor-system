@@ -1,9 +1,12 @@
+import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:record/record.dart';
+import 'package:path_provider/path_provider.dart';
 import 'dart:async';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -44,6 +47,9 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
     final title = TextEditingController(), body = TextEditingController();
     final selected = <String>{};
     final files = <PlatformFile>[];
+    final recorder = AudioRecorder();
+    String? recordingPath;
+    bool recording = false;
     String priority = 'normal';
     bool requestReply = false, busy = false;
     await showModalBottomSheet<void>(
@@ -81,6 +87,30 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
             SwitchListTile(
               contentPadding: EdgeInsets.zero, title: const Text('طلب الرد على الملاحظة'),
               value: requestReply, onChanged: (v) => refresh(() => requestReply = v),
+            ),
+            OutlinedButton.icon(
+              onPressed: busy ? null : () async {
+                try {
+                  if (!recording) {
+                    if (!await recorder.hasPermission()) { toast('يرجى السماح باستخدام الميكروفون.'); return; }
+                    final dir = await getTemporaryDirectory();
+                    recordingPath = dir.path + '/staff_voice_' + DateTime.now().millisecondsSinceEpoch.toString() + '.m4a';
+                    await recorder.start(const RecordConfig(encoder: AudioEncoder.aacLc), path: recordingPath!);
+                    refresh(() => recording = true);
+                  } else {
+                    final path = await recorder.stop();
+                    if (path != null) {
+                      final bytes = await File(path).readAsBytes();
+                      refresh(() {
+                        files.add(PlatformFile(name: 'تسجيل صوتي.m4a', size: bytes.length, bytes: bytes, path: path));
+                        recording = false;
+                      });
+                    } else { refresh(() => recording = false); }
+                  }
+                } catch (_) { toast('تعذر تسجيل الصوت. تحقق من إذن الميكروفون.'); refresh(() => recording = false); }
+              },
+              icon: Icon(recording ? Icons.stop_circle : Icons.mic),
+              label: Text(recording ? 'إيقاف التسجيل وإرفاقه' : 'تسجيل صوتي'),
             ),
             OutlinedButton.icon(
               onPressed: busy ? null : () async {
@@ -151,6 +181,8 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
         ),
       )),
     );
+    if (recording) { try { await recorder.stop(); } catch (_) {} }
+    await recorder.dispose();
     title.dispose(); body.dispose();
   }
 
