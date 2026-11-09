@@ -32,11 +32,6 @@ class DashboardHeader extends StatelessWidget {
     'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس',
     'الجمعة', 'السبت', 'الأحد',
   ];
-  static const _months = <String>[
-    'يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو',
-    'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر',
-  ];
-
   String _two(int value) => value.toString().padLeft(2, '0');
 
   String _roleLabel(String role) {
