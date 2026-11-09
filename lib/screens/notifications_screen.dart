@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'emergency_duty_screen.dart';
+import 'staff_messages_screen.dart';
 import 'security_duty_rosters_screen.dart';
 import 'duty_roster_screen.dart';
 import 'report_center_screen.dart';
@@ -151,6 +152,12 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           builder: (_) => const SecurityDutyRostersScreen(),
         ));
       }
+      return;
+    }
+    if (kind == 'staff_message' || kind == 'staff_message_reply') {
+      await Navigator.push(context, MaterialPageRoute(
+        builder: (_) => StaffMessagesScreen(userRole: widget.userRole),
+      ));
       return;
     }
     if (kind.startsWith('emergency_')) {
