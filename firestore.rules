@@ -991,14 +991,14 @@ service cloud.firestore {
 
       allow create: if isActiveUser()
         && request.resource.data.keys().hasOnly([
-          'messageId', 'threadId', 'senderUid', 'senderName', 'senderRole',
-          'recipientUid', 'recipientName', 'recipientRole', 'locationName', 'title', 'body',
+          'messageId', 'threadId', 'senderUid', 'senderName', 'senderRole', 'senderLabel',
+          'recipientUid', 'recipientName', 'recipientRole', 'recipientLabel', 'locationName', 'title', 'body',
           'priority', 'requestReply', 'replyStatus', 'attachments', 'read',
           'hiddenFor', 'createdAt'
         ])
         && request.resource.data.keys().hasAll([
-          'messageId', 'threadId', 'senderUid', 'senderName', 'senderRole',
-          'recipientUid', 'recipientName', 'recipientRole', 'locationName', 'title', 'body',
+          'messageId', 'threadId', 'senderUid', 'senderName', 'senderRole', 'senderLabel',
+          'recipientUid', 'recipientName', 'recipientRole', 'recipientLabel', 'locationName', 'title', 'body',
           'priority', 'requestReply', 'replyStatus', 'attachments', 'read',
           'hiddenFor', 'createdAt'
         ])
@@ -1075,10 +1075,10 @@ service cloud.firestore {
           && parentMessage().requestReply == true
           && parentMessage().replyStatus == 'pending'
           && request.resource.data.keys().hasOnly([
-            'replyId', 'senderUid', 'senderName', 'senderRole', 'body', 'attachments', 'createdAt'
+            'replyId', 'senderUid', 'senderName', 'senderRole', 'senderLabel', 'body', 'attachments', 'createdAt'
           ])
           && request.resource.data.keys().hasAll([
-            'replyId', 'senderUid', 'senderName', 'senderRole', 'body', 'attachments', 'createdAt'
+            'replyId', 'senderUid', 'senderName', 'senderRole', 'senderLabel', 'body', 'attachments', 'createdAt'
           ])
           && request.resource.data.attachments is list
           && request.resource.data.attachments.size() == 0
