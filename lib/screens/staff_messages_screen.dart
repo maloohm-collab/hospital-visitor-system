@@ -131,6 +131,7 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
             FilledButton.icon(
               onPressed: busy ? null : () async {
                 if (selected.isEmpty) { toast('اختر مستلماً واحداً على الأقل.'); return; }
+                if (files.length > 10) { toast('الحد الأقصى عشرة مرفقات في الرسالة الواحدة.'); return; }
                 if (title.text.trim().length < 3 || (body.text.trim().length < 3 && files.isEmpty)) {
                   toast('أدخل عنواناً ونصاً أو أرفق ملفاً.'); return;
                 }
@@ -218,7 +219,7 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
   }
 
   Future<void> markRead(DocumentSnapshot<Map<String, dynamic>> doc) async {
-    if (doc.data()?['read'] == true) return;
+    if (doc.data()?['read'] == true || doc.data()?['recipientUid'] != uid) return;
     try { await doc.reference.update({'read': true, 'readAt': FieldValue.serverTimestamp()}); }
     catch (_) { toast('تعذر تحديث حالة القراءة.'); }
   }
