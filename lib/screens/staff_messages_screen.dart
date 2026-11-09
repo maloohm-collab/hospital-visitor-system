@@ -259,28 +259,124 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
   }
 
   Future<void> reply(DocumentSnapshot<Map<String, dynamic>> doc) async {
-    final controller = TextEditingController();
-    final value = await showDialog<String>(context: context, builder: (ctx) => AlertDialog(
-      title: const Text('الرد على الملاحظة'),
-      content: TextField(controller: controller, minLines: 3, maxLines: 6, decoration: const InputDecoration(hintText: 'اكتب ردك')),
-      actions: [
-        TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('إلغاء')),
-        FilledButton(onPressed: () => Navigator.pop(ctx, controller.text.trim()), child: const Text('إرسال الرد')),
-      ],
-    ));
-    controller.dispose();
-    if (value == null || value.isEmpty) return;
-    try {
-      final profile = await db.collection('users').doc(uid).get();
-      final ref = doc.reference.collection('replies').doc();
-      await ref.set({
-        'replyId': ref.id, 'senderUid': uid,
-        'senderName': (profile.data()?['displayName'] ?? auth.currentUser?.email ?? 'مستخدم').toString(),
-        'senderRole': widget.userRole, 'body': value, 'createdAt': FieldValue.serverTimestamp(),
-      });
-      await doc.reference.update({'replyStatus': 'replied', 'lastReplyAt': FieldValue.serverTimestamp()});
-      toast('تم إرسال الرد.');
-    } on FirebaseException catch (e) { toast('تعذر إرسال الرد (' + e.code + ').'); }
+    final message = doc.data() ?? {};
+    if (message['requestReply'] != true || message['replyStatus'] == 'replied' ||
+        message['recipientUid'] != uid) {
+      toast('لا يوجد طلب رد متاح على هذه الملاحظة.');
+      return;
+    }
+
+    final title = TextEditingController();
+    final body = TextEditingController();
+    final files = <PlatformFile>[];
+    final recorder = AudioRecorder();
+    String? recordingPath;
+    bool recording = false;
+    bool busy = false;
+    final uploadedRefs = <Reference>[];
+
+    await showModalBottomSheet<void>(
+      context: context, isScrollControlled: true, useSafeArea: true,
+      builder: (sheet) => StatefulBuilder(
+        builder: (ctx, refresh) => Padding(
+          padding: EdgeInsets.fromLTRB(16, 16, 16, MediaQuery.of(ctx).viewInsets.bottom + 16),
+          child: SizedBox(height: MediaQuery.of(ctx).size.height * .72,
+            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              const Text('الرد على الملاحظة', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: navy)),
+              TextField(controller: body, minLines: 3, maxLines: 6,
+                decoration: const InputDecoration(labelText: 'اكتب الرد')),
+              const SizedBox(height: 10),
+              OutlinedButton.icon(
+                onPressed: busy ? null : () async {
+                  try {
+                    if (!recording) {
+                      if (!await recorder.hasPermission()) { toast('يرجى السماح باستخدام الميكروفون.'); return; }
+                      final dir = await getTemporaryDirectory();
+                      recordingPath = dir.path + '/staff_reply_' + DateTime.now().millisecondsSinceEpoch.toString() + '.m4a';
+                      await recorder.start(const RecordConfig(encoder: AudioEncoder.aacLc), path: recordingPath!);
+                      refresh(() => recording = true);
+                    } else {
+                      final path = await recorder.stop();
+                      if (path != null) {
+                        final bytes = await File(path).readAsBytes();
+                        refresh(() {
+                          files.add(PlatformFile(name: 'تسجيل الرد.m4a', size: bytes.length, bytes: bytes, path: path));
+                          recording = false;
+                        });
+                      } else { refresh(() => recording = false); }
+                    }
+                  } catch (_) { toast('تعذر تسجيل الصوت. تحقق من إذن الميكروفون.'); refresh(() => recording = false); }
+                },
+                icon: Icon(recording ? Icons.stop_circle : Icons.mic),
+                label: Text(recording ? 'إيقاف التسجيل وإرفاقه' : 'تسجيل صوتي'),
+              ),
+              OutlinedButton.icon(
+                onPressed: busy ? null : () async {
+                  final result = await FilePicker.platform.pickFiles(allowMultiple: true, withData: true);
+                  if (result != null) refresh(() => files.addAll(result.files.where((f) => f.bytes != null)));
+                },
+                icon: const Icon(Icons.attach_file), label: const Text('إرفاق صورة أو فيديو أو صوت أو ملف'),
+              ),
+              if (files.isNotEmpty) Text('المرفقات: ' + files.map((f) => f.name).join('، '),
+                maxLines: 2, overflow: TextOverflow.ellipsis),
+              const Spacer(),
+              FilledButton.icon(
+                onPressed: busy ? null : () async {
+                  if (recording) { toast('أوقف التسجيل قبل إرسال الرد.'); return; }
+                  if (body.text.trim().isEmpty && files.isEmpty) { toast('اكتب الرد أو أرفق ملفاً.'); return; }
+                  if (files.length > 10 || files.any((f) => f.bytes == null || f.bytes!.lengthInBytes > 20 * 1024 * 1024)) {
+                    toast('الحد الأقصى عشرة مرفقات، وحجم كل مرفق 20 ميغابايت.'); return;
+                  }
+                  refresh(() => busy = true);
+                  try {
+                    final profile = await db.collection('users').doc(uid).get();
+                    final replyRef = doc.reference.collection('replies').doc();
+                    final threadId = (message['threadId'] ?? '').toString();
+                    final attachments = <Map<String, dynamic>>[];
+                    for (final file in files) {
+                      final storageRef = FirebaseStorage.instance.ref(
+                        'staff_message_media/' + threadId + '/' + uid + '/' +
+                        Uri.encodeComponent(replyRef.id + '_' + file.name),
+                      );
+                      final uploaded = await storageRef.putData(
+                        file.bytes!, SettableMetadata(contentType: contentType(file.name)),
+                      );
+                      uploadedRefs.add(storageRef);
+                      attachments.add({
+                        'name': file.name, 'url': await uploaded.ref.getDownloadURL(),
+                        'path': uploaded.ref.fullPath, 'size': file.bytes!.lengthInBytes,
+                        'type': mediaType(file.name),
+                      });
+                    }
+                    await replyRef.set({
+                      'replyId': replyRef.id, 'senderUid': uid,
+                      'senderName': (profile.data()?['displayName'] ?? auth.currentUser?.email ?? 'مستخدم').toString(),
+                      'senderRole': widget.userRole, 'body': body.text.trim(),
+                      'attachments': attachments, 'createdAt': FieldValue.serverTimestamp(),
+                    });
+                    await doc.reference.update({'replyStatus': 'replied', 'lastReplyAt': FieldValue.serverTimestamp()});
+                    if (ctx.mounted) Navigator.pop(sheet);
+                    toast('تم إرسال الرد.');
+                  } on FirebaseException catch (e) {
+                    for (final ref in uploadedRefs) { try { await ref.delete(); } catch (_) {} }
+                    refresh(() => busy = false);
+                    toast('تعذر إرسال الرد (' + e.code + ').');
+                  } catch (e) {
+                    for (final ref in uploadedRefs) { try { await ref.delete(); } catch (_) {} }
+                    refresh(() => busy = false);
+                    toast(e.toString());
+                  }
+                },
+                icon: const Icon(Icons.send), label: Text(busy ? 'جارٍ إرسال الرد...' : 'إرسال الرد'),
+              ),
+            ]),
+          ),
+        ),
+      ),
+    );
+    if (recording) { try { await recorder.stop(); } catch (_) {} }
+    await recorder.dispose();
+    title.dispose();
   }
 
   Future<void> openMessage(DocumentSnapshot<Map<String, dynamic>> doc) async {
@@ -318,11 +414,33 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
                   if (snap.hasError) return const Text('تعذر تحميل الردود.');
                   if (!snap.hasData) return const Center(child: CircularProgressIndicator());
                   if (snap.data!.docs.isEmpty) return const Text('لا توجد ردود حتى الآن.');
-                  return Column(children: snap.data!.docs.map((r) => ListTile(
-                    contentPadding: EdgeInsets.zero, leading: const Icon(Icons.reply),
-                    title: Text((r.data()['senderName'] ?? 'مستخدم').toString()),
-                    subtitle: Text((r.data()['body'] ?? '').toString()),
-                  )).toList());
+                  return Column(children: snap.data!.docs.map((r) {
+                    final replyData = r.data();
+                    final attachments = (replyData['attachments'] as List<dynamic>? ?? []);
+                    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                      ListTile(
+                        contentPadding: EdgeInsets.zero, leading: const Icon(Icons.reply),
+                        title: Text((replyData['senderName'] ?? 'مستخدم').toString()),
+                        subtitle: Text((replyData['body'] ?? '').toString()),
+                      ),
+                      ...attachments.map((raw) {
+                        final attachment = Map<String, dynamic>.from(raw as Map);
+                        return ListTile(
+                          dense: true,
+                          leading: Icon(attachment['type'] == 'image' ? Icons.image :
+                            attachment['type'] == 'video' ? Icons.video_file :
+                            attachment['type'] == 'audio' ? Icons.audio_file : Icons.insert_drive_file),
+                          title: Text((attachment['name'] ?? 'مرفق الرد').toString()),
+                          subtitle: const Text('اضغط لفتح المرفق'),
+                          onTap: () async {
+                            final link = Uri.tryParse((attachment['url'] ?? '').toString());
+                            if (link != null) await launchUrl(link, mode: LaunchMode.externalApplication);
+                          },
+                        );
+                      }),
+                      const Divider(height: 1),
+                    ]);
+                  }).toList());
                 },
               ),
             ])),
