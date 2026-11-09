@@ -183,7 +183,7 @@ exports.cleanupPersonalStaffMessageArchives = onSchedule(
       for (const doc of received.docs) unique.set(doc.id, doc);
 
       const cutoff = now.toMillis() - (24 + days * 24) * 60 * 60 * 1000;
-      const batch = db.batch();
+      let batch = db.batch();
       let writes = 0;
       for (const doc of unique.values()) {
         const message = doc.data() || {};
@@ -195,6 +195,7 @@ exports.cleanupPersonalStaffMessageArchives = onSchedule(
         writes += 1;
         if (writes === 400) {
           await batch.commit();
+          batch = db.batch();
           writes = 0;
         }
       }
