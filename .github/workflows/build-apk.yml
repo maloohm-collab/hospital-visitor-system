@@ -97,6 +97,9 @@ jobs:
           sed -i '/^plugins {/a\    id("com.google.gms.google-services") version "4.4.3" apply false' android/settings.gradle.kts
           sed -i '/^plugins {/a\    id("com.google.gms.google-services")' android/app/build.gradle.kts
 
+      - name: Validate Firebase Cloud Functions syntax
+        run: node --check functions/index.js
+
       - name: Resolve dependencies
         run: flutter pub get
 
