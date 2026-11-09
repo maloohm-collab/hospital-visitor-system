@@ -166,8 +166,8 @@ exports.cleanupPersonalStaffMessageArchives = onSchedule(
       .get();
 
     for (const user of users.docs) {
-      const settingsSnap = await user.ref
-        .collection("message_archive_preferences").doc("settings").get();
+      const settingsSnap = await db.collection("message_archive_preferences")
+        .doc(user.id).get();
       if (!settingsSnap.exists) continue;
       const settings = settingsSnap.data() || {};
       if (settings.autoDeleteEnabled !== true) continue;
