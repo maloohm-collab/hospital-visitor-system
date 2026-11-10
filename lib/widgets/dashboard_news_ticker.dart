@@ -124,20 +124,6 @@ class _DashboardNewsTickerState extends State<DashboardNewsTicker>
   Future<void> _openEntry(_TickerEntry entry) async {
     if (!mounted) return;
     if (entry.isMessage) {
-      final recipientUid = (entry.data['recipientUid'] ?? '').toString();
-      final senderUid = (entry.data['senderUid'] ?? '').toString();
-      if (recipientUid != _uid && senderUid != _uid) {
-        await Navigator.of(context).push(MaterialPageRoute(
-          builder: (_) => NotificationDetailsScreen(data: {
-            'title': entry.title,
-            'body': entry.body,
-            'priority': entry.priority,
-            'createdAt': entry.data['createdAt'],
-            'senderName': entry.data['senderName'] ?? 'المشرف',
-          }),
-        ));
-        return;
-      }
       if (entry.notificationId != null) {
         try {
           await FirebaseFirestore.instance.collection('notifications')
