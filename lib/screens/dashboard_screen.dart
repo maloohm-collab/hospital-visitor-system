@@ -126,7 +126,7 @@ class DashboardScreen extends StatelessWidget {
         ),
         const SizedBox(height: 18),
         DashboardNewsTicker(userRole: userRole),
-        const SizedBox(height: 18),
+        const SizedBox(height: 6),
       ],
     );
   }
