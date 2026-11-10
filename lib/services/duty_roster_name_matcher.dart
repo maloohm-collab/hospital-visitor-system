@@ -1,20 +1,20 @@
 /// Flexible Arabic name matching for the personal duty-roster highlight.
-/// A match must include the first name plus at least one other name segment.
+/// The first name is the anchor; any other one or more name segments may match.
 /// Ambiguous top-scoring matches are deliberately not highlighted.
 class DutyRosterNameMatcher {
   static String normalize(String value) {
     return value
         .toLowerCase()
-        .replaceAll(RegExp(r'[\\u064B-\\u065F\\u0670\\u0640]'), '')
+        .replaceAll(RegExp(r'[\u064B-\u065F\u0670\u0640]'), '')
         .replaceAll('أ', 'ا')
         .replaceAll('إ', 'ا')
         .replaceAll('آ', 'ا')
         .replaceAll('ٱ', 'ا')
         .replaceAll('ى', 'ي')
         .replaceAll('ة', 'ه')
-        .replaceAll(RegExp(r'[^\\p{L}\\p{N}]+', unicode: true), ' ')
+        .replaceAll(RegExp(r'[^ء-ي0-9a-zA-Z]+'), ' ')
         .trim()
-        .replaceAll(RegExp(r'\\s+'), ' ');
+        .replaceAll(RegExp(r'\s+'), ' ');
   }
 
   static int? uniqueBestMatchIndex({
@@ -41,8 +41,8 @@ class DutyRosterNameMatcher {
           .toSet();
       if (!rosterTokens.contains(firstName)) continue;
 
-      final score = 1 +
-          rosterTokens.intersection(remainingNames).length;
+      // First name plus any other matching segment, not necessarily the last.
+      final score = 1 + rosterTokens.intersection(remainingNames).length;
       if (score < 2) continue;
 
       if (score > bestScore) {
