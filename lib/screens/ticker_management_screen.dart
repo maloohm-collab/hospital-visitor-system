@@ -29,9 +29,20 @@ class _TickerManagementScreenState extends State<TickerManagementScreen> {
     for (final doc in notices.docs) {
       final data = doc.data();
       final kind = data['kind'];
+      final roles = data['recipientRoles'];
+      final validAudience = roles is List
+          ? ((roles.length == 1 && roles.contains('security_officer')) ||
+              (roles.length == 3 && roles.toSet().containsAll(
+                const {'security_officer', 'supervisor', 'admin'})))
+          : (data['recipientRole'] == 'security_officer' || data['broadcastToAll'] == true);
       if (!((kind == 'ticker_announcement' || kind == null) &&
-          data['senderName'] == 'الإدارة' && data['tickerVisible'] != false)) continue;
-      final id = (data['tickerGroupId'] ?? doc.id).toString();
+          data['senderName'] == 'الإدارة' && data['tickerVisible'] != false &&
+          validAudience)) continue;
+      final legacyCreated = data['createdAt'];
+      final legacyGroup = (data['senderUid'] ?? '') .toString() + ':' +
+          (data['title'] ?? '').toString() + ':' + (data['body'] ?? '').toString() + ':' +
+          (legacyCreated is Timestamp ? legacyCreated.millisecondsSinceEpoch.toString() : doc.id);
+      final id = (data['tickerGroupId'] ?? legacyGroup).toString();
       final key = 'notice:' + id;
       final entry = grouped.putIfAbsent(key, () => _TickerAdminEntry(
         key: key, message: false, data: data, refs: []));
