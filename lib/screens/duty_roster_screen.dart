@@ -1816,6 +1816,25 @@ class _DutyRosterScreenState extends State<DutyRosterScreen>
               width: isCurrentUser ? 1.8 : 1,
             )),
           child: Padding(padding: const EdgeInsets.all(13), child: Column(children: [
+          if (isCurrentUser)
+            Container(
+              width: double.infinity,
+              margin: const EdgeInsets.only(bottom: 9),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1769AA),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Text(
+                'هذا اسمك — موقعك / وظيفتك في الكشف',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
           Row(children: [
             CircleAvatar(radius: 13, child: Text((i+1).toString())),
             const SizedBox(width: 8),
