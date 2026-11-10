@@ -1279,6 +1279,18 @@ class _DutyRosterScreenState extends State<DutyRosterScreen>
   Uint8List _wordBytes(Map<String, dynamic> data) {
     final blocks = Map<String, dynamic>.from(data['shifts'] ?? {});
     final block = Map<String, dynamic>.from(blocks[shift] ?? {});
+    final assignments = (block['assignments'] as List? ?? const []);
+    final clinics = (block['clinicAssignments'] as List? ?? const []);
+    final personalCandidates = <String>[
+      ...assignments.map((value) =>
+          (Map<String, dynamic>.from(value as Map)['officer'] ?? '').toString()),
+      ...clinics.map((value) =>
+          (Map<String, dynamic>.from(value as Map)['officer'] ?? '').toString()),
+    ];
+    final personalMatchIndex = DutyRosterNameMatcher.uniqueBestMatchIndex(
+      accountName: _currentUserName,
+      rosterNames: personalCandidates,
+    );
     String rtf(String value) {
       final out = StringBuffer();
       for (final unit in value.codeUnits) {
@@ -1308,8 +1320,10 @@ class _DutyRosterScreenState extends State<DutyRosterScreen>
           rtf(value) + r'\par}';
     }
 
-    String cellDefinition(int edge) =>
-        r'\clvertalc\clbrdrt\brdrs\brdrw8\clbrdrl\brdrs\brdrw8' +
+    String cellDefinition(int edge, {bool highlight = false}) =>
+        r'\clvertalc' +
+        (highlight ? r'\clcbpat2' : '') +
+        r'\clbrdrt\brdrs\brdrw8\clbrdrl\brdrs\brdrw8' +
         r'\clbrdrb\brdrs\brdrw8\clbrdrr\brdrs\brdrw8\cellx' +
         edge.toString();
 
@@ -1318,12 +1332,17 @@ class _DutyRosterScreenState extends State<DutyRosterScreen>
         (header ? '22\\b ' : '22\\b0 ') +
         rtf(value) + r'\cell}';
 
-    String tableRow(List<String> values, List<int> widths, {bool header = false}) {
+    String tableRow(
+      List<String> values,
+      List<int> widths, {
+      bool header = false,
+      bool highlight = false,
+    }) {
       final row = StringBuffer(r'{\trowd\trgaph100\trleft0\trkeep\trqc');
       var edge = 0;
       for (final width in widths) {
         edge += width;
-        row.write(cellDefinition(edge));
+        row.write(cellDefinition(edge, highlight: highlight));
       }
       for (final value in values) {
         row.write(cellContent(value, header: header));
@@ -1335,6 +1354,7 @@ class _DutyRosterScreenState extends State<DutyRosterScreen>
     final output = StringBuffer(
       r'{\rtf1\ansi\ansicpg1256\uc1\deff0'
       r'{\fonttbl{\f0\fnil\fcharset178 Tahoma;}}'
+      r'{\colortbl;\red255\green255\blue255;\red220\green238\blue255;}'
       r'\viewkind4\lang1025\widowctrl'
       r'\paperw16838\paperh11906\landscape\margl680\margr680\margt560\margb560'
     );
@@ -1345,14 +1365,13 @@ class _DutyRosterScreenState extends State<DutyRosterScreen>
 
     const widths = [700, 6500, 6500];
     output.write(tableRow(['ت', 'اسم ضابط الأمن', 'الموقع / الوظيفة'], widths, header: true));
-    final assignments = (block['assignments'] as List? ?? []);
     for (var i = 0; i < assignments.length; i++) {
       final item = Map<String, dynamic>.from(assignments[i]);
       output.write(tableRow([
         (i + 1).toString(),
         (item['officer'] ?? '').toString(),
         (item['location'] ?? '').toString(),
-      ], widths));
+      ], widths, highlight: personalMatchIndex == i));
     }
 
     void addNames(String title, List values) {
@@ -1363,7 +1382,6 @@ class _DutyRosterScreenState extends State<DutyRosterScreen>
     addNames('المجازون سنوياً', block['annualNames'] as List? ?? []);
     addNames('قائمة سوات', block['specialNames'] as List? ?? []);
 
-    final clinics = (block['clinicAssignments'] as List? ?? []);
     if (clinics.isNotEmpty) {
       output.write(paragraph('وظائف العيادات', size: 23, bold: true));
       const clinicWidths = [7000, 6700];
@@ -1373,7 +1391,8 @@ class _DutyRosterScreenState extends State<DutyRosterScreen>
         output.write(tableRow([
           (item['officer'] ?? '').toString(),
           (item['location'] ?? '').toString(),
-        ], clinicWidths));
+        ], clinicWidths,
+            highlight: personalMatchIndex == assignments.length + clinics.indexOf(value)));
       }
     }
     output.write(paragraph('ملاحظات المشرف الإداري', size: 23, bold: true));
