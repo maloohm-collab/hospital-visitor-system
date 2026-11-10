@@ -258,7 +258,7 @@ class _DashboardNewsTickerState extends State<DashboardNewsTicker>
             return Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                if (tickerText.isNotEmpty) _tickerBar(entries, tickerText),
+                if (tickerText.isNotEmpty) _tickerBar(entries),
                 if (_isAdmin) ...[
                   const SizedBox(height: 8),
                   Align(
@@ -293,7 +293,7 @@ class _DashboardNewsTickerState extends State<DashboardNewsTicker>
         )
       : const SizedBox.shrink();
 
-  Widget _tickerBar(List<_TickerEntry> entries, String value) {
+  Widget _tickerBar(List<_TickerEntry> entries) {
     const textStyle = TextStyle(
       color: Colors.white, fontSize: 15, fontWeight: FontWeight.w800,
     );
