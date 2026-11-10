@@ -350,10 +350,10 @@ class _DashboardNewsTickerState extends State<DashboardNewsTicker>
                       return AnimatedBuilder(
                         animation: _tickerController,
                         builder: (context, child) => Transform.translate(
-                          // ابدأ بعرض بداية الجملة من يمين المساحة، ثم حرّكها لليسار.
+                          // اعكس المسار: تدخل الملاحظات من يسار الشاشة وتتحرك نحو اليمين.
+                          // تكرار المحتوى يجعل الانتقال عند نهاية الدورة متصلاً بلا قفزة.
                           offset: Offset(
-                            constraints.maxWidth - segmentWidth -
-                                (_tickerController.value * segmentWidth),
+                            -segmentWidth + (_tickerController.value * segmentWidth),
                             0,
                           ),
                           child: child,
