@@ -14,6 +14,7 @@ import 'local_operations_log_screen.dart';
 import 'admin_approval_screen.dart';
 import 'report_center_screen.dart';
 import 'notifications_screen.dart';
+import 'ticker_management_screen.dart';
 import 'staff_messages_screen.dart';
 import 'emergency_duty_screen.dart';
 import 'work_location_screen.dart';
@@ -238,6 +239,14 @@ class DashboardScreen extends StatelessWidget {
           title: 'سجل الزيارات',
           color: const Color(0xFF27865B),
           onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => VisitorLogsScreen(userRole: userRole))),
+        ),
+        _AdminAction(
+          icon: Icons.campaign_rounded,
+          title: 'إدارة ملاحظات الشريط الإخباري',
+          color: const Color(0xFF6B2632),
+          onTap: () => Navigator.push(context, MaterialPageRoute(
+            builder: (_) => const TickerManagementScreen(userRole: 'admin'),
+          )),
         ),
       ]);
     }
