@@ -173,9 +173,13 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
                     refresh(() => busy = true);
                     try {
                       final senderSnap = await db.collection('users').doc(uid).get();
-                      final sender = senderSnap.data() ?? {};
+                      final sender = senderSnap.data() ?? <String, dynamic>{};
+                      final senderRole = (sender['role'] ?? '').toString();
+                      if (!['admin', 'supervisor', 'security_officer'].contains(senderRole)) {
+                        throw StateError('تعذر التحقق من دور حساب المرسل. أعد تسجيل الدخول ثم حاول مجدداً.');
+                      }
                       String currentLocation = '';
-                      if (widget.userRole == 'security_officer') {
+                      if (senderRole == 'security_officer') {
                         final pointer = await db.collection('active_work_shifts').doc(uid).get();
                         final shiftId = pointer.data()?['shiftId'];
                         if (shiftId is String && shiftId.isNotEmpty) {
@@ -194,8 +198,8 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
                           'threadId': threadId,
                           'senderUid': uid,
                           'senderName': personName(sender),
-                          'senderRole': widget.userRole,
-                          'senderLabel': roleSignature(widget.userRole, sender),
+                          'senderRole': senderRole,
+                          'senderLabel': roleSignature(senderRole, sender),
                           'recipientUid': recipient.id,
                           'recipientName': personName(recipient.data()),
                           'recipientRole': recipient.data()['role'],
@@ -285,13 +289,18 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
                     refresh(() => busy = true);
                     try {
                       final profile = await db.collection('users').doc(uid).get();
+                      final profileData = profile.data() ?? <String, dynamic>{};
+                      final replySenderRole = (profileData['role'] ?? '').toString();
+                      if (!['admin', 'supervisor', 'security_officer'].contains(replySenderRole)) {
+                        throw StateError('تعذر التحقق من دور حسابك لإرسال الرد.');
+                      }
                       final replyRef = doc.reference.collection('replies').doc();
                       await replyRef.set({
                         'replyId': replyRef.id,
                         'senderUid': uid,
-                        'senderName': personName(profile.data() ?? {}),
-                        'senderRole': widget.userRole,
-                        'senderLabel': roleSignature(widget.userRole, profile.data() ?? {}),
+                        'senderName': personName(profileData),
+                        'senderRole': replySenderRole,
+                        'senderLabel': roleSignature(replySenderRole, profileData),
                         'body': body.text.trim(),
                         'attachments': <Map<String, dynamic>>[],
                         'createdAt': FieldValue.serverTimestamp(),
