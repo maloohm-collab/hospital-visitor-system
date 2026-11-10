@@ -25,12 +25,21 @@ class _AccountProfileScreenState extends State<AccountProfileScreen> {
   final _name = TextEditingController();
   final _phone = TextEditingController();
   final _photoUrl = TextEditingController();
+  final _emailController = TextEditingController();
+  final _newPassword = TextEditingController();
+  final _currentPassword = TextEditingController();
+  final _adminPin = TextEditingController();
+  final _adminPinConfirm = TextEditingController();
   final _pin = TextEditingController();
   final _pinConfirm = TextEditingController();
   bool _loading = true;
   bool _saving = false;
   bool _hasPin = false;
+  bool _hasAdminPin = false;
   String _email = '';
+  String _savedPhone = '';
+  String _savedPhoto = '';
+  String _savedName = '';
   String _role = '';
 
   @override
@@ -44,6 +53,11 @@ class _AccountProfileScreenState extends State<AccountProfileScreen> {
     _name.dispose();
     _phone.dispose();
     _photoUrl.dispose();
+    _emailController.dispose();
+    _newPassword.dispose();
+    _currentPassword.dispose();
+    _adminPin.dispose();
+    _adminPinConfirm.dispose();
     _pin.dispose();
     _pinConfirm.dispose();
     super.dispose();
@@ -59,17 +73,24 @@ class _AccountProfileScreenState extends State<AccountProfileScreen> {
       final snapshot = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
       final data = snapshot.data() ?? <String, dynamic>{};
       _name.text = (data['displayName'] as String? ?? user.displayName ?? '').trim();
+      _savedName = _name.text;
       _phone.text = (data['phone'] as String? ?? '').trim();
+      _savedPhone = _phone.text;
       final localPhoto = await _secureStorage.read(
         key: 'hospital_visitor_photo_path_' + user.uid,
       );
       _hasPin = await _secureStorage.read(
         key: 'hospital_visitor_pin_' + user.uid,
       ) != null;
+      _hasAdminPin = await _secureStorage.read(
+        key: 'hospital_visitor_admin_pin_' + user.uid,
+      ) != null;
       _photoUrl.text = localPhoto != null && await File(localPhoto).exists()
           ? localPhoto
           : (data['photoURL'] as String? ?? '').trim();
-      _email = (data['email'] as String? ?? user.email ?? '').trim();
+      _savedPhoto = _photoUrl.text;
+      _email = (user.email ?? data['email'] as String? ?? '').trim();
+      _emailController.text = _email;
       _role = data['role'] as String? ?? '';
     } catch (_) {
       if (mounted) {
@@ -171,47 +192,188 @@ class _AccountProfileScreenState extends State<AccountProfileScreen> {
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
     final user = FirebaseAuth.instance.currentUser;
+    if (user == null || _name.text.trim() == _savedName) return;
+    setState(() => _saving = true);
+    try {
+      await FirebaseFirestore.instance.collection('users').doc(user.uid).update({
+        'displayName': _name.text.trim(),
+      });
+      await user.updateDisplayName(_name.text.trim());
+      _savedName = _name.text.trim();
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('تم حفظ الاسم بنجاح.')),
+      );
+    } on FirebaseException catch (error) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('تعذر حفظ الاسم (${error.code}).')),
+      );
+    } catch (_) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('تعذر حفظ الاسم. حاول مجددًا.')),
+      );
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  Future<void> _savePhone() async {
+    final value = _phone.text.trim();
+    if (value.isNotEmpty && value.replaceAll(RegExp(r'[^0-9+]'), '').length < 9) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('أدخل رقم هاتف صحيحًا أو اترك الحقل فارغًا.')),
+      );
+      return;
+    }
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+    setState(() => _saving = true);
+    try {
+      await FirebaseFirestore.instance.collection('users').doc(user.uid).update({'phone': value});
+      _savedPhone = value;
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('تم حفظ رقم الهاتف دون توثيق.')),
+      );
+    } catch (_) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('تعذر حفظ رقم الهاتف.')),
+      );
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  Future<void> _savePhoto() async {
+    final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
     setState(() => _saving = true);
     try {
       var photo = _photoUrl.text.trim();
-      // ترحيل أي صورة محلية قديمة إلى صورة مضمنة صغيرة داخل ملف الموظف
-      // كي تظهر على أجهزة الإدارة دون Firebase Storage أو خدمة تخزين خارجية.
       if (photo.startsWith('/') && await File(photo).exists()) {
         photo = _sharedPhotoData(File(photo));
       }
-      final updates = <String, dynamic>{
-        'displayName': _name.text.trim(),
-        'phone': _phone.text.trim(),
-        'photoURL': photo,
-      };
-      await _secureStorage.delete(
-        key: 'hospital_visitor_photo_path_' + user.uid,
+      await FirebaseFirestore.instance.collection('users').doc(user.uid).update({'photoURL': photo});
+      await _secureStorage.delete(key: 'hospital_visitor_photo_path_' + user.uid);
+      _savedPhoto = photo;
+      if (mounted) setState(() => _photoUrl.text = photo);
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('تم حفظ الصورة الشخصية.')),
       );
-      await FirebaseFirestore.instance.collection('users').doc(user.uid).update(updates);
-      if (mounted && photo != _photoUrl.text.trim()) {
-        setState(() => _photoUrl.text = photo);
-      }
-      await user.updateDisplayName(_name.text.trim());
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('تم حفظ بيانات الحساب.')),
-        );
-      }
-    } on FirebaseException catch (error) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(error.code == 'permission-denied'
-              ? 'رفضت قواعد Firestore التعديل. انشر آخر نسخة من firestore.rules.'
-              : 'تعذر حفظ البيانات (${error.code}).')),
-        );
-      }
     } catch (_) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('تعذر حفظ البيانات. تحقق من الاتصال ثم حاول مجددًا.')),
-        );
-      }
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('تعذر حفظ الصورة الشخصية.')),
+      );
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  Future<User> _reauthenticateAdmin() async {
+    final user = FirebaseAuth.instance.currentUser;
+    final password = _currentPassword.text;
+    if (user == null || user.email == null || password.isEmpty) {
+      throw FirebaseAuthException(code: 'requires-recent-login');
+    }
+    final credential = EmailAuthProvider.credential(email: user.email!, password: password);
+    await user.reauthenticateWithCredential(credential);
+    return user;
+  }
+
+  Future<void> _saveEmail() async {
+    final email = _emailController.text.trim();
+    if (email.isEmpty || !RegExp(r'^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$').hasMatch(email)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('أدخل بريدًا إلكترونيًا صحيحًا.')),
+      );
+      return;
+    }
+    if (email == _email) return;
+    setState(() => _saving = true);
+    try {
+      final user = await _reauthenticateAdmin();
+      await user.updateEmail(email);
+      _email = email;
+      _currentPassword.clear();
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('تم تحديث البريد الإلكتروني.')),
+      );
+    } on FirebaseAuthException catch (error) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.code == 'wrong-password'
+            ? 'كلمة المرور الحالية غير صحيحة.'
+            : 'تعذر تحديث البريد الإلكتروني (${error.code}).')),
+      );
+    } catch (_) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('تعذر تحديث البريد الإلكتروني.')),
+      );
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  Future<void> _savePassword() async {
+    if (_newPassword.text.length < 6) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('كلمة المرور الجديدة يجب أن تكون 6 أحرف أو أرقام على الأقل.')),
+      );
+      return;
+    }
+    setState(() => _saving = true);
+    try {
+      final user = await _reauthenticateAdmin();
+      await user.updatePassword(_newPassword.text);
+      _newPassword.clear();
+      _currentPassword.clear();
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('تم تحديث كلمة المرور.')),
+      );
+    } on FirebaseAuthException catch (error) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.code == 'wrong-password'
+            ? 'كلمة المرور الحالية غير صحيحة.'
+            : 'تعذر تحديث كلمة المرور (${error.code}).')),
+      );
+    } catch (_) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('تعذر تحديث كلمة المرور.')),
+      );
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  Future<void> _saveAdminPin() async {
+    final pin = _adminPin.text.trim();
+    if (!RegExp(r'^[0-9]{5}$').hasMatch(pin)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('رمز الإدارة يجب أن يتكون من 5 أرقام بالضبط.')),
+      );
+      return;
+    }
+    if (pin != _adminPinConfirm.text.trim()) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('رمزا الإدارة غير متطابقين.')),
+      );
+      return;
+    }
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+    setState(() => _saving = true);
+    try {
+      await _secureStorage.write(
+        key: 'hospital_visitor_admin_pin_' + user.uid,
+        value: pin,
+      );
+      _adminPin.clear();
+      _adminPinConfirm.clear();
+      if (mounted) setState(() => _hasAdminPin = true);
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('تم حفظ رمز تأكيد الإدارة على هذا الجهاز.')),
+      );
+    } catch (_) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('تعذر حفظ رمز الإدارة.')),
+      );
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -361,12 +523,25 @@ class _AccountProfileScreenState extends State<AccountProfileScreen> {
                             hintText: '07XXXXXXXX',
                             prefixIcon: Icon(Icons.phone_outlined),
                           ),
-                          validator: (value) => (value ?? '').replaceAll(RegExp(r'[^0-9+]'), '').length < 9
-                              ? 'أدخل رقم هاتف صحيحًا'
-                              : null,
+                          validator: (_) => null,
                         ),
                         const SizedBox(height: 14),
-                        TextFormField(
+                        if (_role == 'admin') ...[
+                          TextFormField(
+                            controller: _emailController,
+                            keyboardType: TextInputType.emailAddress,
+                            decoration: const InputDecoration(
+                              labelText: 'البريد الإلكتروني',
+                              prefixIcon: Icon(Icons.email_outlined),
+                            ),
+                          ),
+                          if (_emailController.text.trim() != _email)
+                            Align(alignment: Alignment.centerLeft, child: TextButton.icon(
+                              onPressed: _saving ? null : _saveEmail,
+                              icon: const Icon(Icons.save_outlined),
+                              label: const Text('حفظ البريد الإلكتروني'),
+                            )),
+                        ] else TextFormField(
                           initialValue: _email,
                           readOnly: true,
                           decoration: const InputDecoration(
@@ -380,6 +555,18 @@ class _AccountProfileScreenState extends State<AccountProfileScreen> {
                           icon: const Icon(Icons.add_a_photo_outlined),
                           label: const Text('اختيار أو تغيير الصورة'),
                         ),
+                        if (_photoUrl.text.trim() != _savedPhoto)
+                          Align(alignment: Alignment.centerLeft, child: TextButton.icon(
+                            onPressed: _saving ? null : _savePhoto,
+                            icon: const Icon(Icons.save_outlined),
+                            label: const Text('حفظ الصورة'),
+                          )),
+                        if (_phone.text.trim() != _savedPhone)
+                          Align(alignment: Alignment.centerLeft, child: TextButton.icon(
+                            onPressed: _saving ? null : _savePhone,
+                            icon: const Icon(Icons.save_outlined),
+                            label: const Text('حفظ رقم الهاتف'),
+                          )),
                         if (_photoUrl.text.trim().isNotEmpty) ...[
                           const SizedBox(height: 8),
                           OutlinedButton.icon(
@@ -411,6 +598,40 @@ class _AccountProfileScreenState extends State<AccountProfileScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
+                        if (_role == 'admin') ...[
+                          const Text('إعدادات حساب الإدارة', style: TextStyle(color: _navy, fontSize: 19, fontWeight: FontWeight.w900)),
+                          const SizedBox(height: 8),
+                          const Text('أدخل كلمة المرور الحالية لتأكيد تغيير البريد أو كلمة المرور.', style: TextStyle(color: Color(0xFF526579), fontSize: 13)),
+                          const SizedBox(height: 12),
+                          TextField(
+                            controller: _currentPassword,
+                            obscureText: true,
+                            decoration: const InputDecoration(labelText: 'كلمة المرور الحالية', prefixIcon: Icon(Icons.lock_outline)),
+                          ),
+                          const SizedBox(height: 12),
+                          TextField(
+                            controller: _newPassword,
+                            obscureText: true,
+                            decoration: const InputDecoration(labelText: 'كلمة المرور الجديدة', prefixIcon: Icon(Icons.password_outlined)),
+                          ),
+                          if (_newPassword.text.isNotEmpty)
+                            Align(alignment: Alignment.centerLeft, child: TextButton.icon(
+                              onPressed: _saving ? null : _savePassword,
+                              icon: const Icon(Icons.save_outlined),
+                              label: const Text('حفظ كلمة المرور'),
+                            )),
+                          const Divider(height: 24),
+                          Text('رمز تأكيد الإدارة (5 أرقام)', style: const TextStyle(color: _navy, fontWeight: FontWeight.w800)),
+                          const SizedBox(height: 5),
+                          Text(_hasAdminPin ? 'يوجد رمز إدارة محفوظ على هذا الجهاز. أدخل رمزًا جديدًا لتغييره.' : 'يمكنك تعيين رمز الإدارة الآن أو لاحقًا.', style: const TextStyle(color: Color(0xFF526579), fontSize: 12)),
+                          const SizedBox(height: 10),
+                          TextField(controller: _adminPin, obscureText: true, keyboardType: TextInputType.number, inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(5)], decoration: const InputDecoration(labelText: 'رمز الإدارة الجديد (5 أرقام)', prefixIcon: Icon(Icons.admin_panel_settings_outlined))),
+                          const SizedBox(height: 10),
+                          TextField(controller: _adminPinConfirm, obscureText: true, keyboardType: TextInputType.number, inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(5)], decoration: const InputDecoration(labelText: 'تأكيد رمز الإدارة')),
+                          if (_adminPin.text.isNotEmpty || _adminPinConfirm.text.isNotEmpty)
+                            FilledButton.icon(onPressed: _saving ? null : _saveAdminPin, icon: const Icon(Icons.save_outlined), label: const Text('حفظ رمز الإدارة')),
+                          const Divider(height: 28),
+                        ],
                         const Text(
                           'رمز الدخول السريع (PIN)',
                           style: TextStyle(
@@ -491,14 +712,15 @@ class _AccountProfileScreenState extends State<AccountProfileScreen> {
                     ),
                   ),
                   const SizedBox(height: 22),
-                  FilledButton.icon(
-                    onPressed: _saving ? null : _save,
-                    icon: _saving
-                        ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                        : const Icon(Icons.save_rounded),
-                    label: Text(_saving ? 'جارٍ الحفظ...' : 'حفظ بيانات الحساب'),
-                    style: FilledButton.styleFrom(backgroundColor: _teal),
-                  ),
+                  if (_name.text.trim() != _savedName)
+                    FilledButton.icon(
+                      onPressed: _saving ? null : _save,
+                      icon: _saving
+                          ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                          : const Icon(Icons.save_rounded),
+                      label: Text(_saving ? 'جارٍ الحفظ...' : 'حفظ الاسم'),
+                      style: FilledButton.styleFrom(backgroundColor: _teal),
+                    ),
                   const SizedBox(height: 12),
                   const Text(
                     'لا يمكن تعديل الدور أو حالة الحساب من هذه الشاشة؛ هذه الصلاحيات للإدارة فقط.',
