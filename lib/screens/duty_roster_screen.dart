@@ -15,6 +15,7 @@ import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../data/duty_roster_pdf.dart';
 import '../data/duty_roster_catalog.dart';
+import '../services/duty_roster_name_matcher.dart';
 import '../widgets/app_search_field.dart';
 import '../services/duty_roster_image_import_service.dart';
 import 'duty_roster_import_review_screen.dart';
@@ -45,6 +46,7 @@ class _DutyRosterScreenState extends State<DutyRosterScreen>
   bool busy = false;
   bool _loaded = false;
   bool _publishing = false;
+  String _currentUserName = '';
   final Map<String, Timer> _autosaveTimers = {};
   final Map<String, String> _autosaveDateKeys = {};
   String _loadedShift = 'A';
@@ -84,6 +86,7 @@ class _DutyRosterScreenState extends State<DutyRosterScreen>
           _reloadForSelectedShift();
         }
       });
+    _loadCurrentUserName();
     _load();
   }
 
@@ -524,6 +527,20 @@ class _DutyRosterScreenState extends State<DutyRosterScreen>
     );
     controller.dispose();
     return selected;
+  }
+
+  Future<void> _loadCurrentUserName() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+    _currentUserName = (user.displayName ?? '').trim();
+    try {
+      final profile = await db.collection('users').doc(user.uid).get();
+      final savedName = (profile.data()?['displayName'] ?? '').toString().trim();
+      if (savedName.isNotEmpty) _currentUserName = savedName;
+    } catch (_) {
+      // اسم Firebase Auth يبقى بديلاً إذا تعذر تحميل ملف المستخدم.
+    }
+    if (mounted) setState(() {});
   }
 
   Future<void> _load() async {
@@ -1752,6 +1769,18 @@ class _DutyRosterScreenState extends State<DutyRosterScreen>
     final b = saved is Map ? Map<String,dynamic>.from(saved) : <String,dynamic>{};
     final list = readOnly ? (b['assignments'] as List? ?? []).map((e) => Map<String,dynamic>.from(e)).toList() : rows[s]!;
     final savedClinicRows = (b['clinicAssignments'] as List? ?? clinicRows);
+    final identityCandidates = <String>[
+      ...list.map((row) => (row['officer'] ?? '').toString()),
+      if (s == 'A')
+        ...savedClinicRows.map((row) =>
+            (Map<String, dynamic>.from(row as Map)['officer'] ?? '').toString()),
+    ];
+    final matchedIdentityIndex = readOnly
+        ? DutyRosterNameMatcher.uniqueBestMatchIndex(
+            accountName: _currentUserName,
+            rosterNames: identityCandidates,
+          )
+        : null;
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       if (!readOnly)
         const Padding(
@@ -1776,11 +1805,16 @@ class _DutyRosterScreenState extends State<DutyRosterScreen>
           textAlign: TextAlign.center, style: const TextStyle(color: navy, fontWeight: FontWeight.bold))),
       ...List.generate(list.length, (i) {
         final r = list[i]; final n = (r['officer'] ?? '').toString(); final l = (r['location'] ?? '').toString();
+        final isCurrentUser = readOnly && matchedIdentityIndex == i;
         return Card(
+          color: isCurrentUser ? const Color(0xFFDCEEFF) : Colors.white,
           margin: const EdgeInsets.only(bottom: 14),
-          elevation: 1.5,
+          elevation: isCurrentUser ? 3 : 1.5,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(13),
-            side: const BorderSide(color: Color(0xFFDCE4EC))),
+            side: BorderSide(
+              color: isCurrentUser ? const Color(0xFF368BD2) : const Color(0xFFDCE4EC),
+              width: isCurrentUser ? 1.8 : 1,
+            )),
           child: Padding(padding: const EdgeInsets.all(13), child: Column(children: [
           Row(children: [
             CircleAvatar(radius: 13, child: Text((i+1).toString())),
@@ -1906,11 +1940,33 @@ class _DutyRosterScreenState extends State<DutyRosterScreen>
                     : clinicRows[index];
                 final officer = (clinic['officer'] ?? '').toString();
                 final location = (clinic['location'] ?? '').toString();
+                final isCurrentClinicUser = readOnly &&
+                    matchedIdentityIndex == list.length + index;
                 return Card(
+                  color: isCurrentClinicUser ? const Color(0xFFDCEEFF) : Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    side: BorderSide(
+                      color: isCurrentClinicUser
+                          ? const Color(0xFF368BD2)
+                          : const Color(0xFFDCE4EC),
+                      width: isCurrentClinicUser ? 1.8 : 1,
+                    ),
+                  ),
                   child: ListTile(
                     dense: true,
+                    tileColor: isCurrentClinicUser ? const Color(0xFFDCEEFF) : null,
                     title: Text(location, style: const TextStyle(fontWeight: FontWeight.w600)),
-                    subtitle: Text(officer.isEmpty ? 'لم يتم تحديد الموظف' : officer),
+                    subtitle: Text(
+                      officer.isEmpty ? 'لم يتم تحديد الموظف' : officer,
+                      style: TextStyle(
+                        fontWeight: isCurrentClinicUser ? FontWeight.w900 : FontWeight.normal,
+                        color: isCurrentClinicUser ? const Color(0xFF174C7A) : null,
+                      ),
+                    ),
+                    leading: isCurrentClinicUser
+                        ? const Icon(Icons.person_pin_circle, color: Color(0xFF1769AA))
+                        : null,
                     trailing: readOnly ? null : IconButton(
                       tooltip: 'استبدال موظف العيادة',
                       icon: const Icon(Icons.swap_horiz, color: navy),
