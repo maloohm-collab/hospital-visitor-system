@@ -1074,7 +1074,7 @@ service cloud.firestore {
         );
 
       allow get, list: if isMessageParticipant()
-        || (isActiveAdmin() && resource.data.showOnTicker == true);
+        || (isActiveUser() && resource.data.showOnTicker == true);
 
       // Admins may edit or hide published supervisor ticker broadcasts.
       allow update: if (
@@ -1115,7 +1115,7 @@ service cloud.firestore {
           && request.resource.data.replyStatus == 'replied'
           && request.resource.data.lastReplyAt == request.time
         )
-      );
+      ));
 
       allow delete: if false;
 
