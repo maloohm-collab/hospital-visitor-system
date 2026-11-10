@@ -338,11 +338,10 @@ class _AccountProfileScreenState extends State<AccountProfileScreen> {
     setState(() => _saving = true);
     try {
       final user = await _reauthenticateAdmin();
-      await user.updateEmail(email);
-      _email = email;
+      await user.verifyBeforeUpdateEmail(email);
       _currentPassword.clear();
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('تم تحديث البريد الإلكتروني.')),
+        const SnackBar(content: Text('أرسلنا رسالة تحقق إلى البريد الجديد. أكمل التحقق لتأكيد تغييره.')),
       );
     } on FirebaseAuthException catch (error) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(
