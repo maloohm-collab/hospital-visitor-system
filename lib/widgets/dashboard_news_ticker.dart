@@ -29,7 +29,7 @@ class _DashboardNewsTickerState extends State<DashboardNewsTicker>
     _notifications = FirebaseFirestore.instance.collection('notifications')
         .where('recipientUid', isEqualTo: _uid).snapshots();
     _messages = FirebaseFirestore.instance.collection('staff_messages')
-        .where('recipientUid', isEqualTo: _uid).snapshots();
+        .where('showOnTicker', isEqualTo: true).snapshots();
     _tickerController = AnimationController(
       vsync: this, duration: const Duration(seconds: 28),
     )..repeat();
@@ -84,6 +84,7 @@ class _DashboardNewsTickerState extends State<DashboardNewsTicker>
         isMessage: false, data: data,
       ));
     }
+    final seenSupervisorThreads = <String>{};
     for (final doc in messages.docs) {
       final data = doc.data();
       final hiddenFor = data['hiddenFor'];
@@ -91,9 +92,11 @@ class _DashboardNewsTickerState extends State<DashboardNewsTicker>
           data['showOnTicker'] == true &&
           data['senderRole'] == 'supervisor' &&
           data['recipientRole'] == 'security_officer';
+      final threadId = (data['threadId'] ?? doc.id).toString();
       if (!isSupervisorBroadcastToOfficers ||
           !_isToday(data['createdAt']) ||
-          (hiddenFor is List && hiddenFor.contains(_uid))) continue;
+          (hiddenFor is List && hiddenFor.contains(_uid)) ||
+          !seenSupervisorThreads.add(threadId)) continue;
       entries.add(_TickerEntry(
         id: doc.id, title: (data['title'] ?? '').toString(),
         body: (data['body'] ?? '').toString(),
