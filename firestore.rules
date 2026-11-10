@@ -690,7 +690,8 @@ service cloud.firestore {
         && request.resource.data.keys().hasOnly([
           'notificationId', 'recipientUid', 'recipientRole', 'senderUid',
           'senderEmail', 'title', 'body', 'priority', 'read', 'createdAt',
-          'kind', 'relatedId', 'replyId', 'senderName'
+          'kind', 'relatedId', 'replyId', 'senderName', 'tickerGroupId',
+          'tickerVisible', 'recipientRoles', 'broadcastToAll'
         ])
         && request.resource.data.keys().hasAll([
           'notificationId', 'recipientUid', 'recipientRole', 'senderUid',
@@ -764,16 +765,32 @@ service cloud.firestore {
         );
 
       allow get, list: if isActiveUser()
-        && (resource.data.recipientUid == request.auth.uid
+        && (isActiveAdmin() || resource.data.recipientUid == request.auth.uid
           || resource.data.senderUid == request.auth.uid);
 
-      // Recipients may mark their own notice read, but cannot edit its content or recipient.
-      allow update: if isActiveUser()
+      // Admins may edit or hide published admin ticker notices only.
+      allow update: if (
+        isActiveAdmin()
+        && (resource.data.kind == 'ticker_announcement'
+          || (resource.data.kind == null && resource.data.senderName == 'الإدارة'))
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'title', 'body', 'priority', 'tickerVisible'
+        ])
+        && request.resource.data.title is string
+        && request.resource.data.title.size() >= 3
+        && request.resource.data.body is string
+        && request.resource.data.body.size() >= 1
+        && request.resource.data.priority in ['normal', 'important', 'urgent']
+        && (!request.resource.data.keys().hasAny(['tickerVisible'])
+          || request.resource.data.tickerVisible is bool)
+      ) || (
+        isActiveUser()
         && resource.data.recipientUid == request.auth.uid
         && resource.data.read == false
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read', 'readAt'])
         && request.resource.data.read == true
-        && request.resource.data.readAt == request.time;
+        && request.resource.data.readAt == request.time
+      );
 
       allow delete: if false;
     }
@@ -1056,10 +1073,24 @@ service cloud.firestore {
             && request.resource.data.recipientRole in ['supervisor', 'admin'])
         );
 
-      allow get, list: if isMessageParticipant();
+      allow get, list: if isMessageParticipant()
+        || (isActiveAdmin() && resource.data.showOnTicker == true);
 
-      // Recipients mark messages as read; senders attach uploaded media.
-      allow update: if isActiveUser() && (
+      // Admins may edit or hide published supervisor ticker broadcasts.
+      allow update: if (
+        isActiveAdmin()
+        && resource.data.showOnTicker == true
+        && resource.data.senderRole == 'supervisor'
+        && resource.data.recipientRole == 'security_officer'
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'title', 'body', 'priority', 'showOnTicker'
+        ])
+        && request.resource.data.title is string
+        && request.resource.data.title.size() >= 3
+        && request.resource.data.body is string
+        && request.resource.data.priority in ['normal', 'important', 'urgent']
+        && request.resource.data.showOnTicker is bool
+      ) || (isActiveUser() && (
         (
           resource.data.recipientUid == request.auth.uid
           && resource.data.read == false
