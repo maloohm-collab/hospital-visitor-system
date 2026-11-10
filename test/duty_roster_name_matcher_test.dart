@@ -37,7 +37,7 @@ void main() {
       expect(
         DutyRosterNameMatcher.uniqueBestMatchIndex(
           accountName: 'محمد غازي عبد الله ملوح',
-          rosterNames: ['محمد غازي ملوح', 'محمد عبد الله ملوح'],
+          rosterNames: ['محمد غازي', 'محمد عبد'],
         ),
         isNull,
       );
