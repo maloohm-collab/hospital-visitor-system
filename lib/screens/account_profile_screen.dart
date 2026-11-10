@@ -504,6 +504,7 @@ class _AccountProfileScreenState extends State<AccountProfileScreen> {
                       children: [
                         TextFormField(
                           controller: _name,
+                          onChanged: (_) { if (mounted) setState(() {}); },
                           textInputAction: TextInputAction.next,
                           decoration: const InputDecoration(
                             labelText: 'الاسم الكامل',
@@ -516,6 +517,7 @@ class _AccountProfileScreenState extends State<AccountProfileScreen> {
                         const SizedBox(height: 14),
                         TextFormField(
                           controller: _phone,
+                          onChanged: (_) { if (mounted) setState(() {}); },
                           keyboardType: TextInputType.phone,
                           textInputAction: TextInputAction.next,
                           decoration: const InputDecoration(
@@ -529,6 +531,7 @@ class _AccountProfileScreenState extends State<AccountProfileScreen> {
                         if (_role == 'admin') ...[
                           TextFormField(
                             controller: _emailController,
+                            onChanged: (_) { if (mounted) setState(() {}); },
                             keyboardType: TextInputType.emailAddress,
                             decoration: const InputDecoration(
                               labelText: 'البريد الإلكتروني',
@@ -611,6 +614,7 @@ class _AccountProfileScreenState extends State<AccountProfileScreen> {
                           const SizedBox(height: 12),
                           TextField(
                             controller: _newPassword,
+                            onChanged: (_) { if (mounted) setState(() {}); },
                             obscureText: true,
                             decoration: const InputDecoration(labelText: 'كلمة المرور الجديدة', prefixIcon: Icon(Icons.password_outlined)),
                           ),
@@ -625,9 +629,9 @@ class _AccountProfileScreenState extends State<AccountProfileScreen> {
                           const SizedBox(height: 5),
                           Text(_hasAdminPin ? 'يوجد رمز إدارة محفوظ على هذا الجهاز. أدخل رمزًا جديدًا لتغييره.' : 'يمكنك تعيين رمز الإدارة الآن أو لاحقًا.', style: const TextStyle(color: Color(0xFF526579), fontSize: 12)),
                           const SizedBox(height: 10),
-                          TextField(controller: _adminPin, obscureText: true, keyboardType: TextInputType.number, inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(5)], decoration: const InputDecoration(labelText: 'رمز الإدارة الجديد (5 أرقام)', prefixIcon: Icon(Icons.admin_panel_settings_outlined))),
+                          TextField(controller: _adminPin, onChanged: (_) { if (mounted) setState(() {}); }, obscureText: true, keyboardType: TextInputType.number, inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(5)], decoration: const InputDecoration(labelText: 'رمز الإدارة الجديد (5 أرقام)', prefixIcon: Icon(Icons.admin_panel_settings_outlined))),
                           const SizedBox(height: 10),
-                          TextField(controller: _adminPinConfirm, obscureText: true, keyboardType: TextInputType.number, inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(5)], decoration: const InputDecoration(labelText: 'تأكيد رمز الإدارة')),
+                          TextField(controller: _adminPinConfirm, onChanged: (_) { if (mounted) setState(() {}); }, obscureText: true, keyboardType: TextInputType.number, inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(5)], decoration: const InputDecoration(labelText: 'تأكيد رمز الإدارة')),
                           if (_adminPin.text.isNotEmpty || _adminPinConfirm.text.isNotEmpty)
                             FilledButton.icon(onPressed: _saving ? null : _saveAdminPin, icon: const Icon(Icons.save_outlined), label: const Text('حفظ رمز الإدارة')),
                           const Divider(height: 28),
