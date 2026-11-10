@@ -14,6 +14,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../data/duty_roster_pdf.dart';
+import '../data/duty_roster_personal_pdf.dart';
 import '../data/duty_roster_catalog.dart';
 import '../services/duty_roster_name_matcher.dart';
 import '../widgets/app_search_field.dart';
@@ -1422,8 +1423,12 @@ class _DutyRosterScreenState extends State<DutyRosterScreen>
     final filename = '${_exportBaseName()}.$extension';
     try {
       final blocks = Map<String, dynamic>.from(data['shifts'] ?? {});
-      final pdfBytes = Uint8List.fromList(await DutyRosterPdf.build(
-          date: rosterDateKey, shifts: blocks, onlyShift: shift));
+      final pdfBytes = Uint8List.fromList(await DutyRosterPersonalPdf.build(
+        date: rosterDateKey,
+        shifts: blocks,
+        onlyShift: shift,
+        highlightedName: _currentUserName,
+      ));
       Uint8List bytes;
       if (format == 'صورة') {
         final raster = await Printing.raster(pdfBytes, pages: const [0], dpi: 180).first;
@@ -1467,15 +1472,16 @@ class _DutyRosterScreenState extends State<DutyRosterScreen>
               Expanded(
                 child: PdfPreview(
                   build: (_) async => Uint8List.fromList(
-                    await DutyRosterPdf.build(
+                    await DutyRosterPersonalPdf.build(
                       date: rosterDateKey,
                       shifts: blocks,
                       onlyShift: shift,
+                      highlightedName: _currentUserName,
                     ),
                   ),
                   canChangeOrientation: false,
                   canChangePageFormat: false,
-                  allowPrinting: false,
+                  allowPrinting: true,
                   allowSharing: false,
                 ),
               ),
