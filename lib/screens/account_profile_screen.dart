@@ -216,7 +216,53 @@ class _AccountProfileScreenState extends State<AccountProfileScreen> {
     }
   }
 
+  Future<bool> _confirmAdminPin() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null || !_hasAdminPin) return true;
+    final saved = await _secureStorage.read(
+      key: 'hospital_visitor_admin_pin_' + user.uid,
+    );
+    if (saved == null) return true;
+    final controller = TextEditingController();
+    final entered = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('تأكيد إجراء إداري'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          obscureText: true,
+          keyboardType: TextInputType.number,
+          inputFormatters: [
+            FilteringTextInputFormatter.digitsOnly,
+            LengthLimitingTextInputFormatter(5),
+          ],
+          decoration: const InputDecoration(labelText: 'رمز الإدارة (5 أرقام)'),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('إلغاء'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, controller.text == saved),
+            child: const Text('تأكيد'),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+    if (entered != true && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('رمز الإدارة غير صحيح أو تم إلغاء العملية.')),
+      );
+    }
+    return entered == true;
+  }
+
   Future<void> _savePhone() async {
+    if (!await _confirmAdminPin()) return;
     final value = _phone.text.trim();
     if (value.isNotEmpty && value.replaceAll(RegExp(r'[^0-9+]'), '').length < 9) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -243,6 +289,7 @@ class _AccountProfileScreenState extends State<AccountProfileScreen> {
   }
 
   Future<void> _savePhoto() async {
+    if (!await _confirmAdminPin()) return;
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
     setState(() => _saving = true);
@@ -279,6 +326,7 @@ class _AccountProfileScreenState extends State<AccountProfileScreen> {
   }
 
   Future<void> _saveEmail() async {
+    if (!await _confirmAdminPin()) return;
     final email = _emailController.text.trim();
     if (email.isEmpty || !RegExp(r'^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$').hasMatch(email)) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -312,6 +360,7 @@ class _AccountProfileScreenState extends State<AccountProfileScreen> {
   }
 
   Future<void> _savePassword() async {
+    if (!await _confirmAdminPin()) return;
     if (_newPassword.text.length < 6) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('كلمة المرور الجديدة يجب أن تكون 6 أحرف أو أرقام على الأقل.')),
@@ -356,6 +405,7 @@ class _AccountProfileScreenState extends State<AccountProfileScreen> {
       );
       return;
     }
+    if (_hasAdminPin && !await _confirmAdminPin()) return;
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
     setState(() => _saving = true);
