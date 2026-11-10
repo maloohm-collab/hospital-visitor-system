@@ -1783,12 +1783,43 @@ class _DutyRosterScreenState extends State<DutyRosterScreen>
     ),
   );
 
-  Widget _nameTableChips(List values) => Wrap(
-    spacing: 6,
-    runSpacing: 4,
-    children: values.map((name) => Chip(label: Text(name.toString(),
-      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)))).toList(),
-  );
+  bool _isCurrentAccountName(String candidate) =>
+      DutyRosterNameMatcher.uniqueBestMatchIndex(
+        accountName: _currentUserName,
+        rosterNames: [candidate],
+      ) == 0;
+
+  Widget _nameTableChips(List values) {
+    final names = values.map((value) => value.toString()).toList();
+    final personalIndex = DutyRosterNameMatcher.uniqueBestMatchIndex(
+      accountName: _currentUserName,
+      rosterNames: names,
+    );
+    return Wrap(
+      spacing: 6,
+      runSpacing: 4,
+      children: List.generate(names.length, (index) {
+        final personal = personalIndex == index;
+        return Chip(
+          backgroundColor: personal ? const Color(0xFFDCEEFF) : null,
+          side: personal
+              ? const BorderSide(color: Color(0xFF368BD2), width: 1.5)
+              : null,
+          avatar: personal
+              ? const Icon(Icons.person_pin_circle, color: Color(0xFF1769AA), size: 18)
+              : null,
+          label: Text(
+            names[index],
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: personal ? FontWeight.w900 : FontWeight.w600,
+              color: personal ? const Color(0xFF174C7A) : null,
+            ),
+          ),
+        );
+      }),
+    );
+  }
 
   Widget _editor(String s, dynamic saved, {required bool readOnly}) {
     final b = saved is Map ? Map<String,dynamic>.from(saved) : <String,dynamic>{};
@@ -1821,7 +1852,28 @@ class _DutyRosterScreenState extends State<DutyRosterScreen>
         items: DutyRosterCatalog.supervisorsFor(s).map((v) => DropdownMenuItem(value: v, child: Text(v))).toList(),
         onChanged: (v) { setState(() => supervisors[s] = v); _draftChanged(); },
       ) else if ((b['supervisorName'] ?? '').toString().isNotEmpty)
-        ListTile(dense: true, title: const Text('المشرف'), subtitle: Text(b['supervisorName'].toString())),
+        Builder(builder: (context) {
+          final supervisorName = b['supervisorName'].toString();
+          final personalSupervisor = _isCurrentAccountName(supervisorName);
+          return Card(
+            color: personalSupervisor ? const Color(0xFFDCEEFF) : Colors.white,
+            child: ListTile(
+              dense: true,
+              tileColor: personalSupervisor ? const Color(0xFFDCEEFF) : null,
+              leading: personalSupervisor
+                  ? const Icon(Icons.person_pin_circle, color: Color(0xFF1769AA))
+                  : null,
+              title: const Text('المشرف'),
+              subtitle: Text(
+                supervisorName,
+                style: TextStyle(
+                  fontWeight: personalSupervisor ? FontWeight.w900 : FontWeight.normal,
+                  color: personalSupervisor ? const Color(0xFF174C7A) : null,
+                ),
+              ),
+            ),
+          );
+        }),
       const SizedBox(height: 12),
       Container(padding: const EdgeInsets.all(12), decoration: BoxDecoration(color: const Color(0xFFEAF1F7), borderRadius: BorderRadius.circular(12)),
         child: Text('المناوبة ' + s + ' • ' + (s == 'A' ? '08:00–16:00' : s == 'B' ? '16:00–00:00' : '00:00–08:00'),
