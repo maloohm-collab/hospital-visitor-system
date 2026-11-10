@@ -14,7 +14,9 @@ import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../data/duty_roster_pdf.dart';
+import '../data/duty_roster_personal_pdf.dart';
 import '../data/duty_roster_catalog.dart';
+import '../services/duty_roster_name_matcher.dart';
 import '../widgets/app_search_field.dart';
 import '../services/duty_roster_image_import_service.dart';
 import 'duty_roster_import_review_screen.dart';
@@ -45,6 +47,7 @@ class _DutyRosterScreenState extends State<DutyRosterScreen>
   bool busy = false;
   bool _loaded = false;
   bool _publishing = false;
+  String _currentUserName = '';
   final Map<String, Timer> _autosaveTimers = {};
   final Map<String, String> _autosaveDateKeys = {};
   String _loadedShift = 'A';
@@ -84,6 +87,7 @@ class _DutyRosterScreenState extends State<DutyRosterScreen>
           _reloadForSelectedShift();
         }
       });
+    _loadCurrentUserName();
     _load();
   }
 
@@ -524,6 +528,20 @@ class _DutyRosterScreenState extends State<DutyRosterScreen>
     );
     controller.dispose();
     return selected;
+  }
+
+  Future<void> _loadCurrentUserName() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+    _currentUserName = (user.displayName ?? '').trim();
+    try {
+      final profile = await db.collection('users').doc(user.uid).get();
+      final savedName = (profile.data()?['displayName'] ?? '').toString().trim();
+      if (savedName.isNotEmpty) _currentUserName = savedName;
+    } catch (_) {
+      // اسم Firebase Auth يبقى بديلاً إذا تعذر تحميل ملف المستخدم.
+    }
+    if (mounted) setState(() {});
   }
 
   Future<void> _load() async {
@@ -1262,6 +1280,18 @@ class _DutyRosterScreenState extends State<DutyRosterScreen>
   Uint8List _wordBytes(Map<String, dynamic> data) {
     final blocks = Map<String, dynamic>.from(data['shifts'] ?? {});
     final block = Map<String, dynamic>.from(blocks[shift] ?? {});
+    final assignments = (block['assignments'] as List? ?? const []);
+    final clinics = (block['clinicAssignments'] as List? ?? const []);
+    final personalCandidates = <String>[
+      ...assignments.map((value) =>
+          (Map<String, dynamic>.from(value as Map)['officer'] ?? '').toString()),
+      ...clinics.map((value) =>
+          (Map<String, dynamic>.from(value as Map)['officer'] ?? '').toString()),
+    ];
+    final personalMatchIndex = DutyRosterNameMatcher.uniqueBestMatchIndex(
+      accountName: _currentUserName,
+      rosterNames: personalCandidates,
+    );
     String rtf(String value) {
       final out = StringBuffer();
       for (final unit in value.codeUnits) {
@@ -1291,8 +1321,10 @@ class _DutyRosterScreenState extends State<DutyRosterScreen>
           rtf(value) + r'\par}';
     }
 
-    String cellDefinition(int edge) =>
-        r'\clvertalc\clbrdrt\brdrs\brdrw8\clbrdrl\brdrs\brdrw8' +
+    String cellDefinition(int edge, {bool highlight = false}) =>
+        r'\clvertalc' +
+        (highlight ? r'\clcbpat2' : '') +
+        r'\clbrdrt\brdrs\brdrw8\clbrdrl\brdrs\brdrw8' +
         r'\clbrdrb\brdrs\brdrw8\clbrdrr\brdrs\brdrw8\cellx' +
         edge.toString();
 
@@ -1301,12 +1333,17 @@ class _DutyRosterScreenState extends State<DutyRosterScreen>
         (header ? '22\\b ' : '22\\b0 ') +
         rtf(value) + r'\cell}';
 
-    String tableRow(List<String> values, List<int> widths, {bool header = false}) {
+    String tableRow(
+      List<String> values,
+      List<int> widths, {
+      bool header = false,
+      bool highlight = false,
+    }) {
       final row = StringBuffer(r'{\trowd\trgaph100\trleft0\trkeep\trqc');
       var edge = 0;
       for (final width in widths) {
         edge += width;
-        row.write(cellDefinition(edge));
+        row.write(cellDefinition(edge, highlight: highlight));
       }
       for (final value in values) {
         row.write(cellContent(value, header: header));
@@ -1318,6 +1355,7 @@ class _DutyRosterScreenState extends State<DutyRosterScreen>
     final output = StringBuffer(
       r'{\rtf1\ansi\ansicpg1256\uc1\deff0'
       r'{\fonttbl{\f0\fnil\fcharset178 Tahoma;}}'
+      r'{\colortbl;\red255\green255\blue255;\red220\green238\blue255;}'
       r'\viewkind4\lang1025\widowctrl'
       r'\paperw16838\paperh11906\landscape\margl680\margr680\margt560\margb560'
     );
@@ -1328,14 +1366,13 @@ class _DutyRosterScreenState extends State<DutyRosterScreen>
 
     const widths = [700, 6500, 6500];
     output.write(tableRow(['ت', 'اسم ضابط الأمن', 'الموقع / الوظيفة'], widths, header: true));
-    final assignments = (block['assignments'] as List? ?? []);
     for (var i = 0; i < assignments.length; i++) {
       final item = Map<String, dynamic>.from(assignments[i]);
       output.write(tableRow([
         (i + 1).toString(),
         (item['officer'] ?? '').toString(),
         (item['location'] ?? '').toString(),
-      ], widths));
+      ], widths, highlight: personalMatchIndex == i));
     }
 
     void addNames(String title, List values) {
@@ -1346,7 +1383,6 @@ class _DutyRosterScreenState extends State<DutyRosterScreen>
     addNames('المجازون سنوياً', block['annualNames'] as List? ?? []);
     addNames('قائمة سوات', block['specialNames'] as List? ?? []);
 
-    final clinics = (block['clinicAssignments'] as List? ?? []);
     if (clinics.isNotEmpty) {
       output.write(paragraph('وظائف العيادات', size: 23, bold: true));
       const clinicWidths = [7000, 6700];
@@ -1356,7 +1392,8 @@ class _DutyRosterScreenState extends State<DutyRosterScreen>
         output.write(tableRow([
           (item['officer'] ?? '').toString(),
           (item['location'] ?? '').toString(),
-        ], clinicWidths));
+        ], clinicWidths,
+            highlight: personalMatchIndex == assignments.length + clinics.indexOf(value)));
       }
     }
     output.write(paragraph('ملاحظات المشرف الإداري', size: 23, bold: true));
@@ -1386,8 +1423,12 @@ class _DutyRosterScreenState extends State<DutyRosterScreen>
     final filename = '${_exportBaseName()}.$extension';
     try {
       final blocks = Map<String, dynamic>.from(data['shifts'] ?? {});
-      final pdfBytes = Uint8List.fromList(await DutyRosterPdf.build(
-          date: rosterDateKey, shifts: blocks, onlyShift: shift));
+      final pdfBytes = Uint8List.fromList(await DutyRosterPersonalPdf.build(
+        date: rosterDateKey,
+        shifts: blocks,
+        onlyShift: shift,
+        highlightedName: _currentUserName,
+      ));
       Uint8List bytes;
       if (format == 'صورة') {
         final raster = await Printing.raster(pdfBytes, pages: const [0], dpi: 180).first;
@@ -1431,15 +1472,16 @@ class _DutyRosterScreenState extends State<DutyRosterScreen>
               Expanded(
                 child: PdfPreview(
                   build: (_) async => Uint8List.fromList(
-                    await DutyRosterPdf.build(
+                    await DutyRosterPersonalPdf.build(
                       date: rosterDateKey,
                       shifts: blocks,
                       onlyShift: shift,
+                      highlightedName: _currentUserName,
                     ),
                   ),
                   canChangeOrientation: false,
                   canChangePageFormat: false,
-                  allowPrinting: false,
+                  allowPrinting: true,
                   allowSharing: false,
                 ),
               ),
@@ -1673,10 +1715,14 @@ class _DutyRosterScreenState extends State<DutyRosterScreen>
               DropdownButtonFormField<String>(
                 value: DutyRosterCatalog.siteManagers.contains(siteManager) ? siteManager : null,
                 isExpanded: true,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: 'مدير الموقع',
-                  border: OutlineInputBorder(),
-                  contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 16),
+                  filled: _isCurrentAccountName(siteManager ?? ''),
+                  fillColor: _isCurrentAccountName(siteManager ?? '')
+                      ? const Color(0xFFDCEEFF)
+                      : Colors.white,
+                  border: const OutlineInputBorder(),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
                 ),
                 items: DutyRosterCatalog.siteManagers.map((v) => DropdownMenuItem(value: v, child: Text(v))).toList(),
                 onChanged: (v) { setState(() => siteManager = v); _draftChanged(); },
@@ -1741,17 +1787,58 @@ class _DutyRosterScreenState extends State<DutyRosterScreen>
     ),
   );
 
-  Widget _nameTableChips(List values) => Wrap(
-    spacing: 6,
-    runSpacing: 4,
-    children: values.map((name) => Chip(label: Text(name.toString(),
-      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)))).toList(),
-  );
+  bool _isCurrentAccountName(String candidate) =>
+      DutyRosterNameMatcher.uniqueBestMatchIndex(
+        accountName: _currentUserName,
+        rosterNames: [candidate],
+      ) == 0;
+
+  Widget _nameTableChips(List values) {
+    final names = values.map((value) => value.toString()).toList();
+    final personalIndex = DutyRosterNameMatcher.uniqueBestMatchIndex(
+      accountName: _currentUserName,
+      rosterNames: names,
+    );
+    return Wrap(
+      spacing: 6,
+      runSpacing: 4,
+      children: List.generate(names.length, (index) {
+        final personal = personalIndex == index;
+        return Chip(
+          backgroundColor: personal ? const Color(0xFFDCEEFF) : null,
+          side: personal
+              ? const BorderSide(color: Color(0xFF368BD2), width: 1.5)
+              : null,
+          avatar: personal
+              ? const Icon(Icons.person_pin_circle, color: Color(0xFF1769AA), size: 18)
+              : null,
+          label: Text(
+            names[index],
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: personal ? FontWeight.w900 : FontWeight.w600,
+              color: personal ? const Color(0xFF174C7A) : null,
+            ),
+          ),
+        );
+      }),
+    );
+  }
 
   Widget _editor(String s, dynamic saved, {required bool readOnly}) {
     final b = saved is Map ? Map<String,dynamic>.from(saved) : <String,dynamic>{};
     final list = readOnly ? (b['assignments'] as List? ?? []).map((e) => Map<String,dynamic>.from(e)).toList() : rows[s]!;
     final savedClinicRows = (b['clinicAssignments'] as List? ?? clinicRows);
+    final identityCandidates = <String>[
+      ...list.map((row) => (row['officer'] ?? '').toString()),
+      if (s == 'A')
+        ...savedClinicRows.map((row) =>
+            (Map<String, dynamic>.from(row as Map)['officer'] ?? '').toString()),
+    ];
+    final matchedIdentityIndex = DutyRosterNameMatcher.uniqueBestMatchIndex(
+      accountName: _currentUserName,
+      rosterNames: identityCandidates,
+    );
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       if (!readOnly)
         const Padding(
@@ -1764,24 +1851,76 @@ class _DutyRosterScreenState extends State<DutyRosterScreen>
       if (!readOnly) DropdownButtonFormField<String>(
         value: DutyRosterCatalog.supervisorsFor(s).contains(supervisors[s]) ? supervisors[s] : null,
         isExpanded: true,
-        decoration: const InputDecoration(labelText: 'المشرف', border: OutlineInputBorder(),
-          contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 15)),
+        decoration: InputDecoration(
+          labelText: 'المشرف',
+          filled: _isCurrentAccountName(supervisors[s] ?? ''),
+          fillColor: _isCurrentAccountName(supervisors[s] ?? '')
+              ? const Color(0xFFDCEEFF)
+              : Colors.white,
+          border: const OutlineInputBorder(),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 15),
+        ),
         items: DutyRosterCatalog.supervisorsFor(s).map((v) => DropdownMenuItem(value: v, child: Text(v))).toList(),
         onChanged: (v) { setState(() => supervisors[s] = v); _draftChanged(); },
       ) else if ((b['supervisorName'] ?? '').toString().isNotEmpty)
-        ListTile(dense: true, title: const Text('المشرف'), subtitle: Text(b['supervisorName'].toString())),
+        Builder(builder: (context) {
+          final supervisorName = b['supervisorName'].toString();
+          final personalSupervisor = _isCurrentAccountName(supervisorName);
+          return Card(
+            color: personalSupervisor ? const Color(0xFFDCEEFF) : Colors.white,
+            child: ListTile(
+              dense: true,
+              tileColor: personalSupervisor ? const Color(0xFFDCEEFF) : null,
+              leading: personalSupervisor
+                  ? const Icon(Icons.person_pin_circle, color: Color(0xFF1769AA))
+                  : null,
+              title: const Text('المشرف'),
+              subtitle: Text(
+                supervisorName,
+                style: TextStyle(
+                  fontWeight: personalSupervisor ? FontWeight.w900 : FontWeight.normal,
+                  color: personalSupervisor ? const Color(0xFF174C7A) : null,
+                ),
+              ),
+            ),
+          );
+        }),
       const SizedBox(height: 12),
       Container(padding: const EdgeInsets.all(12), decoration: BoxDecoration(color: const Color(0xFFEAF1F7), borderRadius: BorderRadius.circular(12)),
         child: Text('المناوبة ' + s + ' • ' + (s == 'A' ? '08:00–16:00' : s == 'B' ? '16:00–00:00' : '00:00–08:00'),
           textAlign: TextAlign.center, style: const TextStyle(color: navy, fontWeight: FontWeight.bold))),
       ...List.generate(list.length, (i) {
         final r = list[i]; final n = (r['officer'] ?? '').toString(); final l = (r['location'] ?? '').toString();
+        final isCurrentUser = matchedIdentityIndex == i;
         return Card(
+          color: isCurrentUser ? const Color(0xFFDCEEFF) : Colors.white,
           margin: const EdgeInsets.only(bottom: 14),
-          elevation: 1.5,
+          elevation: isCurrentUser ? 3 : 1.5,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(13),
-            side: const BorderSide(color: Color(0xFFDCE4EC))),
+            side: BorderSide(
+              color: isCurrentUser ? const Color(0xFF368BD2) : const Color(0xFFDCE4EC),
+              width: isCurrentUser ? 1.8 : 1,
+            )),
           child: Padding(padding: const EdgeInsets.all(13), child: Column(children: [
+          if (isCurrentUser)
+            Container(
+              width: double.infinity,
+              margin: const EdgeInsets.only(bottom: 9),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1769AA),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Text(
+                'هذا اسمك — موقعك / وظيفتك في الكشف',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
           Row(children: [
             CircleAvatar(radius: 13, child: Text((i+1).toString())),
             const SizedBox(width: 8),
@@ -1906,11 +2045,33 @@ class _DutyRosterScreenState extends State<DutyRosterScreen>
                     : clinicRows[index];
                 final officer = (clinic['officer'] ?? '').toString();
                 final location = (clinic['location'] ?? '').toString();
+                final isCurrentClinicUser =
+                    matchedIdentityIndex == list.length + index;
                 return Card(
+                  color: isCurrentClinicUser ? const Color(0xFFDCEEFF) : Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    side: BorderSide(
+                      color: isCurrentClinicUser
+                          ? const Color(0xFF368BD2)
+                          : const Color(0xFFDCE4EC),
+                      width: isCurrentClinicUser ? 1.8 : 1,
+                    ),
+                  ),
                   child: ListTile(
                     dense: true,
+                    tileColor: isCurrentClinicUser ? const Color(0xFFDCEEFF) : null,
                     title: Text(location, style: const TextStyle(fontWeight: FontWeight.w600)),
-                    subtitle: Text(officer.isEmpty ? 'لم يتم تحديد الموظف' : officer),
+                    subtitle: Text(
+                      officer.isEmpty ? 'لم يتم تحديد الموظف' : officer,
+                      style: TextStyle(
+                        fontWeight: isCurrentClinicUser ? FontWeight.w900 : FontWeight.normal,
+                        color: isCurrentClinicUser ? const Color(0xFF174C7A) : null,
+                      ),
+                    ),
+                    leading: isCurrentClinicUser
+                        ? const Icon(Icons.person_pin_circle, color: Color(0xFF1769AA))
+                        : null,
                     trailing: readOnly ? null : IconButton(
                       tooltip: 'استبدال موظف العيادة',
                       icon: const Icon(Icons.swap_horiz, color: navy),

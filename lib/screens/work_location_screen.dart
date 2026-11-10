@@ -8,6 +8,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:intl/intl.dart';
 import '../data/duty_roster_catalog.dart';
 import '../widgets/app_search_field.dart';
+import 'staff_messages_screen.dart';
 
 class WorkLocationScreen extends StatefulWidget {
   const WorkLocationScreen({super.key, required this.userRole});
@@ -876,7 +877,7 @@ class _WorkLocationScreenState extends State<WorkLocationScreen> {
       );
     }
     return Scaffold(
-      appBar: AppBar(title: const Text('مباشرة العمل والملاحظات')),
+      appBar: AppBar(title: const Text('مباشرة العمل والملاحظات'), actions: [if (officer) IconButton(tooltip: 'المراسلات والتنبيهات', icon: const Icon(Icons.mark_chat_unread_rounded), onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const StaffMessagesScreen(userRole: 'security_officer'))))]),
       backgroundColor: const Color(0xFFF3F6FA),
       body: StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
         stream: db.collection('active_work_shifts').doc(uid).snapshots(),

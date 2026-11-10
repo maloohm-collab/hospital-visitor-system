@@ -1,4 +1,5 @@
 rules_version = '2';
+// Staff-message notification validation aligned with the message composer (minimum 3 chars).
 service cloud.firestore {
   match /databases/{database}/documents {
     function signedIn() {
@@ -231,6 +232,41 @@ service cloud.firestore {
         allow delete: if isOwner() && resource.data.ownerUid == uid;
       }
     }
+
+
+      // Personal retention settings for the staff-message archive.
+      match /message_archive_preferences/{preferenceId} {
+        function isOwner() {
+          return isActiveUser() && resource.data.ownerUid == request.auth.uid;
+        }
+        allow get: if isActiveUser() && preferenceId == request.auth.uid;
+        allow list: if isOwner();
+        allow create: if isActiveUser()
+          && preferenceId == request.auth.uid
+          && request.resource.data.keys().hasOnly([
+            'ownerUid', 'autoDeleteEnabled', 'retentionDays', 'updatedAt'
+          ])
+          && request.resource.data.keys().hasAll([
+            'ownerUid', 'autoDeleteEnabled', 'retentionDays', 'updatedAt'
+          ])
+          && request.resource.data.ownerUid == request.auth.uid
+          && request.resource.data.autoDeleteEnabled is bool
+          && request.resource.data.retentionDays is int
+          && request.resource.data.retentionDays >= 1
+          && request.resource.data.retentionDays <= 3650
+          && request.resource.data.updatedAt == request.time;
+        allow update: if isOwner()
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'autoDeleteEnabled', 'retentionDays', 'updatedAt'
+          ])
+          && request.resource.data.ownerUid == resource.data.ownerUid
+          && request.resource.data.autoDeleteEnabled is bool
+          && request.resource.data.retentionDays is int
+          && request.resource.data.retentionDays >= 1
+          && request.resource.data.retentionDays <= 3650
+          && request.resource.data.updatedAt == request.time;
+        allow delete: if false;
+      }
 
     match /visitor_logs/{visitId} {
       // Save a record immediately when the visitor enters.
@@ -654,7 +690,7 @@ service cloud.firestore {
         && request.resource.data.keys().hasOnly([
           'notificationId', 'recipientUid', 'recipientRole', 'senderUid',
           'senderEmail', 'title', 'body', 'priority', 'read', 'createdAt',
-          'kind', 'relatedId'
+          'kind', 'relatedId', 'replyId', 'senderName'
         ])
         && request.resource.data.keys().hasAll([
           'notificationId', 'recipientUid', 'recipientRole', 'senderUid',
@@ -670,12 +706,36 @@ service cloud.firestore {
         && request.resource.data.title is string
         && request.resource.data.title.size() >= 3
         && request.resource.data.body is string
-        && request.resource.data.body.size() >= 5
+        && request.resource.data.body.size() >= 1
         && request.resource.data.priority in ['normal', 'important', 'urgent']
         && request.resource.data.read == false
         && request.resource.data.createdAt == request.time
         && (
           isActiveAdmin()
+          || (
+            request.resource.data.kind == 'staff_message'
+            && request.resource.data.body.size() >= 3
+            && request.resource.data.relatedId is string
+            && exists(/databases/$(database)/documents/staff_messages/$(request.resource.data.relatedId))
+            && get(/databases/$(database)/documents/staff_messages/$(request.resource.data.relatedId)).data.senderUid == request.auth.uid
+            && get(/databases/$(database)/documents/staff_messages/$(request.resource.data.relatedId)).data.senderRole == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role
+            && get(/databases/$(database)/documents/staff_messages/$(request.resource.data.relatedId)).data.recipientUid == request.resource.data.recipientUid
+            && get(/databases/$(database)/documents/staff_messages/$(request.resource.data.relatedId)).data.recipientRole == request.resource.data.recipientRole
+            && get(/databases/$(database)/documents/staff_messages/$(request.resource.data.relatedId)).data.title == request.resource.data.title
+            && get(/databases/$(database)/documents/staff_messages/$(request.resource.data.relatedId)).data.body == request.resource.data.body
+            && get(/databases/$(database)/documents/staff_messages/$(request.resource.data.relatedId)).data.priority == request.resource.data.priority
+          )
+          || (
+            request.resource.data.kind == 'staff_message_reply'
+            && request.resource.data.relatedId is string
+            && request.resource.data.replyId is string
+            && exists(/databases/$(database)/documents/staff_messages/$(request.resource.data.relatedId))
+            && exists(/databases/$(database)/documents/staff_messages/$(request.resource.data.relatedId)/replies/$(request.resource.data.replyId))
+            && get(/databases/$(database)/documents/staff_messages/$(request.resource.data.relatedId)).data.senderUid == request.resource.data.recipientUid
+            && get(/databases/$(database)/documents/staff_messages/$(request.resource.data.relatedId)).data.recipientUid == request.auth.uid
+            && get(/databases/$(database)/documents/staff_messages/$(request.resource.data.relatedId)/replies/$(request.resource.data.replyId)).data.senderUid == request.auth.uid
+            && get(/databases/$(database)/documents/staff_messages/$(request.resource.data.relatedId)/replies/$(request.resource.data.replyId)).data.body == request.resource.data.body
+          )
           || (
             isActiveSupervisor()
             && request.resource.data.kind == 'emergency_assignment'
@@ -942,6 +1002,119 @@ service cloud.firestore {
       allow delete: if isActiveUser()
         && request.auth.uid in resource.data.recipientUids
         && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['supervisor', 'admin'];
+    }
+
+
+    // Unified staff messages: each recipient has an isolated document so
+    // recipients can only read their own copy; replies remain under that copy.
+    match /staff_messages/{messageId} {
+      function isMessageParticipant() {
+        return isActiveUser()
+          && (resource.data.senderUid == request.auth.uid
+            || resource.data.recipientUid == request.auth.uid);
+      }
+
+      allow create: if isActiveUser()
+        && request.resource.data.keys().hasOnly([
+          'messageId', 'threadId', 'senderUid', 'senderName', 'senderRole', 'senderLabel',
+          'recipientUid', 'recipientName', 'recipientRole', 'recipientLabel', 'locationName', 'title', 'body',
+          'priority', 'requestReply', 'replyStatus', 'attachments', 'read',
+          'hiddenFor', 'createdAt'
+        ])
+        && request.resource.data.keys().hasAll([
+          'messageId', 'threadId', 'senderUid', 'senderName', 'senderRole', 'senderLabel',
+          'recipientUid', 'recipientName', 'recipientRole', 'recipientLabel', 'locationName', 'title', 'body',
+          'priority', 'requestReply', 'replyStatus', 'attachments', 'read',
+          'hiddenFor', 'createdAt'
+        ])
+        && request.resource.data.messageId == messageId
+        && request.resource.data.senderUid == request.auth.uid
+        && request.resource.data.senderRole == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role
+        && request.resource.data.recipientUid is string
+        && exists(/databases/$(database)/documents/users/$(request.resource.data.recipientUid))
+        && get(/databases/$(database)/documents/users/$(request.resource.data.recipientUid)).data.status == 'active'
+        && request.resource.data.recipientRole == get(/databases/$(database)/documents/users/$(request.resource.data.recipientUid)).data.role
+        && request.resource.data.locationName is string
+        && request.resource.data.messageId == request.resource.data.threadId + '_' + request.resource.data.recipientUid
+        && request.resource.data.title is string
+        && request.resource.data.title.size() >= 3
+        && request.resource.data.body is string
+        && request.resource.data.body.size() >= 0
+        && request.resource.data.priority in ['normal', 'important', 'urgent']
+        && request.resource.data.requestReply is bool
+        && request.resource.data.replyStatus in ['pending', 'not_required']
+        && request.resource.data.attachments is list
+        && request.resource.data.attachments.size() == 0
+        && request.resource.data.read == false
+        && request.resource.data.hiddenFor is list
+        && request.resource.data.createdAt == request.time
+        && (
+          isActiveAdmin()
+          || (isActiveSupervisor()
+            && request.resource.data.recipientRole == 'security_officer')
+          || (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'security_officer'
+            && request.resource.data.recipientRole in ['supervisor', 'admin'])
+        );
+
+      allow get, list: if isMessageParticipant();
+
+      // Recipients mark messages as read; senders attach uploaded media.
+      allow update: if isActiveUser() && (
+        (
+          resource.data.recipientUid == request.auth.uid
+          && resource.data.read == false
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read', 'readAt'])
+          && request.resource.data.read == true
+          && request.resource.data.readAt == request.time
+        )
+        || (
+          isMessageParticipant()
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['hiddenFor'])
+          && request.resource.data.hiddenFor is list
+          && request.resource.data.hiddenFor.hasAll(resource.data.hiddenFor)
+          && request.resource.data.hiddenFor.size() == resource.data.hiddenFor.size() + 1
+          && request.auth.uid in request.resource.data.hiddenFor
+          && !(request.auth.uid in resource.data.hiddenFor)
+        )
+        || (
+          resource.data.recipientUid == request.auth.uid
+          && resource.data.requestReply == true
+          && resource.data.replyStatus == 'pending'
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['replyStatus', 'lastReplyAt'])
+          && request.resource.data.replyStatus == 'replied'
+          && request.resource.data.lastReplyAt == request.time
+        )
+      );
+
+      allow delete: if false;
+
+      match /replies/{replyId} {
+        function parentMessage() {
+          return get(/databases/$(database)/documents/staff_messages/$(messageId)).data;
+        }
+        allow get, list: if isActiveUser()
+          && (parentMessage().senderUid == request.auth.uid
+            || parentMessage().recipientUid == request.auth.uid);
+        allow create: if isActiveUser()
+          && parentMessage().recipientUid == request.auth.uid
+          && parentMessage().requestReply == true
+          && parentMessage().replyStatus == 'pending'
+          && request.resource.data.keys().hasOnly([
+            'replyId', 'senderUid', 'senderName', 'senderRole', 'senderLabel', 'body', 'attachments', 'createdAt'
+          ])
+          && request.resource.data.keys().hasAll([
+            'replyId', 'senderUid', 'senderName', 'senderRole', 'senderLabel', 'body', 'attachments', 'createdAt'
+          ])
+          && request.resource.data.attachments is list
+          && request.resource.data.attachments.size() == 0
+          && request.resource.data.replyId == replyId
+          && request.resource.data.senderUid == request.auth.uid
+          && request.resource.data.senderRole == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role
+          && request.resource.data.body is string
+          && request.resource.data.body.size() >= 1
+          && request.resource.data.createdAt == request.time;
+        allow update, delete: if false;
+      }
     }
 
     // Daily duty rosters: all active users can read; only administration can manage and publish.

@@ -1,4 +1,5 @@
 const { onSchedule } = require("firebase-functions/v2/scheduler");
+const { onDocumentCreated } = require("firebase-functions/v2/firestore");
 const { initializeApp } = require("firebase-admin/app");
 const { getFirestore, FieldValue, Timestamp } = require("firebase-admin/firestore");
 
@@ -146,5 +147,120 @@ exports.cleanupPersonalDutyRosterArchives = onSchedule(
         await batch.commit();
       }
     }
+  },
+);
+
+
+// Hide expired staff-message archive entries for each account independently.
+// The shared message and its other recipients' copies remain untouched.
+exports.cleanupPersonalStaffMessageArchives = onSchedule(
+  {
+    schedule: "every 60 minutes",
+    timeZone: "Asia/Amman",
+    region: "us-central1",
+    timeoutSeconds: 300,
+  },
+  async () => {
+    const now = Timestamp.now();
+    const users = await db.collection("users")
+      .where("status", "==", "active")
+      .get();
+
+    for (const user of users.docs) {
+      const settingsSnap = await db.collection("message_archive_preferences")
+        .doc(user.id).get();
+      if (!settingsSnap.exists) continue;
+      const settings = settingsSnap.data() || {};
+      if (settings.autoDeleteEnabled !== true) continue;
+      const days = Number(settings.retentionDays);
+      if (!Number.isInteger(days) || days < 1 || days > 3650) continue;
+
+      const [sent, received] = await Promise.all([
+        db.collection("staff_messages").where("senderUid", "==", user.id).get(),
+        db.collection("staff_messages").where("recipientUid", "==", user.id).get(),
+      ]);
+      const unique = new Map();
+      for (const doc of sent.docs) unique.set(doc.id, doc);
+      for (const doc of received.docs) unique.set(doc.id, doc);
+
+      const cutoff = now.toMillis() - (24 + days * 24) * 60 * 60 * 1000;
+      let batch = db.batch();
+      let writes = 0;
+      for (const doc of unique.values()) {
+        const message = doc.data() || {};
+        if (!(message.createdAt instanceof Timestamp)) continue;
+        if (message.createdAt.toMillis() > cutoff) continue;
+        const hiddenFor = Array.isArray(message.hiddenFor) ? message.hiddenFor : [];
+        if (hiddenFor.includes(user.id)) continue;
+        batch.update(doc.ref, { hiddenFor: FieldValue.arrayUnion(user.id) });
+        writes += 1;
+        if (writes === 400) {
+          await batch.commit();
+          batch = db.batch();
+          writes = 0;
+        }
+      }
+      if (writes > 0) await batch.commit();
+    }
+  },
+);
+
+
+// Create an in-app alert whenever a new staff message arrives.
+exports.notifyStaffMessageRecipient = onDocumentCreated(
+  "staff_messages/{messageId}",
+  async (event) => {
+    const message = event.data?.data();
+    if (!message || !message.recipientUid) return;
+    const notificationRef = db.collection("notifications").doc();
+    await notificationRef.set({
+      notificationId: notificationRef.id,
+      recipientUid: message.recipientUid,
+      recipientRole: message.recipientRole || "security_officer",
+      senderUid: message.senderUid || "",
+      senderEmail: "",
+      senderName: message.senderName || "مستخدم",
+      title: message.title || "ملاحظة جديدة",
+      body: message.body || "وصلتك ملاحظة جديدة.",
+      priority: message.priority || "normal",
+      read: false,
+      kind: "staff_message",
+      relatedId: message.messageId || event.params.messageId,
+      createdAt: FieldValue.serverTimestamp(),
+    });
+  },
+);
+
+// Notify the other participant when a reply is added to a staff message.
+exports.notifyStaffMessageReply = onDocumentCreated(
+  "staff_messages/{messageId}/replies/{replyId}",
+  async (event) => {
+    const reply = event.data?.data();
+    if (!reply) return;
+    const messageSnapshot = await db.collection("staff_messages")
+      .doc(event.params.messageId).get();
+    if (!messageSnapshot.exists) return;
+    const message = messageSnapshot.data() || {};
+    const recipientUid = reply.senderUid === message.senderUid
+      ? message.recipientUid : message.senderUid;
+    if (!recipientUid) return;
+    const recipientSnapshot = await db.collection("users").doc(recipientUid).get();
+    if (!recipientSnapshot.exists || recipientSnapshot.data().status !== "active") return;
+    const notificationRef = db.collection("notifications").doc();
+    await notificationRef.set({
+      notificationId: notificationRef.id,
+      recipientUid,
+      recipientRole: recipientSnapshot.data().role || "security_officer",
+      senderUid: reply.senderUid || "",
+      senderEmail: "",
+      senderName: reply.senderName || "مستخدم",
+      title: "رد جديد على الملاحظة",
+      body: reply.body || "وصلك رد جديد.",
+      priority: "normal",
+      read: false,
+      kind: "staff_message_reply",
+      relatedId: event.params.messageId,
+      createdAt: FieldValue.serverTimestamp(),
+    });
   },
 );

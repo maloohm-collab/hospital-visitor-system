@@ -13,6 +13,7 @@ import 'local_operations_log_screen.dart';
 import 'admin_approval_screen.dart';
 import 'report_center_screen.dart';
 import 'notifications_screen.dart';
+import 'staff_messages_screen.dart';
 import 'emergency_duty_screen.dart';
 import 'work_location_screen.dart';
 import 'duty_roster_screen.dart';
@@ -31,10 +32,37 @@ class DashboardScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final currentUid = FirebaseAuth.instance.currentUser?.uid;
     return Scaffold(
-      bottomNavigationBar: NavigationBar(
+      backgroundColor: const Color(0xFFF2F4F8),
+      bottomNavigationBar: DecoratedBox(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
+          boxShadow: [
+            BoxShadow(color: Color(0x14082B55), blurRadius: 22, offset: Offset(0, -6)),
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(26)),
+          child: NavigationBarTheme(
+            data: NavigationBarThemeData(
+              backgroundColor: Colors.white,
+              surfaceTintColor: Colors.transparent,
+              elevation: 0,
+              height: 68,
+              indicatorColor: const Color(0xFF0A1B33),
+              indicatorShape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              iconTheme: WidgetStateProperty.resolveWith((states) => IconThemeData(
+                    size: 24,
+                    color: states.contains(WidgetState.selected) ? const Color(0xFFE8CB84) : const Color(0xFF5B6B82),
+                  )),
+              labelTextStyle: WidgetStateProperty.resolveWith((states) => TextStyle(
+                    fontSize: 11,
+                    fontWeight: states.contains(WidgetState.selected) ? FontWeight.w800 : FontWeight.w600,
+                    color: states.contains(WidgetState.selected) ? const Color(0xFF0A1B33) : const Color(0xFF5B6B82),
+                  )),
+            ),
+            child: NavigationBar(
         selectedIndex: 0,
-        backgroundColor: Colors.white,
-        indicatorColor: const Color(0xFFE5F3F3),
         onDestinationSelected: (index) {
           if (index == 1) {
             Navigator.push(context, MaterialPageRoute(
@@ -55,14 +83,18 @@ class DashboardScreen extends StatelessWidget {
           }
         },
         destinations: const [
-          NavigationDestination(icon: Icon(Icons.home_rounded), label: 'الرئيسية'),
+          NavigationDestination(icon: Icon(Icons.home_outlined), label: 'الرئيسية'),
           NavigationDestination(icon: Icon(Icons.meeting_room_outlined), label: 'الزيارات'),
           NavigationDestination(icon: Icon(Icons.account_circle_outlined), label: 'حسابي'),
-          NavigationDestination(icon: Icon(Icons.contact_phone_rounded), label: 'تواصل مباشر'),
+          NavigationDestination(icon: Icon(Icons.videocam_outlined), label: 'تواصل مباشر'),
         NavigationDestination(icon: Icon(Icons.info_outline_rounded), label: 'عن التطبيق'),
         ],
+            ),
+          ),
+        ),
       ),
       body: SafeArea(
+        top: false,
         child: userRole == 'admin'
             ? _buildAdminDashboard(context, currentUid)
             : _buildStaffDashboard(context, currentUid),
@@ -70,6 +102,25 @@ class DashboardScreen extends StatelessWidget {
     );
   }
 
+
+  /// الهيدر مع بطاقة الحساب المتداخلة على حافته السفلية.
+  Widget _buildHero(String? currentUid) {
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(bottom: 44),
+          child: DashboardHeader(userRole: userRole, currentUid: currentUid),
+        ),
+        Positioned(
+          left: 0,
+          right: 0,
+          bottom: 0,
+          child: DashboardAccountCard(userRole: userRole, currentUid: currentUid),
+        ),
+      ],
+    );
+  }
 
   Widget _buildStaffDashboard(BuildContext context, String? currentUid) {
     final actions = <_AdminAction>[
@@ -219,6 +270,12 @@ class DashboardScreen extends StatelessWidget {
 
     actions.addAll([
       _AdminAction(
+        icon: Icons.mark_chat_unread_rounded,
+        title: userRole == 'admin' ? 'تنبيهات الإدارة / مدير الموقع' : userRole == 'supervisor' ? 'تنبيهات المشرف المناوب' : 'ملاحظاتي ومراسلاتي',
+        color: const Color(0xFF087E78),
+        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => StaffMessagesScreen(userRole: userRole))),
+      ),
+      _AdminAction(
         icon: Icons.notifications_active_rounded,
         title: 'الإشعارات والملحوظات',
         color: const Color(0xFFD28A25),
@@ -239,25 +296,16 @@ class DashboardScreen extends StatelessWidget {
     ]);
 
     return DecoratedBox(
-      decoration: const BoxDecoration(color: Color(0xFFF3F6FA)),
+      decoration: const BoxDecoration(color: Color(0xFFF2F4F8)),
       child: ListView(
         padding: EdgeInsets.zero,
         children: [
-          DashboardHeader(userRole: userRole, currentUid: currentUid),
+          _buildHero(currentUid),
           const SizedBox(height: 4),
-          GridView.builder(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: actions.length,
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 3,
-              crossAxisSpacing: 12,
-              mainAxisSpacing: 12,
-              childAspectRatio: 0.90,
-            ),
-            itemBuilder: (context, index) => _AdminActionCard(action: actions[index]),
-          ),
+          if (userRole == 'security_officer')
+            _buildSecurityCategories(context, actions)
+          else
+            _buildSupervisorCategories(context, actions),
           const SizedBox(height: 18),
           const Padding(
             padding: EdgeInsets.symmetric(horizontal: 16),
@@ -275,13 +323,203 @@ class DashboardScreen extends StatelessWidget {
     );
   }
 
+  Widget _buildSecurityCategories(BuildContext context, List<_AdminAction> actions) {
+    final categories = <_ActionCategory>[
+      _ActionCategory(
+        icon: Icons.verified_user_outlined,
+        title: 'العمليات الميدانية',
+        subtitle: 'مباشرة العمل، الطوارئ، والحالات الخاصة',
+        color: const Color(0xFF087E78),
+        actionTitles: const ['مباشرة العمل', 'الطوارئ وتسليم المناوبة', 'حالات الإنعاش CPR'],
+      ),
+      _ActionCategory(
+        icon: Icons.assignment_outlined,
+        title: 'التقارير والمناوبات',
+        subtitle: 'تقاريرك، كشوفات المناوبة، والأرشيف والإحصاءات',
+        color: const Color(0xFF6D3FA8),
+        actionTitles: const ['تقاريري', 'تقارير المناوبة PDF', 'مناوبات اليوم', 'المناوبات السابقة', 'التقارير والإحصاءات'],
+      ),
+      _ActionCategory(
+        icon: Icons.meeting_room_outlined,
+        title: 'الزيارات والسجلات',
+        subtitle: 'تسجيل الزوار ومراجعة سجل الزيارات',
+        color: const Color(0xFF047857),
+        actionTitles: const ['تسجيل زائر', 'سجل زياراتي'],
+      ),
+      _ActionCategory(
+        icon: Icons.forum_outlined,
+        title: 'المراسلات والتنبيهات',
+        subtitle: 'ملاحظاتك، الرسائل الواردة والصادرة، والإشعارات',
+        color: const Color(0xFFB45309),
+        actionTitles: const ['ملاحظاتي ومراسلاتي', 'الإشعارات والملحوظات'],
+      ),
+      _ActionCategory(
+        icon: Icons.account_circle_outlined,
+        title: 'حسابي ومعلومات التطبيق',
+        subtitle: 'بيانات حسابك والتعريف بالتطبيق',
+        color: const Color(0xFF1D4F91),
+        actionTitles: const ['حسابي', 'عن التطبيق والمؤسس'],
+      ),
+    ];
+    return _buildGroupedCategories(context, actions, categories);
+  }
+
+  Widget _buildSupervisorCategories(BuildContext context, List<_AdminAction> actions) {
+    final categories = <_ActionCategory>[
+      _ActionCategory(
+        icon: Icons.admin_panel_settings_outlined,
+        title: 'الإشراف الميداني',
+        subtitle: 'متابعة مواقع الضباط والطوارئ وتسليم المناوبات',
+        color: const Color(0xFF087E78),
+        actionTitles: const ['مواقع الضباط والملاحظات', 'الطوارئ وتسليم المناوبة'],
+      ),
+      _ActionCategory(
+        icon: Icons.assignment_rounded,
+        title: 'التقارير والمناوبات',
+        subtitle: 'تقارير الضباط وكشوفات المناوبات والإحصاءات',
+        color: const Color(0xFF6D3FA8),
+        actionTitles: const ['تقارير ضباط الأمن', 'تقارير المناوبة PDF', 'مناوبات اليوم', 'المناوبات السابقة', 'التقارير والإحصاءات'],
+      ),
+      _ActionCategory(
+        icon: Icons.meeting_room_outlined,
+        title: 'الزيارات والسجلات',
+        subtitle: 'مراجعة سجل الزيارات',
+        color: const Color(0xFF047857),
+        actionTitles: const ['سجل الزيارات'],
+      ),
+      _ActionCategory(
+        icon: Icons.forum_outlined,
+        title: 'المراسلات والتنبيهات',
+        subtitle: 'تنبيهات المشرف والرسائل والإشعارات',
+        color: const Color(0xFFB45309),
+        actionTitles: const ['تنبيهات المشرف المناوب', 'الإشعارات والملحوظات'],
+      ),
+      _ActionCategory(
+        icon: Icons.account_circle_outlined,
+        title: 'حسابي ومعلومات التطبيق',
+        subtitle: 'بيانات الحساب والتعريف بالتطبيق',
+        color: const Color(0xFF1D4F91),
+        actionTitles: const ['حسابي', 'عن التطبيق والمؤسس'],
+      ),
+    ];
+    return _buildGroupedCategories(context, actions, categories);
+  }
+
+  Widget _buildAdminCategories(BuildContext context, List<_AdminAction> actions) {
+    final categories = <_ActionCategory>[
+      _ActionCategory(
+        icon: Icons.policy_outlined,
+        title: 'العمليات والإشراف الميداني',
+        subtitle: 'متابعة مواقع العمل والتعامل مع الحالات الطارئة',
+        color: const Color(0xFF087E78),
+        actionTitles: const ['الطوارئ', 'ملاحظات مواقع العمل'],
+      ),
+      _ActionCategory(
+        icon: Icons.analytics_outlined,
+        title: 'التقارير والسجلات',
+        subtitle: 'تقارير الإدارة والزيارات والموظفين والإحصاءات',
+        color: const Color(0xFF6D3FA8),
+        actionTitles: const ['تقارير الإدارة', 'أرشيف PDF', 'سجل الزيارات', 'الإحصاءات', 'سجل الموظفين والتقارير'],
+      ),
+      _ActionCategory(
+        icon: Icons.manage_accounts_outlined,
+        title: 'إدارة الموظفين والمناوبات',
+        subtitle: 'طلبات الحسابات وإدارة الكادر وجدولة المناوبات',
+        color: const Color(0xFF047857),
+        actionTitles: const ['طلبات الحسابات', 'الموظفون', 'جدول المناوبات'],
+      ),
+      _ActionCategory(
+        icon: Icons.mark_chat_unread_outlined,
+        title: 'المراسلات والتنبيهات',
+        subtitle: 'رسائل الإدارة والتنبيهات الواردة',
+        color: const Color(0xFFB45309),
+        actionTitles: const ['تنبيهات الإدارة / مدير الموقع'],
+      ),
+      _ActionCategory(
+        icon: Icons.info_outline_rounded,
+        title: 'معلومات التطبيق',
+        subtitle: 'التعريف بالتطبيق والمؤسس',
+        color: const Color(0xFF1D4F91),
+        actionTitles: const ['عن التطبيق والمؤسس'],
+      ),
+    ];
+    return _buildGroupedCategories(context, actions, categories);
+  }
+
+  Widget _buildGroupedCategories(
+    BuildContext context,
+    List<_AdminAction> actions,
+    List<_ActionCategory> categories,
+  ) {
+    _ActionCategoryTile buildTile(_ActionCategory category, {required bool featured}) {
+      final groupedActions = actions
+          .where((action) => category.actionTitles.contains(action.title))
+          .toList();
+      return _ActionCategoryTile(
+        category: category,
+        count: groupedActions.length,
+        featured: featured,
+        onTap: () => Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => _ActionCategoryScreen(category: category, actions: groupedActions),
+          ),
+        ),
+      );
+    }
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+      child: Column(
+        children: [
+          Align(
+            alignment: Alignment.centerRight,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(4, 0, 4, 12),
+              child: Row(
+                children: [
+                  Container(width: 22, height: 3, decoration: BoxDecoration(color: const Color(0xFFC9A24B), borderRadius: BorderRadius.circular(2))),
+                  const SizedBox(width: 10),
+                  const Text('الخدمات الرئيسية', style: TextStyle(color: Color(0xFF0A1B33), fontSize: 16, fontWeight: FontWeight.w900)),
+                ],
+              ),
+            ),
+          ),
+          buildTile(categories[0], featured: true),
+          const SizedBox(height: 12),
+          IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(child: buildTile(categories[2], featured: false)),
+                const SizedBox(width: 12),
+                Expanded(child: buildTile(categories[1], featured: false)),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(child: buildTile(categories[3], featured: false)),
+                const SizedBox(width: 12),
+                Expanded(child: buildTile(categories[4], featured: false)),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildAdminDashboard(BuildContext context, String? currentUid) {
     return DecoratedBox(
-      decoration: const BoxDecoration(color: Color(0xFFF3F6FA)),
+      decoration: const BoxDecoration(color: Color(0xFFF2F4F8)),
       child: ListView(
         padding: EdgeInsets.zero,
         children: [
-        DashboardHeader(userRole: userRole, currentUid: currentUid),
+        _buildHero(currentUid),
         const SizedBox(height: 4),
         StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
           stream: FirebaseFirestore.instance.collection('account_requests')
@@ -289,6 +527,12 @@ class DashboardScreen extends StatelessWidget {
           builder: (context, snapshot) {
             final pending = snapshot.data?.docs.length ?? 0;
             final actions = <_AdminAction>[
+              _AdminAction(
+                icon: Icons.mark_chat_unread_rounded,
+                title: 'تنبيهات الإدارة / مدير الموقع',
+                color: const Color(0xFF087E78),
+                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => StaffMessagesScreen(userRole: userRole))),
+              ),
               _AdminAction(
                 icon: Icons.emergency_share_rounded,
                 title: 'الطوارئ',
@@ -357,27 +601,7 @@ class DashboardScreen extends StatelessWidget {
                 onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const WorkLocationScreen(userRole: 'admin'))),
               ),
             ];
-            // Reserve the remaining grid cells so the final card stays at the far right.
-            final hasTrailingCapacity = actions.length == 8;
-            return GridView.builder(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: hasTrailingCapacity ? 9 : actions.length,
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 3,
-                crossAxisSpacing: 12,
-                mainAxisSpacing: 12,
-                childAspectRatio: 0.90,
-              ),
-              itemBuilder: (context, index) {
-                if (hasTrailingCapacity && index > 7) {
-                  return const SizedBox.shrink();
-                }
-                final actionIndex = index;
-                return _AdminActionCard(action: actions[actionIndex]);
-              },
-            );
+            return _buildAdminCategories(context, actions);
           },
         ),
         const SizedBox(height: 18),
@@ -398,6 +622,238 @@ class DashboardScreen extends StatelessWidget {
 
 }
 
+
+class _ActionCategoryTile extends StatefulWidget {
+  const _ActionCategoryTile({
+    required this.category,
+    required this.count,
+    required this.featured,
+    required this.onTap,
+  });
+
+  final _ActionCategory category;
+  final int count;
+  final bool featured;
+  final VoidCallback onTap;
+
+  @override
+  State<_ActionCategoryTile> createState() => _ActionCategoryTileState();
+}
+
+class _ActionCategoryTileState extends State<_ActionCategoryTile> {
+  bool _pressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final category = widget.category;
+    final featured = widget.featured;
+    final radius = BorderRadius.circular(22);
+    return AnimatedScale(
+      scale: _pressed ? 0.975 : 1,
+      duration: Duration(milliseconds: _pressed ? 85 : 180),
+      curve: _pressed ? Curves.easeOut : Curves.easeOutBack,
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: radius,
+        child: Ink(
+          decoration: BoxDecoration(
+            gradient: featured
+                ? const LinearGradient(
+                    begin: Alignment.topRight,
+                    end: Alignment.bottomLeft,
+                    colors: [Color(0xFF0A1B33), Color(0xFF1A3E6E)],
+                  )
+                : null,
+            color: featured ? null : Colors.white,
+            borderRadius: radius,
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF0A1B33).withValues(alpha: featured ? 0.22 : 0.07),
+                blurRadius: featured ? 24 : 16,
+                offset: Offset(0, featured ? 10 : 4),
+              ),
+            ],
+          ),
+          child: InkWell(
+            onTap: widget.onTap,
+            onHighlightChanged: (value) => setState(() => _pressed = value),
+            borderRadius: radius,
+            splashColor: category.color.withValues(alpha: 0.14),
+            child: ClipRRect(
+              borderRadius: radius,
+              child: Stack(
+                children: [
+                  if (featured)
+                    Positioned(
+                      left: -26,
+                      bottom: -40,
+                      child: Icon(
+                        Icons.shield_outlined,
+                        size: 150,
+                        color: const Color(0xFFE8CB84).withValues(alpha: 0.13),
+                      ),
+                    ),
+                  Container(
+                    width: double.infinity,
+                    constraints: BoxConstraints(minHeight: featured ? 108 : 0),
+                    padding: EdgeInsets.all(featured ? 16 : 14),
+                    child: featured
+                        ? Row(
+                            children: [
+                              Container(
+                                width: 56,
+                                height: 56,
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(17),
+                                  gradient: const LinearGradient(
+                                    begin: Alignment.topRight,
+                                    end: Alignment.bottomLeft,
+                                    colors: [Color(0xFFE8CB84), Color(0xFFC9A24B)],
+                                  ),
+                                ),
+                                child: Icon(category.icon, color: const Color(0xFF0A1B33), size: 30),
+                              ),
+                              const SizedBox(width: 14),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Text(category.title, style: const TextStyle(color: Colors.white, fontSize: 17, height: 1.3, fontWeight: FontWeight.w900)),
+                                    const SizedBox(height: 3),
+                                    Text(category.subtitle, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Color(0xFFC9D6EA), fontSize: 12, height: 1.45)),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              _CategoryCount(count: widget.count, featured: true, color: category.color),
+                              const SizedBox(width: 4),
+                              const Directionality(
+                                textDirection: TextDirection.ltr,
+                                child: Icon(Icons.chevron_left_rounded, color: Color(0xFFE8CB84), size: 24),
+                              ),
+                            ],
+                          )
+                        : Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Container(
+                                    width: 44,
+                                    height: 44,
+                                    decoration: BoxDecoration(
+                                      color: category.color.withValues(alpha: 0.12),
+                                      borderRadius: BorderRadius.circular(14),
+                                    ),
+                                    child: Icon(category.icon, color: category.color, size: 24),
+                                  ),
+                                  const Spacer(),
+                                  _CategoryCount(count: widget.count, featured: false, color: category.color),
+                                ],
+                              ),
+                              const SizedBox(height: 12),
+                              Text(category.title, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Color(0xFF0A1B33), fontSize: 15, height: 1.3, fontWeight: FontWeight.w900)),
+                              const SizedBox(height: 4),
+                              Text(category.subtitle, maxLines: 3, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Color(0xFF5B6B82), fontSize: 11.5, height: 1.5)),
+                            ],
+                          ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _CategoryCount extends StatelessWidget {
+  const _CategoryCount({required this.count, required this.featured, required this.color});
+  final int count;
+  final bool featured;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    constraints: const BoxConstraints(minWidth: 26, minHeight: 26),
+    alignment: Alignment.center,
+    padding: const EdgeInsets.symmetric(horizontal: 8),
+    decoration: BoxDecoration(
+      color: featured ? const Color(0xFFE8CB84) : color.withValues(alpha: 0.12),
+      borderRadius: BorderRadius.circular(9),
+    ),
+    child: Text('$count', style: TextStyle(color: featured ? const Color(0xFF0A1B33) : color, fontSize: 13, fontWeight: FontWeight.w900)),
+  );
+}
+
+class _ActionCategory {
+  const _ActionCategory({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.color,
+    required this.actionTitles,
+  });
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final Color color;
+  final List<String> actionTitles;
+}
+
+class _ActionCategoryScreen extends StatelessWidget {
+  const _ActionCategoryScreen({required this.category, required this.actions});
+  final _ActionCategory category;
+  final List<_AdminAction> actions;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF3F6FA),
+      appBar: AppBar(
+        title: Text(category.title),
+        backgroundColor: const Color(0xFF1B3555),
+      ),
+      body: ListView(
+        padding: const EdgeInsets.symmetric(vertical: 18),
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(22, 0, 22, 16),
+            child: Text(category.subtitle, textAlign: TextAlign.center, style: const TextStyle(color: Color(0xFF65788A), fontSize: 14, fontWeight: FontWeight.w600)),
+          ),
+          ...actions.map((action) => Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
+            child: Material(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(17),
+              child: InkWell(
+                onTap: action.onTap,
+                borderRadius: BorderRadius.circular(17),
+                child: Container(
+                  constraints: const BoxConstraints(minHeight: 76),
+                  padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 12),
+                  decoration: BoxDecoration(borderRadius: BorderRadius.circular(17), border: Border.all(color: const Color(0xFFE0E8EF))),
+                  child: Row(
+                    children: [
+                      Container(width: 46, height: 46, decoration: BoxDecoration(color: action.color.withOpacity(0.10), borderRadius: BorderRadius.circular(14)), child: Icon(action.icon, color: action.color, size: 25)),
+                      const SizedBox(width: 13),
+                      Expanded(child: Text(action.title, style: const TextStyle(color: Color(0xFF173653), fontSize: 16, fontWeight: FontWeight.w800))),
+                      if (action.badge != null) Text(action.badge!, style: const TextStyle(color: Color(0xFFD92D20), fontWeight: FontWeight.w900)),
+                      const Icon(Icons.chevron_left_rounded, color: Color(0xFF7A8DA0)),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          )),
+        ],
+      ),
+    );
+  }
+}
+
 class _AdminAction {
   const _AdminAction({
     required this.icon,
@@ -412,78 +868,4 @@ class _AdminAction {
   final Color color;
   final VoidCallback onTap;
   final String? badge;
-}
-
-class _AdminActionCard extends StatelessWidget {
-  const _AdminActionCard({required this.action});
-
-  final _AdminAction action;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(20),
-      child: InkWell(
-        onTap: action.onTap,
-        borderRadius: BorderRadius.circular(18),
-        child: Container(
-          padding: const EdgeInsets.fromLTRB(6, 13, 6, 11),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: const Color(0xFFE1E8EF)),
-            boxShadow: const [
-              BoxShadow(color: Color(0x08082B55), blurRadius: 14, offset: Offset(0, 4)),
-            ],
-          ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  Container(
-                    width: 54,
-                    height: 54,
-                    decoration: BoxDecoration(
-                      color: Color.fromRGBO(action.color.red, action.color.green, action.color.blue, 0.10),
-                      borderRadius: BorderRadius.circular(18),
-                      border: Border.all(color: action.color.withOpacity(0.14)),
-                      boxShadow: [
-                        BoxShadow(color: action.color.withOpacity(0.10), blurRadius: 10, offset: const Offset(0, 3)),
-                      ],
-                    ),
-                    child: Icon(action.icon, color: action.color, size: 31),
-                  ),
-                  if (action.badge != null)
-                    Positioned(
-                      top: -7,
-                      right: -8,
-                      child: Container(
-                        constraints: const BoxConstraints(minWidth: 19, minHeight: 19),
-                        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
-                        decoration: const BoxDecoration(color: Color(0xFFD92D20), shape: BoxShape.circle),
-                        child: Text(
-                          action.badge!,
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w900),
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Text(
-                action.title,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                textAlign: TextAlign.center,
-                style: const TextStyle(color: Color(0xFF173653), fontSize: 15, height: 1.25, fontWeight: FontWeight.w800),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
 }
