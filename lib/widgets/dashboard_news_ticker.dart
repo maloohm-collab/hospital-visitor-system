@@ -55,14 +55,21 @@ class _DashboardNewsTickerState extends State<DashboardNewsTicker>
     final entries = <_TickerEntry>[];
     for (final doc in notifications.docs) {
       final data = doc.data();
-      if ((data['kind'] != 'ticker_announcement' && data['kind'] != null) ||
+      final kind = data['kind'];
+      final isTickerAnnouncement = kind == 'ticker_announcement' || kind == null;
+      final isMessageReply = kind == 'staff_message_reply';
+      if ((!isTickerAnnouncement && !isMessageReply) ||
           !_isToday(data['createdAt'])) continue;
       entries.add(_TickerEntry(
-        id: doc.id, title: (data['title'] ?? '').toString(),
+        id: isMessageReply
+            ? (data['relatedId'] ?? '').toString()
+            : doc.id,
+        notificationId: doc.id,
+        title: (data['title'] ?? '').toString(),
         body: (data['body'] ?? '').toString(),
         priority: (data['priority'] ?? 'normal').toString(),
         createdAt: (data['createdAt'] as Timestamp).toDate(),
-        isMessage: false, data: data,
+        isMessage: isMessageReply, data: data,
       ));
     }
     for (final doc in messages.docs) {
@@ -97,6 +104,18 @@ class _DashboardNewsTickerState extends State<DashboardNewsTicker>
   Future<void> _openEntry(_TickerEntry entry) async {
     if (!mounted) return;
     if (entry.isMessage) {
+      if (entry.notificationId != null) {
+        try {
+          await FirebaseFirestore.instance.collection('notifications')
+              .doc(entry.notificationId).update({
+            'read': true,
+            'readAt': FieldValue.serverTimestamp(),
+          });
+        } catch (_) {
+          // Opening the linked message should still work if read-state update fails.
+        }
+      }
+      if (entry.id.isEmpty) return;
       await Navigator.of(context).push(MaterialPageRoute(
         builder: (_) => StaffMessagesScreen(
           userRole: widget.userRole, initialMessageId: entry.id,
@@ -412,9 +431,10 @@ class _TickerEntry {
   const _TickerEntry({
     required this.id, required this.title, required this.body,
     required this.priority, required this.createdAt, required this.isMessage,
-    required this.data,
+    required this.data, this.notificationId,
   });
   final String id;
+  final String? notificationId;
   final String title;
   final String body;
   final String priority;
