@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'direct_contact_screen.dart';
 import 'package:flutter/material.dart';
 import '../widgets/dashboard_header.dart';
+import '../widgets/dashboard_news_ticker.dart';
 import 'account_profile_screen.dart';
 import 'staff_management_screen.dart';
 import 'duty_reports_screen.dart';
@@ -103,21 +104,29 @@ class DashboardScreen extends StatelessWidget {
   }
 
 
-  /// الهيدر مع بطاقة الحساب المتداخلة على حافته السفلية.
+  /// الهيدر وبطاقة الحساب، ثم شريط الملاحظات بمسافات مستقلة قبل الخدمات.
   Widget _buildHero(String? currentUid) {
-    return Stack(
-      clipBehavior: Clip.none,
+    return Column(
+      mainAxisSize: MainAxisSize.min,
       children: [
-        Padding(
-          padding: const EdgeInsets.only(bottom: 44),
-          child: DashboardHeader(userRole: userRole, currentUid: currentUid),
+        Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(bottom: 44),
+              child: DashboardHeader(userRole: userRole, currentUid: currentUid),
+            ),
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: DashboardAccountCard(userRole: userRole, currentUid: currentUid),
+            ),
+          ],
         ),
-        Positioned(
-          left: 0,
-          right: 0,
-          bottom: 0,
-          child: DashboardAccountCard(userRole: userRole, currentUid: currentUid),
-        ),
+        const SizedBox(height: 18),
+        DashboardNewsTicker(userRole: userRole),
+        const SizedBox(height: 18),
       ],
     );
   }
