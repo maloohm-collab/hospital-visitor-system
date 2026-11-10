@@ -100,12 +100,20 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                 if (d.exists) targets[d.id] = d.data()!;
               }
               if (targets.isEmpty) { refresh(() => sending = false); message('لم يتم العثور على مستلمين نشطين.'); return; }
+              final tickerGroupId = db.collection('notifications').doc().id;
+              final recipientRoles = audience == 'all_staff'
+                  ? <String>['security_officer', 'supervisor']
+                  : audience == 'supervisors'
+                      ? <String>['supervisor']
+                      : <String>['security_officer'];
               final batch = db.batch();
               for (final entry in targets.entries) {
                 final ref = db.collection('notifications').doc();
                 batch.set(ref, {'notificationId': ref.id, 'recipientUid': entry.key, 'recipientRole': entry.value['role'] ?? '',
                   'senderUid': sender?.uid ?? uid, 'senderEmail': sender?.email ?? '', 'senderName': 'الإدارة', 'title': title.text.trim(), 'body': body.text.trim(),
-                  'priority': priority, 'read': false, 'kind': 'ticker_announcement', 'createdAt': FieldValue.serverTimestamp()});
+                  'priority': priority, 'read': false, 'kind': 'ticker_announcement',
+                  'tickerGroupId': tickerGroupId, 'tickerVisible': true,
+                  'recipientRoles': recipientRoles, 'createdAt': FieldValue.serverTimestamp()});
               }
               await batch.commit();
               if (ctx.mounted) Navigator.pop(sheet);
