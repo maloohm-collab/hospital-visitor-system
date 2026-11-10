@@ -2,6 +2,12 @@ name: Deploy Firestore (manual)
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - work/next-release-development-2026-11-09
+    paths:
+      - firestore.rules
+      - firestore.indexes.json
 
 permissions:
   contents: read
