@@ -774,7 +774,8 @@ service cloud.firestore {
         && (resource.data.kind == 'ticker_announcement'
           || (resource.data.kind == null && resource.data.senderName == 'الإدارة'))
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-          'title', 'body', 'priority', 'tickerVisible'
+          'title', 'body', 'priority', 'tickerVisible', 'tickerGroupId',
+          'recipientRoles', 'broadcastToAll'
         ])
         && request.resource.data.title is string
         && request.resource.data.title.size() >= 3
@@ -783,6 +784,12 @@ service cloud.firestore {
         && request.resource.data.priority in ['normal', 'important', 'urgent']
         && (!request.resource.data.keys().hasAny(['tickerVisible'])
           || request.resource.data.tickerVisible is bool)
+        && (!request.resource.data.keys().hasAny(['tickerGroupId'])
+          || request.resource.data.tickerGroupId is string)
+        && (!request.resource.data.keys().hasAny(['recipientRoles'])
+          || request.resource.data.recipientRoles is list)
+        && (!request.resource.data.keys().hasAny(['broadcastToAll'])
+          || request.resource.data.broadcastToAll is bool)
       ) || (
         isActiveUser()
         && resource.data.recipientUid == request.auth.uid
