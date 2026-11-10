@@ -96,19 +96,29 @@ class DutyRosterPersonalPdf {
           .whereType<Map>()
           .map((v) => Map<String, dynamic>.from(v))
           .toList();
+      final offNames = (block['offNames'] as List? ?? []);
+      final annualNames = (block['annualNames'] as List? ?? []);
+      final specialNames = (block['specialNames'] as List? ?? []);
+      final supervisorName = (block['supervisorName'] ?? '').toString();
+      final siteManagerName = (block['siteManager'] ??
+              shifts['siteManager'] ??
+              (shifts['A'] is Map ? (shifts['A'] as Map)['siteManager'] : null) ??
+              '')
+          .toString();
       final personalCandidates = <String>[
         ...assignments.map((item) => (item['officer'] ?? '').toString()),
         ...clinics.map((item) => (item['officer'] ?? '').toString()),
+        ...offNames.map((item) => item.toString()),
+        ...annualNames.map((item) => item.toString()),
+        ...specialNames.map((item) => item.toString()),
+        supervisorName,
+        siteManagerName,
       ];
       final personalMatchIndex = DutyRosterNameMatcher.uniqueBestMatchIndex(
         accountName: highlightedName ?? '',
         rosterNames: personalCandidates,
       );
       const personalHighlight = PdfColor(.86, .93, 1);
-
-      final offNames = (block['offNames'] as List? ?? []);
-      final annualNames = (block['annualNames'] as List? ?? []);
-      final specialNames = (block['specialNames'] as List? ?? []);
       final half = (assignments.length + 1) ~/ 2;
       final statusCount =
           offNames.length + annualNames.length + specialNames.length;
@@ -352,15 +362,21 @@ class DutyRosterPersonalPdf {
           pw.TableRow(children: [
             cell(
               statusItems[i][1],
-              background: statusBg(statusItems[i][1]),
+              background: personalMatchIndex == assignments.length + clinics.length + i
+                  ? personalHighlight
+                  : statusBg(statusItems[i][1]),
             ),
             cell(
               statusItems[i][0],
-              background: statusBg(statusItems[i][1]),
+              background: personalMatchIndex == assignments.length + clinics.length + i
+                  ? personalHighlight
+                  : statusBg(statusItems[i][1]),
             ),
             cell(
               (i + 1).toString(),
-              background: statusBg(statusItems[i][1]),
+              background: personalMatchIndex == assignments.length + clinics.length + i
+                  ? personalHighlight
+                  : statusBg(statusItems[i][1]),
             ),
           ]),
       ];
@@ -417,12 +433,26 @@ class DutyRosterPersonalPdf {
           ]),
         pw.TableRow(children: [
           cell('التوقيع:'),
-          cell(supervisor, size: fs + .5),
+          cell(
+            supervisor,
+            size: fs + .5,
+            background: personalMatchIndex ==
+                    assignments.length + clinics.length + statusItems.length
+                ? personalHighlight
+                : null,
+          ),
           cell('المشرف', header: true),
         ]),
         pw.TableRow(children: [
           cell('التوقيع:'),
-          cell(siteManager, size: fs + .5),
+          cell(
+            siteManager,
+            size: fs + .5,
+            background: personalMatchIndex ==
+                    assignments.length + clinics.length + statusItems.length + 1
+                ? personalHighlight
+                : null,
+          ),
           cell('مدير الموقع', header: true),
         ]),
       ];
