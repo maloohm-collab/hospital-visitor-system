@@ -84,11 +84,9 @@ class _TickerManagementScreenState extends State<TickerManagementScreen> {
     final body = TextEditingController(text: (e.data['body'] ?? '').toString());
     var priority = (e.data['priority'] ?? 'normal').toString();
     final currentRoles = e.data['recipientRoles'];
-    var audienceMode = currentRoles is List
-        ? (currentRoles.length == 1 && currentRoles.contains('security_officer')
-            ? 'officers' : 'all')
-        : (e.data['recipientRole'] == 'security_officer' &&
-            e.data['broadcastToAll'] != true ? 'officers' : 'all');
+    var audienceMode = currentRoles is List &&
+            currentRoles.length == 1 && currentRoles.contains('security_officer')
+        ? 'officers' : 'all';
     var saving = false;
     await showDialog<void>(context: context, builder: (dialog) =>
       StatefulBuilder(builder: (context, refresh) => AlertDialog(
@@ -205,10 +203,6 @@ class _TickerManagementScreenState extends State<TickerManagementScreen> {
               refresh(() => saving = false);
               if (mounted) ScaffoldMessenger.of(this.context).showSnackBar(
                 SnackBar(content: Text('تعذر التعديل (' + ex.code + ').')));
-            } catch (error) {
-              refresh(() => saving = false);
-              if (mounted) ScaffoldMessenger.of(this.context).showSnackBar(
-                SnackBar(content: Text(error.toString().replaceFirst('Bad state: ', ''))));
             }
           }, child: Text(saving ? 'جارٍ الحفظ...' : 'حفظ التعديل')),
         ],
