@@ -1775,12 +1775,10 @@ class _DutyRosterScreenState extends State<DutyRosterScreen>
         ...savedClinicRows.map((row) =>
             (Map<String, dynamic>.from(row as Map)['officer'] ?? '').toString()),
     ];
-    final matchedIdentityIndex = readOnly
-        ? DutyRosterNameMatcher.uniqueBestMatchIndex(
-            accountName: _currentUserName,
-            rosterNames: identityCandidates,
-          )
-        : null;
+    final matchedIdentityIndex = DutyRosterNameMatcher.uniqueBestMatchIndex(
+      accountName: _currentUserName,
+      rosterNames: identityCandidates,
+    );
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       if (!readOnly)
         const Padding(
@@ -1805,7 +1803,7 @@ class _DutyRosterScreenState extends State<DutyRosterScreen>
           textAlign: TextAlign.center, style: const TextStyle(color: navy, fontWeight: FontWeight.bold))),
       ...List.generate(list.length, (i) {
         final r = list[i]; final n = (r['officer'] ?? '').toString(); final l = (r['location'] ?? '').toString();
-        final isCurrentUser = readOnly && matchedIdentityIndex == i;
+        final isCurrentUser = matchedIdentityIndex == i;
         return Card(
           color: isCurrentUser ? const Color(0xFFDCEEFF) : Colors.white,
           margin: const EdgeInsets.only(bottom: 14),
@@ -1959,7 +1957,7 @@ class _DutyRosterScreenState extends State<DutyRosterScreen>
                     : clinicRows[index];
                 final officer = (clinic['officer'] ?? '').toString();
                 final location = (clinic['location'] ?? '').toString();
-                final isCurrentClinicUser = readOnly &&
+                final isCurrentClinicUser =
                     matchedIdentityIndex == list.length + index;
                 return Card(
                   color: isCurrentClinicUser ? const Color(0xFFDCEEFF) : Colors.white,
