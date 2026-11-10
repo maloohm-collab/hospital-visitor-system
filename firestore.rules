@@ -689,7 +689,7 @@ service cloud.firestore {
         && request.resource.data.keys().hasOnly([
           'notificationId', 'recipientUid', 'recipientRole', 'senderUid',
           'senderEmail', 'title', 'body', 'priority', 'read', 'createdAt',
-          'kind', 'relatedId'
+          'kind', 'relatedId', 'replyId', 'senderName'
         ])
         && request.resource.data.keys().hasAll([
           'notificationId', 'recipientUid', 'recipientRole', 'senderUid',
@@ -711,6 +711,29 @@ service cloud.firestore {
         && request.resource.data.createdAt == request.time
         && (
           isActiveAdmin()
+          || (
+            request.resource.data.kind == 'staff_message'
+            && request.resource.data.relatedId is string
+            && exists(/databases/$(database)/documents/staff_messages/$(request.resource.data.relatedId))
+            && get(/databases/$(database)/documents/staff_messages/$(request.resource.data.relatedId)).data.senderUid == request.auth.uid
+            && get(/databases/$(database)/documents/staff_messages/$(request.resource.data.relatedId)).data.senderRole == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role
+            && get(/databases/$(database)/documents/staff_messages/$(request.resource.data.relatedId)).data.recipientUid == request.resource.data.recipientUid
+            && get(/databases/$(database)/documents/staff_messages/$(request.resource.data.relatedId)).data.recipientRole == request.resource.data.recipientRole
+            && get(/databases/$(database)/documents/staff_messages/$(request.resource.data.relatedId)).data.title == request.resource.data.title
+            && get(/databases/$(database)/documents/staff_messages/$(request.resource.data.relatedId)).data.body == request.resource.data.body
+            && get(/databases/$(database)/documents/staff_messages/$(request.resource.data.relatedId)).data.priority == request.resource.data.priority
+          )
+          || (
+            request.resource.data.kind == 'staff_message_reply'
+            && request.resource.data.relatedId is string
+            && request.resource.data.replyId is string
+            && exists(/databases/$(database)/documents/staff_messages/$(request.resource.data.relatedId))
+            && exists(/databases/$(database)/documents/staff_messages/$(request.resource.data.relatedId)/replies/$(request.resource.data.replyId))
+            && get(/databases/$(database)/documents/staff_messages/$(request.resource.data.relatedId)).data.senderUid == request.resource.data.recipientUid
+            && get(/databases/$(database)/documents/staff_messages/$(request.resource.data.relatedId)).data.recipientUid == request.auth.uid
+            && get(/databases/$(database)/documents/staff_messages/$(request.resource.data.relatedId)/replies/$(request.resource.data.replyId)).data.senderUid == request.auth.uid
+            && get(/databases/$(database)/documents/staff_messages/$(request.resource.data.relatedId)/replies/$(request.resource.data.replyId)).data.body == request.resource.data.body
+          )
           || (
             isActiveSupervisor()
             && request.resource.data.kind == 'emergency_assignment'
