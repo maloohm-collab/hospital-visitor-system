@@ -73,7 +73,7 @@ class _DashboardNewsTickerState extends State<DashboardNewsTicker>
                 data['recipientRole'] == 'security_officer') ||
             data['broadcastToAll'] == true
           );
-      if (!isAdminAnnouncement || !_isToday(data['createdAt'])) continue;
+      if (!isAdminAnnouncement || data['tickerVisible'] == false || !_isToday(data['createdAt'])) continue;
       entries.add(_TickerEntry(
         id: doc.id,
         notificationId: null,
@@ -229,6 +229,7 @@ class _DashboardNewsTickerState extends State<DashboardNewsTicker>
                         throw StateError('لا يوجد مستلمون نشطون ضمن الفئات المحددة.');
                       }
                       final sender = FirebaseAuth.instance.currentUser;
+                      final tickerGroupId = db.collection('notifications').doc().id;
                       final batch = db.batch();
                       for (final recipient in recipients) {
                         final ref = db.collection('notifications').doc();
@@ -244,6 +245,8 @@ class _DashboardNewsTickerState extends State<DashboardNewsTicker>
                           'priority': priority,
                           'read': false,
                           'kind': 'ticker_announcement',
+                          'tickerGroupId': tickerGroupId,
+                          'tickerVisible': true,
                           'recipientRoles': selectedRoles.toList(),
                           'broadcastToAll': selectedRoles.length == 3 &&
                             selectedRoles.containsAll(
