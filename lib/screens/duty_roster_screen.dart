@@ -1715,10 +1715,14 @@ class _DutyRosterScreenState extends State<DutyRosterScreen>
               DropdownButtonFormField<String>(
                 value: DutyRosterCatalog.siteManagers.contains(siteManager) ? siteManager : null,
                 isExpanded: true,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: 'مدير الموقع',
-                  border: OutlineInputBorder(),
-                  contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 16),
+                  filled: _isCurrentAccountName(siteManager ?? ''),
+                  fillColor: _isCurrentAccountName(siteManager ?? '')
+                      ? const Color(0xFFDCEEFF)
+                      : Colors.white,
+                  border: const OutlineInputBorder(),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
                 ),
                 items: DutyRosterCatalog.siteManagers.map((v) => DropdownMenuItem(value: v, child: Text(v))).toList(),
                 onChanged: (v) { setState(() => siteManager = v); _draftChanged(); },
@@ -1847,8 +1851,15 @@ class _DutyRosterScreenState extends State<DutyRosterScreen>
       if (!readOnly) DropdownButtonFormField<String>(
         value: DutyRosterCatalog.supervisorsFor(s).contains(supervisors[s]) ? supervisors[s] : null,
         isExpanded: true,
-        decoration: const InputDecoration(labelText: 'المشرف', border: OutlineInputBorder(),
-          contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 15)),
+        decoration: InputDecoration(
+          labelText: 'المشرف',
+          filled: _isCurrentAccountName(supervisors[s] ?? ''),
+          fillColor: _isCurrentAccountName(supervisors[s] ?? '')
+              ? const Color(0xFFDCEEFF)
+              : Colors.white,
+          border: const OutlineInputBorder(),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 15),
+        ),
         items: DutyRosterCatalog.supervisorsFor(s).map((v) => DropdownMenuItem(value: v, child: Text(v))).toList(),
         onChanged: (v) { setState(() => supervisors[s] = v); _draftChanged(); },
       ) else if ((b['supervisorName'] ?? '').toString().isNotEmpty)
