@@ -205,6 +205,10 @@ class _TickerManagementScreenState extends State<TickerManagementScreen> {
               refresh(() => saving = false);
               if (mounted) ScaffoldMessenger.of(this.context).showSnackBar(
                 SnackBar(content: Text('تعذر التعديل (' + ex.code + ').')));
+            } catch (error) {
+              refresh(() => saving = false);
+              if (mounted) ScaffoldMessenger.of(this.context).showSnackBar(
+                SnackBar(content: Text(error.toString().replaceFirst('Bad state: ', ''))));
             }
           }, child: Text(saving ? 'جارٍ الحفظ...' : 'حفظ التعديل')),
         ],
