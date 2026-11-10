@@ -217,8 +217,36 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
                         });
                       }
                       await messageBatch.commit();
+                      var notificationFailures = 0;
+                      for (final recipient in users.where((d) => selected.contains(d.id))) {
+                        final messageId = threadId + '_' + recipient.id;
+                        final notificationRef = db.collection('notifications')
+                            .doc('staff_message_$messageId');
+                        try {
+                          await notificationRef.set({
+                            'notificationId': notificationRef.id,
+                            'recipientUid': recipient.id,
+                            'recipientRole': recipient.data()['role'] ?? '',
+                            'senderUid': uid,
+                            'senderEmail': auth.currentUser?.email ?? '',
+                            'senderName': personName(sender),
+                            'title': title.text.trim(),
+                            'body': body.text.trim(),
+                            'priority': priority,
+                            'read': false,
+                            'kind': 'staff_message',
+                            'relatedId': messageId,
+                            'createdAt': FieldValue.serverTimestamp(),
+                          });
+                        } catch (_) {
+                          notificationFailures++;
+                        }
+                      }
                       if (ctx.mounted) Navigator.pop(sheet);
-                      toast('تم إرسال الملاحظة النصية إلى ${refs.length} مستلم.');
+                      toast(notificationFailures == 0
+                        ? 'تم إرسال الملاحظة وإشعار جميع المستلمين (' + refs.length.toString() + ').'
+                        : 'تم إرسال الملاحظة إلى ' + refs.length.toString() +
+                          ' مستلم، لكن تعذر إنشاء ' + notificationFailures.toString() + ' إشعار.');
                     } on FirebaseException catch (e) {
                       refresh(() => busy = false);
                       toast('تعذر الإرسال (${e.code}). تحقق من قواعد Firestore.');
@@ -309,8 +337,37 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
                         'replyStatus': 'replied',
                         'lastReplyAt': FieldValue.serverTimestamp(),
                       });
+                      var replyNotificationSent = false;
+                      final originalSenderUid = (message['senderUid'] ?? '').toString();
+                      if (originalSenderUid.isNotEmpty) {
+                        final notificationRef = db.collection('notifications')
+                            .doc('staff_reply_' + replyRef.id);
+                        try {
+                          await notificationRef.set({
+                            'notificationId': notificationRef.id,
+                            'recipientUid': originalSenderUid,
+                            'recipientRole': (message['senderRole'] ?? '').toString(),
+                            'senderUid': uid,
+                            'senderEmail': auth.currentUser?.email ?? '',
+                            'senderName': personName(profileData),
+                            'title': 'رد جديد على الملاحظة',
+                            'body': body.text.trim(),
+                            'priority': 'normal',
+                            'read': false,
+                            'kind': 'staff_message_reply',
+                            'relatedId': doc.id,
+                            'replyId': replyRef.id,
+                            'createdAt': FieldValue.serverTimestamp(),
+                          });
+                          replyNotificationSent = true;
+                        } catch (_) {
+                          replyNotificationSent = false;
+                        }
+                      }
                       if (ctx.mounted) Navigator.pop(sheet);
-                      toast('تم إرسال الرد النصي.');
+                      toast(replyNotificationSent
+                        ? 'تم إرسال الرد وإشعار صاحب الملاحظة.'
+                        : 'تم إرسال الرد، لكن تعذر إنشاء إشعار لصاحب الملاحظة.');
                     } on FirebaseException catch (e) {
                       refresh(() => busy = false);
                       toast('تعذر إرسال الرد (${e.code}).');
