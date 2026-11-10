@@ -59,7 +59,15 @@ class _DashboardNewsTickerState extends State<DashboardNewsTicker>
       final isAdminAnnouncement =
           (kind == 'ticker_announcement' || kind == null) &&
           (data['senderName'] ?? '').toString() == 'الإدارة' &&
-          data['broadcastToAll'] != false;
+          ((data['recipientRoles'] is List) &&
+              ((data['recipientRoles'] as List).length == 1 &&
+                  (data['recipientRoles'] as List).contains('security_officer') ||
+               (data['recipientRoles'] as List).toSet().containsAll(
+                 const {'security_officer', 'supervisor', 'admin'},
+               ) &&
+               (data['recipientRoles'] as List).length == 3)) ||
+          (data['recipientRoles'] == null && data['recipientRole'] == 'security_officer') ||
+          data['broadcastToAll'] == true;
       if (!isAdminAnnouncement || !_isToday(data['createdAt'])) continue;
       entries.add(_TickerEntry(
         id: doc.id,
@@ -231,9 +239,11 @@ class _DashboardNewsTickerState extends State<DashboardNewsTicker>
                           'priority': priority,
                           'read': false,
                           'kind': 'ticker_announcement',
-                          'broadcastToAll': selectedRoles.containsAll(
-                            const {'security_officer', 'supervisor', 'admin'},
-                          ),
+                          'recipientRoles': selectedRoles.toList(),
+                          'broadcastToAll': selectedRoles.length == 3 &&
+                            selectedRoles.containsAll(
+                              const {'security_officer', 'supervisor', 'admin'},
+                            ),
                           'createdAt': FieldValue.serverTimestamp(),
                         });
                       }
