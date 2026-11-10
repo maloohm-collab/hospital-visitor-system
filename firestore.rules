@@ -1064,7 +1064,8 @@ service cloud.firestore {
         && request.resource.data.attachments.size() == 0
         && request.resource.data.read == false
         && request.resource.data.hiddenFor is list
-        && request.resource.data.showOnTicker is bool
+        && (!request.resource.data.keys().hasAny(['showOnTicker'])
+          || request.resource.data.showOnTicker is bool)
         && request.resource.data.createdAt == request.time
         && (
           isActiveAdmin()
