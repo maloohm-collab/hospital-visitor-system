@@ -105,6 +105,27 @@ class FounderScreen extends StatelessWidget {
           ),
           const SizedBox(height: 13),
           _section(
+            icon: Icons.new_releases_rounded,
+            title: 'آخر تحديث — 10 نوفمبر 2026',
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: const [
+                Text(
+                  'يتضمن هذا التحديث أحدث التحسينات التي وصلت إليها منظومة زوار المستشفى في فرع التطوير.',
+                  style: TextStyle(fontSize: 14, height: 1.8, color: Color(0xFF40566B)),
+                  textAlign: TextAlign.justify,
+                ),
+                SizedBox(height: 12),
+                _FeatureRow(icon: Icons.send_rounded, title: 'المراسلات والتنبيهات', description: 'تحسين مسار إرسال الملاحظات من الإدارة إلى الموظفين، مع دعم الوارد والصادر والتنبيهات والردود على الملاحظات عند طلب الرد. تم التحقق عملياً من نجاح إرسال ملاحظة من حساب الإدارة بعد تحديث قواعد Firestore.'),
+                _FeatureRow(icon: Icons.location_on_rounded, title: 'مباشرات مواقع العمل', description: 'يختار ضابط الأمن موقعه الحالي عند مباشرة العمل، ويمكنه إنهاء الموقع والانتقال إلى موقع آخر خلال المناوبة، مع تسجيل أوقات المباشرة والإنهاء.'),
+                _FeatureRow(icon: Icons.sticky_note_2_rounded, title: 'ملاحظات مواقع العمل', description: 'كتابة الملاحظات وحفظها كمسودات قابلة للتعديل والحذف قبل الإرسال، ثم إرسالها للمستلمين المعنيين. تظهر ملاحظات الضابط المرسلة لديه خلال آخر 10 ساعات، مع صلاحية حذف محدودة زمنياً.'),
+                _FeatureRow(icon: Icons.groups_rounded, title: 'متابعة المشرفين والإدارة', description: 'متابعة المباشرات الحالية ومواقع الضباط واستقبال ملاحظاتهم، مع إمكانية إعادة توجيه الملاحظة للمستخدمين المعنيين وفق الصلاحيات.'),
+                _FeatureRow(icon: Icons.cloud_done_outlined, title: 'تحديث قواعد البيانات', description: 'نُشرت قواعد Firestore والفهارس من فرع التطوير بنجاح بتاريخ 10 نوفمبر 2026. يعتمد التطوير على خدمات Firebase المجانية، ولا يتطلب هذا التحديث تفعيل خطة Blaze أو نشر Cloud Functions.'),
+              ],
+            ),
+          ),
+          const SizedBox(height: 13),
+          _section(
             icon: Icons.security_rounded,
             title: 'الأدوار والصلاحيات',
             child: const Column(
