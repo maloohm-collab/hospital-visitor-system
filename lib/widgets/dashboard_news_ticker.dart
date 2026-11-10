@@ -56,26 +56,30 @@ class _DashboardNewsTickerState extends State<DashboardNewsTicker>
     for (final doc in notifications.docs) {
       final data = doc.data();
       final kind = data['kind'];
-      final isTickerAnnouncement = kind == 'ticker_announcement' || kind == null;
-      final isMessageReply = kind == 'staff_message_reply';
-      if ((!isTickerAnnouncement && !isMessageReply) ||
-          !_isToday(data['createdAt'])) continue;
+      final isAdminAnnouncement =
+          (kind == 'ticker_announcement' || kind == null) &&
+          (data['senderName'] ?? '').toString() == 'الإدارة' &&
+          data['broadcastToAll'] != false;
+      if (!isAdminAnnouncement || !_isToday(data['createdAt'])) continue;
       entries.add(_TickerEntry(
-        id: isMessageReply
-            ? (data['relatedId'] ?? '').toString()
-            : doc.id,
-        notificationId: doc.id,
+        id: doc.id,
+        notificationId: null,
         title: (data['title'] ?? '').toString(),
         body: (data['body'] ?? '').toString(),
         priority: (data['priority'] ?? 'normal').toString(),
         createdAt: (data['createdAt'] as Timestamp).toDate(),
-        isMessage: isMessageReply, data: data,
+        isMessage: false, data: data,
       ));
     }
     for (final doc in messages.docs) {
       final data = doc.data();
       final hiddenFor = data['hiddenFor'];
-      if (!_isToday(data['createdAt']) ||
+      final isSupervisorBroadcastToOfficers =
+          data['showOnTicker'] == true &&
+          data['senderRole'] == 'supervisor' &&
+          data['recipientRole'] == 'security_officer';
+      if (!isSupervisorBroadcastToOfficers ||
+          !_isToday(data['createdAt']) ||
           (hiddenFor is List && hiddenFor.contains(_uid))) continue;
       entries.add(_TickerEntry(
         id: doc.id, title: (data['title'] ?? '').toString(),
@@ -227,6 +231,9 @@ class _DashboardNewsTickerState extends State<DashboardNewsTicker>
                           'priority': priority,
                           'read': false,
                           'kind': 'ticker_announcement',
+                          'broadcastToAll': selectedRoles.containsAll(
+                            const {'security_officer', 'supervisor', 'admin'},
+                          ),
                           'createdAt': FieldValue.serverTimestamp(),
                         });
                       }
