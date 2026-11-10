@@ -188,9 +188,19 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
                         }
                       }
                       final threadId = db.collection('staff_messages').doc().id;
+                      final selectedRecipients =
+                          users.where((d) => selected.contains(d.id)).toList();
+                      final activeOfficerIds = users
+                          .where((d) => d.data()['role'] == 'security_officer')
+                          .map((d) => d.id)
+                          .toSet();
+                      final isSupervisorBroadcastToAllOfficers =
+                          senderRole == 'supervisor' &&
+                          activeOfficerIds.isNotEmpty &&
+                          activeOfficerIds.every(selected.contains);
                       final refs = <DocumentReference<Map<String, dynamic>>>[];
                       final messageBatch = db.batch();
-                      for (final recipient in users.where((d) => selected.contains(d.id))) {
+                      for (final recipient in selectedRecipients) {
                         final ref = db.collection('staff_messages').doc(threadId + '_' + recipient.id);
                         refs.add(ref);
                         messageBatch.set(ref, {
@@ -213,12 +223,14 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
                           'attachments': <Map<String, dynamic>>[],
                           'read': false,
                           'hiddenFor': <String>[],
+                          'showOnTicker': isSupervisorBroadcastToAllOfficers &&
+                              recipient.data()['role'] == 'security_officer',
                           'createdAt': FieldValue.serverTimestamp(),
                         });
                       }
                       await messageBatch.commit();
                       var notificationFailures = 0;
-                      for (final recipient in users.where((d) => selected.contains(d.id))) {
+                      for (final recipient in selectedRecipients) {
                         final messageId = threadId + '_' + recipient.id;
                         final notificationRef = db.collection('notifications')
                             .doc('staff_message_$messageId');
@@ -230,6 +242,7 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
                             'senderUid': uid,
                             'senderEmail': auth.currentUser?.email ?? '',
                             'senderName': personName(sender),
+                            'senderRole': senderRole,
                             'title': title.text.trim(),
                             'body': body.text.trim(),
                             'priority': priority,
