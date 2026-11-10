@@ -705,7 +705,7 @@ service cloud.firestore {
         && request.resource.data.title is string
         && request.resource.data.title.size() >= 3
         && request.resource.data.body is string
-        && request.resource.data.body.size() >= 5
+        && request.resource.data.body.size() >= 1
         && request.resource.data.priority in ['normal', 'important', 'urgent']
         && request.resource.data.read == false
         && request.resource.data.createdAt == request.time
@@ -713,6 +713,7 @@ service cloud.firestore {
           isActiveAdmin()
           || (
             request.resource.data.kind == 'staff_message'
+            && request.resource.data.body.size() >= 3
             && request.resource.data.relatedId is string
             && exists(/databases/$(database)/documents/staff_messages/$(request.resource.data.relatedId))
             && get(/databases/$(database)/documents/staff_messages/$(request.resource.data.relatedId)).data.senderUid == request.auth.uid
