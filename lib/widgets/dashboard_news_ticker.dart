@@ -306,7 +306,7 @@ class _DashboardNewsTickerState extends State<DashboardNewsTicker>
       return total + painter.width;
     });
     final separatorsWidth = entries.length > 1 ? (entries.length - 1) * 44.0 : 0.0;
-    final textWidth = measuredItemsWidth + separatorsWidth + 60;
+    final contentWidth = measuredItemsWidth + separatorsWidth + 60;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Container(
@@ -342,26 +342,40 @@ class _DashboardNewsTickerState extends State<DashboardNewsTicker>
               Container(width: 1.4, height: 30, color: const Color(0xFFD5B9BC)),
               Expanded(
                 child: ClipRect(
-                  child: AnimatedBuilder(
-                    animation: _tickerController,
-                    builder: (context, child) => Transform.translate(
-                      offset: Offset(-_tickerController.value * textWidth, 0),
-                      child: child,
-                    ),
-                    child: SizedBox(
-                      width: textWidth * 2,
-                      child: Row(
-                        textDirection: TextDirection.rtl,
-                        children: [
-                          SizedBox(width: textWidth - 60,
-                            child: _tickerItems(entries, textStyle)),
-                          const SizedBox(width: 60),
-                          SizedBox(width: textWidth - 60,
-                            child: _tickerItems(entries, textStyle)),
-                          const SizedBox(width: 60),
-                        ],
-                      ),
-                    ),
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      final segmentWidth = contentWidth < constraints.maxWidth
+                          ? constraints.maxWidth
+                          : contentWidth;
+                      return AnimatedBuilder(
+                        animation: _tickerController,
+                        builder: (context, child) => Transform.translate(
+                          // ابدأ بعرض بداية الجملة من يمين المساحة، ثم حرّكها لليسار.
+                          offset: Offset(
+                            constraints.maxWidth - segmentWidth -
+                                (_tickerController.value * segmentWidth),
+                            0,
+                          ),
+                          child: child,
+                        ),
+                        child: SizedBox(
+                          width: segmentWidth * 2,
+                          child: Row(
+                            textDirection: TextDirection.ltr,
+                            children: [
+                              SizedBox(
+                                width: segmentWidth,
+                                child: _tickerItems(entries, textStyle),
+                              ),
+                              SizedBox(
+                                width: segmentWidth,
+                                child: _tickerItems(entries, textStyle),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
                   ),
                 ),
               ),
