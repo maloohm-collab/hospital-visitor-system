@@ -104,8 +104,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
               for (final entry in targets.entries) {
                 final ref = db.collection('notifications').doc();
                 batch.set(ref, {'notificationId': ref.id, 'recipientUid': entry.key, 'recipientRole': entry.value['role'] ?? '',
-                  'senderUid': sender?.uid ?? uid, 'senderEmail': sender?.email ?? '', 'title': title.text.trim(), 'body': body.text.trim(),
-                  'priority': priority, 'read': false, 'createdAt': FieldValue.serverTimestamp()});
+                  'senderUid': sender?.uid ?? uid, 'senderEmail': sender?.email ?? '', 'senderName': 'الإدارة', 'title': title.text.trim(), 'body': body.text.trim(),
+                  'priority': priority, 'read': false, 'kind': 'ticker_announcement', 'createdAt': FieldValue.serverTimestamp()});
               }
               await batch.commit();
               if (ctx.mounted) Navigator.pop(sheet);
