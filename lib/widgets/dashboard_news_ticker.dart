@@ -55,7 +55,8 @@ class _DashboardNewsTickerState extends State<DashboardNewsTicker>
     final entries = <_TickerEntry>[];
     for (final doc in notifications.docs) {
       final data = doc.data();
-      if (data['kind'] != 'ticker_announcement' || !_isToday(data['createdAt'])) continue;
+      if ((data['kind'] != 'ticker_announcement' && data['kind'] != null) ||
+          !_isToday(data['createdAt'])) continue;
       entries.add(_TickerEntry(
         id: doc.id, title: (data['title'] ?? '').toString(),
         body: (data['body'] ?? '').toString(),
