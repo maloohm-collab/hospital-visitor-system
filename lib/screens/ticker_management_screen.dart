@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 class TickerManagementScreen extends StatefulWidget {
@@ -82,6 +83,10 @@ class _TickerManagementScreenState extends State<TickerManagementScreen> {
     final title = TextEditingController(text: (e.data['title'] ?? '').toString());
     final body = TextEditingController(text: (e.data['body'] ?? '').toString());
     var priority = (e.data['priority'] ?? 'normal').toString();
+    final currentRoles = e.data['recipientRoles'];
+    var audienceMode = currentRoles is List &&
+            currentRoles.length == 1 && currentRoles.contains('security_officer')
+        ? 'officers' : 'all';
     var saving = false;
     await showDialog<void>(context: context, builder: (dialog) =>
       StatefulBuilder(builder: (context, refresh) => AlertDialog(
@@ -102,6 +107,18 @@ class _TickerManagementScreenState extends State<TickerManagementScreen> {
             ],
             onChanged: (v) => refresh(() => priority = v ?? 'normal'),
           ),
+          if (!e.message) ...[
+            const SizedBox(height: 10),
+            DropdownButtonFormField<String>(
+              value: audienceMode,
+              decoration: const InputDecoration(labelText: 'جهة ظهور الإعلان'),
+              items: const [
+                DropdownMenuItem(value: 'officers', child: Text('ضباط الأمن فقط')),
+                DropdownMenuItem(value: 'all', child: Text('الجميع: ضباط الأمن والمشرفون والإدارة')),
+              ],
+              onChanged: (v) => refresh(() => audienceMode = v ?? 'officers'),
+            ),
+          ],
         ])),
         actions: [
           TextButton(onPressed: saving ? null : () => Navigator.pop(dialog),
@@ -114,10 +131,69 @@ class _TickerManagementScreenState extends State<TickerManagementScreen> {
             }
             refresh(() => saving = true);
             try {
-              final batch = FirebaseFirestore.instance.batch();
-              for (final ref in e.refs) {
-                batch.update(ref, {'title': title.text.trim(),
-                  'body': body.text.trim(), 'priority': priority});
+              final db = FirebaseFirestore.instance;
+              final batch = db.batch();
+              if (e.message) {
+                for (final ref in e.refs) {
+                  batch.update(ref, {'title': title.text.trim(),
+                    'body': body.text.trim(), 'priority': priority});
+                }
+              } else {
+                final admin = FirebaseAuth.instance.currentUser;
+                if (admin == null) throw StateError('تعذر التحقق من حساب الإدارة.');
+                final targetRoles = audienceMode == 'officers'
+                    ? <String>['security_officer']
+                    : <String>['security_officer', 'supervisor', 'admin'];
+                final userSnapshot = await db.collection('users')
+                    .where('status', isEqualTo: 'active').get();
+                final targets = userSnapshot.docs.where((doc) =>
+                    targetRoles.contains((doc.data()['role'] ?? '').toString())).toList();
+                if (targets.isEmpty) throw StateError('لا يوجد مستلمون نشطون للفئة المحددة.');
+                final groupId = (e.data['tickerGroupId'] ??
+                    db.collection('notifications').doc().id).toString();
+                final existingSnapshots = await Future.wait(e.refs.map((ref) => ref.get()));
+                final updatedUids = <String>{};
+                final targetUids = targets.map((doc) => doc.id).toSet();
+                for (final snapshot in existingSnapshots) {
+                  final data = snapshot.data() ?? <String, dynamic>{};
+                  final recipientUid = (data['recipientUid'] ?? '').toString();
+                  if (targetUids.contains(recipientUid)) {
+                    updatedUids.add(recipientUid);
+                    batch.update(snapshot.reference, {
+                      'title': title.text.trim(),
+                      'body': body.text.trim(),
+                      'priority': priority,
+                      'tickerGroupId': groupId,
+                      'tickerVisible': true,
+                      'recipientRoles': targetRoles,
+                      'broadcastToAll': audienceMode == 'all',
+                    });
+                  } else {
+                    batch.update(snapshot.reference, {'tickerVisible': false});
+                  }
+                }
+                for (final recipient in targets) {
+                  if (updatedUids.contains(recipient.id)) continue;
+                  final ref = db.collection('notifications').doc();
+                  batch.set(ref, {
+                    'notificationId': ref.id,
+                    'recipientUid': recipient.id,
+                    'recipientRole': recipient.data()['role'] ?? '',
+                    'senderUid': admin.uid,
+                    'senderEmail': admin.email ?? '',
+                    'senderName': 'الإدارة',
+                    'title': title.text.trim(),
+                    'body': body.text.trim(),
+                    'priority': priority,
+                    'read': false,
+                    'kind': 'ticker_announcement',
+                    'tickerGroupId': groupId,
+                    'tickerVisible': true,
+                    'recipientRoles': targetRoles,
+                    'broadcastToAll': audienceMode == 'all',
+                    'createdAt': FieldValue.serverTimestamp(),
+                  });
+                }
               }
               await batch.commit();
               if (dialog.mounted) Navigator.pop(dialog);
