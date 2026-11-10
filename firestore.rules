@@ -1036,7 +1036,7 @@ service cloud.firestore {
           'messageId', 'threadId', 'senderUid', 'senderName', 'senderRole', 'senderLabel',
           'recipientUid', 'recipientName', 'recipientRole', 'recipientLabel', 'locationName', 'title', 'body',
           'priority', 'requestReply', 'replyStatus', 'attachments', 'read',
-          'hiddenFor', 'createdAt'
+          'hiddenFor', 'showOnTicker', 'createdAt'
         ])
         && request.resource.data.keys().hasAll([
           'messageId', 'threadId', 'senderUid', 'senderName', 'senderRole', 'senderLabel',
@@ -1064,6 +1064,7 @@ service cloud.firestore {
         && request.resource.data.attachments.size() == 0
         && request.resource.data.read == false
         && request.resource.data.hiddenFor is list
+        && request.resource.data.showOnTicker is bool
         && request.resource.data.createdAt == request.time
         && (
           isActiveAdmin()
