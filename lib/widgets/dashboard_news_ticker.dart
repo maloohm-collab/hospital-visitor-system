@@ -297,11 +297,16 @@ class _DashboardNewsTickerState extends State<DashboardNewsTicker>
     const textStyle = TextStyle(
       color: Colors.white, fontSize: 15, fontWeight: FontWeight.w800,
     );
-    final painter = TextPainter(
-      text: TextSpan(text: value, style: textStyle),
-      textDirection: TextDirection.rtl, maxLines: 1,
-    )..layout();
-    final textWidth = painter.width + 60;
+    final measuredItemsWidth = entries.fold<double>(0, (total, entry) {
+      final painter = TextPainter(
+        text: TextSpan(text: _entryText(entry), style: textStyle),
+        textDirection: TextDirection.rtl,
+        maxLines: 1,
+      )..layout();
+      return total + painter.width;
+    });
+    final separatorsWidth = entries.length > 1 ? (entries.length - 1) * 44.0 : 0.0;
+    final textWidth = measuredItemsWidth + separatorsWidth + 60;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Container(
