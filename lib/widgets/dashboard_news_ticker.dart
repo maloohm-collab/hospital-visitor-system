@@ -59,15 +59,20 @@ class _DashboardNewsTickerState extends State<DashboardNewsTicker>
       final isAdminAnnouncement =
           (kind == 'ticker_announcement' || kind == null) &&
           (data['senderName'] ?? '').toString() == 'الإدارة' &&
-          ((data['recipientRoles'] is List) &&
-              ((data['recipientRoles'] as List).length == 1 &&
-                  (data['recipientRoles'] as List).contains('security_officer') ||
-               (data['recipientRoles'] as List).toSet().containsAll(
-                 const {'security_officer', 'supervisor', 'admin'},
-               ) &&
-               (data['recipientRoles'] as List).length == 3)) ||
-          (data['recipientRoles'] == null && data['recipientRole'] == 'security_officer') ||
-          data['broadcastToAll'] == true;
+          (
+            ((data['recipientRoles'] is List) &&
+                (
+                  ((data['recipientRoles'] as List).length == 1 &&
+                      (data['recipientRoles'] as List).contains('security_officer')) ||
+                  ((data['recipientRoles'] as List).length == 3 &&
+                      (data['recipientRoles'] as List).toSet().containsAll(
+                        const {'security_officer', 'supervisor', 'admin'},
+                      ))
+                )) ||
+            (data['recipientRoles'] == null &&
+                data['recipientRole'] == 'security_officer') ||
+            data['broadcastToAll'] == true
+          );
       if (!isAdminAnnouncement || !_isToday(data['createdAt'])) continue;
       entries.add(_TickerEntry(
         id: doc.id,
