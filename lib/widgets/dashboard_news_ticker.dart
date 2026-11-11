@@ -526,9 +526,9 @@ class _DashboardNewsTickerState extends State<DashboardNewsTicker>
             style: _entryStyle(entries[i], settings)),
         ),
         if (i != entries.length - 1)
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 22),
-            child: Text('•', style: TextStyle(color: Color(0xFFD6B9BD), fontSize: 17)),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 22),
+            child: Text('•', style: TextStyle(color: const Color(0xFFD6B9BD), fontSize: settings.fontSize)),
           ),
       ],
     ],
