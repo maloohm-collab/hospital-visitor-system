@@ -67,6 +67,22 @@ class DashboardScreen extends StatelessWidget {
             child: NavigationBar(
         selectedIndex: 0,
         onDestinationSelected: (index) {
+          if (userRole == 'security_officer') {
+            if (index == 1) {
+              Navigator.push(context, MaterialPageRoute(
+                builder: (_) => const VisitorFormScreen(),
+              ));
+            } else if (index == 2) {
+              Navigator.push(context, MaterialPageRoute(
+                builder: (_) => StaffMessagesScreen(userRole: userRole),
+              ));
+            } else if (index == 3) {
+              Navigator.push(context, MaterialPageRoute(
+                builder: (_) => const AccountProfileScreen(),
+              ));
+            }
+            return;
+          }
           if (index == 1) {
             Navigator.push(context, MaterialPageRoute(
               builder: (_) => VisitorLogsScreen(userRole: userRole),
@@ -85,13 +101,20 @@ class DashboardScreen extends StatelessWidget {
             ));
           }
         },
-        destinations: const [
-          NavigationDestination(icon: Icon(Icons.home_outlined), label: 'الرئيسية'),
-          NavigationDestination(icon: Icon(Icons.meeting_room_outlined), label: 'الزيارات'),
-          NavigationDestination(icon: Icon(Icons.account_circle_outlined), label: 'حسابي'),
-          NavigationDestination(icon: Icon(Icons.videocam_outlined), label: 'تواصل مباشر'),
-        NavigationDestination(icon: Icon(Icons.info_outline_rounded), label: 'عن التطبيق'),
-        ],
+        destinations: userRole == 'security_officer'
+            ? const [
+                NavigationDestination(icon: Icon(Icons.home_outlined), label: 'الرئيسية'),
+                NavigationDestination(icon: Icon(Icons.meeting_room_outlined), label: 'الزيارات'),
+                NavigationDestination(icon: Icon(Icons.inbox_outlined), label: 'الوارد'),
+                NavigationDestination(icon: Icon(Icons.account_circle_outlined), label: 'حسابي'),
+              ]
+            : const [
+                NavigationDestination(icon: Icon(Icons.home_outlined), label: 'الرئيسية'),
+                NavigationDestination(icon: Icon(Icons.meeting_room_outlined), label: 'الزيارات'),
+                NavigationDestination(icon: Icon(Icons.account_circle_outlined), label: 'حسابي'),
+                NavigationDestination(icon: Icon(Icons.videocam_outlined), label: 'تواصل مباشر'),
+                NavigationDestination(icon: Icon(Icons.info_outline_rounded), label: 'عن التطبيق'),
+              ],
             ),
           ),
         ),
@@ -134,34 +157,23 @@ class DashboardScreen extends StatelessWidget {
   }
 
   Widget _buildStaffDashboard(BuildContext context, String? currentUid) {
-    final actions = <_AdminAction>[
-      _AdminAction(
+    final actions = <_AdminAction>[];
+    if (userRole != 'security_officer') {
+      actions.add(_AdminAction(
         icon: Icons.emergency_share_rounded,
         title: 'الطوارئ وتسليم المناوبة',
         color: const Color(0xFFB42318),
         onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const EmergencyDutyScreen())),
-      ),
-    ];
+      ));
+    }
 
     if (userRole == 'security_officer') {
       actions.addAll([
         _AdminAction(
-          icon: Icons.location_on_rounded,
-          title: 'مباشرة العمل',
-          color: const Color(0xFF087E78),
-          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const WorkLocationScreen(userRole: 'security_officer'))),
-        ),
-        _AdminAction(
           icon: Icons.person_add_alt_1_rounded,
-          title: 'تسجيل زائر',
+          title: 'تنظيم زيارة',
           color: teal,
           onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const VisitorFormScreen())),
-        ),
-        _AdminAction(
-          icon: Icons.health_and_safety_outlined,
-          title: 'حالات الإنعاش CPR',
-          color: const Color(0xFFB42318),
-          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const LocalOperationsLogScreen(kind: LocalOperationsLogKind.cpr))),
         ),
         _AdminAction(
           icon: Icons.assignment_rounded,
@@ -174,12 +186,6 @@ class DashboardScreen extends StatelessWidget {
           title: 'تقاريري',
           color: const Color(0xFF8757A5),
           onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ReportCenterScreen(userRole: userRole))),
-        ),
-        _AdminAction(
-          icon: Icons.picture_as_pdf_rounded,
-          title: 'تقارير المناوبة PDF',
-          color: const Color(0xFF27865B),
-          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => DutyReportsScreen(userRole: userRole))),
         ),
       ]);
     } else if (userRole == 'supervisor') {
@@ -317,13 +323,15 @@ class DashboardScreen extends StatelessWidget {
         color: const Color(0xFF12B8B0),
         onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AccountProfileScreen())),
       ),
-      _AdminAction(
+    ]);
+    if (userRole != 'security_officer') {
+      actions.add(_AdminAction(
         icon: Icons.bar_chart_rounded,
         title: 'التقارير والإحصاءات',
         color: const Color(0xFFD28A25),
         onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => VisitorReportsScreen(userRole: userRole))),
-      ),
-    ]);
+      ));
+    }
 
     return DecoratedBox(
       decoration: const BoxDecoration(color: Color(0xFFF2F4F8)),
@@ -356,37 +364,37 @@ class DashboardScreen extends StatelessWidget {
   Widget _buildSecurityCategories(BuildContext context, List<_AdminAction> actions) {
     final categories = <_ActionCategory>[
       _ActionCategory(
-        icon: Icons.verified_user_outlined,
-        title: 'العمليات الميدانية',
-        subtitle: 'مباشرة العمل، الطوارئ، والحالات الخاصة',
-        color: const Color(0xFF087E78),
-        actionTitles: const ['مباشرة العمل', 'الطوارئ وتسليم المناوبة', 'حالات الإنعاش CPR'],
-      ),
-      _ActionCategory(
-        icon: Icons.assignment_outlined,
-        title: 'التقارير والمناوبات',
-        subtitle: 'تقاريرك، كشوفات المناوبة، والأرشيف والإحصاءات',
-        color: const Color(0xFF6D3FA8),
-        actionTitles: const ['تقاريري', 'تقارير المناوبة PDF', 'مناوبات اليوم', 'المناوبات السابقة', 'التقارير والإحصاءات'],
-      ),
-      _ActionCategory(
         icon: Icons.meeting_room_outlined,
-        title: 'الزيارات والسجلات',
-        subtitle: 'تسجيل الزوار ومراجعة سجل الزيارات',
+        title: 'الزيارات',
+        subtitle: 'تنظيم زيارة المرضى ومراجعة سجلات زياراتك',
         color: const Color(0xFF047857),
-        actionTitles: const ['تسجيل زائر', 'سجل زياراتي'],
+        actionTitles: const ['تنظيم زيارة', 'سجل زياراتي'],
       ),
       _ActionCategory(
-        icon: Icons.forum_outlined,
-        title: 'المراسلات والتنبيهات',
-        subtitle: 'ملاحظاتك، الرسائل الواردة والصادرة، والإشعارات',
+        icon: Icons.picture_as_pdf_outlined,
+        title: 'المناوبات',
+        subtitle: 'الاطلاع على كشوفات المناوبات الحالية والسابقة',
+        color: const Color(0xFF087E78),
+        actionTitles: const ['مناوبات اليوم', 'المناوبات السابقة'],
+      ),
+      _ActionCategory(
+        icon: Icons.send_rounded,
+        title: 'المراسلات',
+        subtitle: 'إرسال التقارير والملاحظات والتنبيهات عند الحاجة',
+        color: const Color(0xFF6D3FA8),
+        actionTitles: const ['تقاريري', 'ملاحظاتي ومراسلاتي'],
+      ),
+      _ActionCategory(
+        icon: Icons.inbox_outlined,
+        title: 'الوارد والتنبيهات',
+        subtitle: 'متابعة الإشعارات والتنبيهات الواردة',
         color: const Color(0xFFB45309),
-        actionTitles: const ['ملاحظاتي ومراسلاتي', 'الإشعارات والملحوظات'],
+        actionTitles: const ['الإشعارات والملحوظات'],
       ),
       _ActionCategory(
         icon: Icons.account_circle_outlined,
-        title: 'حسابي ومعلومات التطبيق',
-        subtitle: 'بيانات حسابك والتعريف بالتطبيق',
+        title: 'حسابي',
+        subtitle: 'بيانات الحساب ومعلومات التطبيق والمؤسس',
         color: const Color(0xFF1D4F91),
         actionTitles: const ['حسابي', 'عن التطبيق والمؤسس'],
       ),
