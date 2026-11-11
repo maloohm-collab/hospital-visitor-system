@@ -89,12 +89,12 @@ class DashboardScreen extends StatelessWidget {
         destinations: userRole == 'security_officer'
             ? const [
                 NavigationDestination(icon: Icon(Icons.home_outlined), label: 'الرئيسية'),
+                NavigationDestination(icon: Icon(Icons.meeting_room_outlined), label: 'الزيارات'),
                 NavigationDestination(icon: Icon(Icons.inbox_outlined), label: 'الوارد'),
                 NavigationDestination(icon: Icon(Icons.account_circle_outlined), label: 'حسابي'),
               ]
             : const [
                 NavigationDestination(icon: Icon(Icons.home_outlined), label: 'الرئيسية'),
-                NavigationDestination(icon: Icon(Icons.meeting_room_outlined), label: 'الزيارات'),
                 NavigationDestination(icon: Icon(Icons.account_circle_outlined), label: 'حسابي'),
                 NavigationDestination(icon: Icon(Icons.videocam_outlined), label: 'تواصل مباشر'),
                 NavigationDestination(icon: Icon(Icons.info_outline_rounded), label: 'عن التطبيق'),
