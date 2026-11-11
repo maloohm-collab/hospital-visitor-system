@@ -31,7 +31,7 @@ class _DashboardNewsTickerState extends State<DashboardNewsTicker>
     _messages = FirebaseFirestore.instance.collection('staff_messages')
         .where('showOnTicker', isEqualTo: true).snapshots();
     _tickerController = AnimationController(
-      vsync: this, duration: const Duration(seconds: 28),
+      vsync: this, duration: const Duration(seconds: 34),
     )..repeat();
   }
 
