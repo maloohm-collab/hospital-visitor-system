@@ -149,21 +149,154 @@ class DashboardScreen extends StatelessWidget {
         icon: Icons.emergency_share_rounded,
         title: 'الطوارئ وتسليم المناوبة',
         color: const Color(0xFFB42318),
-        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const EmergencyDutyScreen())),
+        onTap: () => Navigator.push(context, MaterialPageRoute(
+          builder: (_) => const EmergencyDutyScreen(),
+        )),
       ));
     }
 
     if (userRole == 'security_officer') {
-      if (userRole == 'security_officer') {
+      actions.addAll([
+        _AdminAction(
+          icon: Icons.location_on_rounded,
+          title: 'مباشرة العمل',
+          color: const Color(0xFF087E78),
+          onTap: () => Navigator.push(context, MaterialPageRoute(
+            builder: (_) => const WorkLocationScreen(userRole: 'security_officer'),
+          )),
+        ),
+        _AdminAction(
+          icon: Icons.person_add_alt_1_rounded,
+          title: 'تنظيم زيارة',
+          color: teal,
+          onTap: () => Navigator.push(context, MaterialPageRoute(
+            builder: (_) => const VisitorFormScreen(),
+          )),
+        ),
+        _AdminAction(
+          icon: Icons.campaign_rounded,
+          title: 'إرسال بلاغ',
+          color: const Color(0xFF8757A5),
+          onTap: () => Navigator.push(context, MaterialPageRoute(
+            builder: (_) => const StaffMessagesScreen(
+              userRole: 'security_officer',
+              openComposerOnStart: true,
+            ),
+          )),
+        ),
+      ]);
+    } else if (userRole == 'supervisor') {
+      actions.addAll([
+        _AdminAction(
+          icon: Icons.campaign_rounded,
+          title: 'نشر ملاحظة على الشريط الإخباري',
+          color: const Color(0xFF6B2632),
+          onTap: () => Navigator.push(context, MaterialPageRoute(
+            builder: (_) => const StaffMessagesScreen(
+              userRole: 'supervisor',
+              openComposerOnStart: true,
+            ),
+          )),
+        ),
+        _AdminAction(
+          icon: Icons.sticky_note_2_rounded,
+          title: 'مواقع الضباط والملاحظات',
+          color: const Color(0xFFD28A25),
+          onTap: () => Navigator.push(context, MaterialPageRoute(
+            builder: (_) => const WorkLocationScreen(userRole: 'supervisor'),
+          )),
+        ),
+        _AdminAction(
+          icon: Icons.fact_check_rounded,
+          title: 'تقارير ضباط الأمن',
+          color: const Color(0xFF8757A5),
+          onTap: () => Navigator.push(context, MaterialPageRoute(
+            builder: (_) => ReportCenterScreen(userRole: userRole),
+          )),
+        ),
+        _AdminAction(
+          icon: Icons.picture_as_pdf_rounded,
+          title: 'تقارير المناوبة PDF',
+          color: const Color(0xFF27865B),
+          onTap: () => Navigator.push(context, MaterialPageRoute(
+            builder: (_) => DutyReportsScreen(userRole: userRole),
+          )),
+        ),
+      ]);
+    } else {
+      actions.addAll([
+        _AdminAction(
+          icon: Icons.mark_email_read_rounded,
+          title: 'التقارير المرفوعة للإدارة',
+          color: const Color(0xFF8757A5),
+          onTap: () => Navigator.push(context, MaterialPageRoute(
+            builder: (_) => ReportCenterScreen(userRole: userRole),
+          )),
+        ),
+        _AdminAction(
+          icon: Icons.picture_as_pdf_rounded,
+          title: 'أرشيف تقارير PDF',
+          color: const Color(0xFF27865B),
+          onTap: () => Navigator.push(context, MaterialPageRoute(
+            builder: (_) => DutyReportsScreen(userRole: userRole),
+          )),
+        ),
+        _AdminAction(
+          icon: Icons.admin_panel_settings_rounded,
+          title: 'طلبات الحسابات',
+          color: const Color(0xFF7656A8),
+          onTap: () => Navigator.push(context, MaterialPageRoute(
+            builder: (_) => const AdminApprovalScreen(),
+          )),
+        ),
+        _AdminAction(
+          icon: Icons.manage_accounts_rounded,
+          title: 'إدارة الموظفين',
+          color: const Color(0xFFB42318),
+          onTap: () => Navigator.push(context, MaterialPageRoute(
+            builder: (_) => const StaffManagementScreen(),
+          )),
+        ),
+        _AdminAction(
+          icon: Icons.campaign_rounded,
+          title: 'إدارة ملاحظات الشريط الإخباري',
+          color: const Color(0xFF6B2632),
+          onTap: () => Navigator.push(context, MaterialPageRoute(
+            builder: (_) => const TickerManagementScreen(userRole: 'admin'),
+          )),
+        ),
+      ]);
+    }
+
+    if (userRole == 'security_officer' || userRole == 'supervisor') {
       actions.add(_AdminAction(
-        icon: Icons.inbox_rounded,
-        title: 'الوارد والتنبيهات',
+        icon: Icons.picture_as_pdf_rounded,
+        title: 'كشوف المناوبات',
         color: const Color(0xFF087E78),
         onTap: () => Navigator.push(context, MaterialPageRoute(
-          builder: (_) => const SecurityInboxScreen(),
+          builder: (_) => const SecurityDutyRostersHubScreen(),
         )),
       ));
     } else {
+      actions.add(_AdminAction(
+        icon: Icons.calendar_month_rounded,
+        title: 'جدول المناوبات',
+        color: const Color(0xFF087E78),
+        onTap: () => Navigator.push(context, MaterialPageRoute(
+          builder: (_) => DutyRosterScreen(userRole: userRole),
+        )),
+      ));
+    }
+
+    if (userRole != 'security_officer') {
+      actions.add(_AdminAction(
+        icon: Icons.info_outline_rounded,
+        title: 'عن التطبيق والمؤسس',
+        color: const Color(0xFF14558A),
+        onTap: () => Navigator.push(context, MaterialPageRoute(
+          builder: (_) => const FounderScreen(),
+        )),
+      ));
       actions.addAll([
         _AdminAction(
           icon: Icons.mark_chat_unread_rounded,
@@ -184,16 +317,25 @@ class DashboardScreen extends StatelessWidget {
           )),
         ),
       ]);
-    }
-      _AdminAction(
-        icon: Icons.account_circle_rounded,
-        title: 'حسابي',
-        color: const Color(0xFF12B8B0),
+    } else {
+      actions.add(_AdminAction(
+        icon: Icons.inbox_rounded,
+        title: 'الوارد والتنبيهات',
+        color: const Color(0xFF087E78),
         onTap: () => Navigator.push(context, MaterialPageRoute(
-          builder: (_) => const AccountProfileScreen(),
+          builder: (_) => const SecurityInboxScreen(),
         )),
-      ),
-    ]);
+      ));
+    }
+
+    actions.add(_AdminAction(
+      icon: Icons.account_circle_rounded,
+      title: 'حسابي',
+      color: const Color(0xFF12B8B0),
+      onTap: () => Navigator.push(context, MaterialPageRoute(
+        builder: (_) => const AccountProfileScreen(),
+      )),
+    ));
 
     return DecoratedBox(
       decoration: const BoxDecoration(color: Color(0xFFF2F4F8)),
