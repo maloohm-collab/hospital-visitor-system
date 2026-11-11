@@ -14,8 +14,9 @@ import 'visitor_form_screen.dart';
 import '../widgets/app_search_field.dart';
 
 class NotificationsScreen extends StatefulWidget {
-  const NotificationsScreen({super.key, required this.userRole});
+  const NotificationsScreen({super.key, required this.userRole, this.embedded = false});
   final String userRole;
+  final bool embedded;
   @override
   State<NotificationsScreen> createState() => _NotificationsScreenState();
 }
@@ -213,7 +214,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: Text(admin ? 'الإشعارات والملحوظات الإدارية' : 'الإشعارات')),
+    appBar: widget.embedded ? null : AppBar(title: Text(admin ? 'الإشعارات والملحوظات الإدارية' : 'الإشعارات')),
     floatingActionButton: admin ? FloatingActionButton.extended(onPressed: compose, icon: const Icon(Icons.send_rounded),
       label: const Text('إشعار الوظائف اليومية'), backgroundColor: teal, foregroundColor: Colors.white) : null,
     body: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
