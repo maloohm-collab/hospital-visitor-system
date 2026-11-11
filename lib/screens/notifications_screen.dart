@@ -10,6 +10,7 @@ import 'duty_roster_screen.dart';
 import 'report_center_screen.dart';
 import 'work_location_screen.dart';
 import 'visitor_logs_screen.dart';
+import 'visitor_form_screen.dart';
 import '../widgets/app_search_field.dart';
 
 class NotificationsScreen extends StatefulWidget {
@@ -172,9 +173,15 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       return;
     }
     if (kind.startsWith('emergency_')) {
-      await Navigator.push(context, MaterialPageRoute(
-        builder: (_) => const EmergencyDutyScreen(),
-      ));
+      if (widget.userRole == 'security_officer') {
+        await Navigator.push(context, MaterialPageRoute(
+          builder: (_) => NotificationDetailsScreen(data: data),
+        ));
+      } else {
+        await Navigator.push(context, MaterialPageRoute(
+          builder: (_) => const EmergencyDutyScreen(),
+        ));
+      }
       return;
     }
     if (kind.startsWith('work_location') || kind.startsWith('work_shift')) {
@@ -185,13 +192,17 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     }
     if (kind.startsWith('duty_report') || kind.startsWith('report_')) {
       await Navigator.push(context, MaterialPageRoute(
-        builder: (_) => ReportCenterScreen(userRole: widget.userRole),
+        builder: (_) => widget.userRole == 'security_officer'
+            ? StaffMessagesScreen(userRole: widget.userRole)
+            : ReportCenterScreen(userRole: widget.userRole),
       ));
       return;
     }
     if (kind.startsWith('visitor')) {
       await Navigator.push(context, MaterialPageRoute(
-        builder: (_) => VisitorLogsScreen(userRole: widget.userRole),
+        builder: (_) => widget.userRole == 'security_officer'
+            ? const VisitorFormScreen()
+            : VisitorLogsScreen(userRole: widget.userRole),
       ));
       return;
     }
