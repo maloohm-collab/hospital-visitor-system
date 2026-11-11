@@ -364,9 +364,9 @@ class DashboardScreen extends StatelessWidget {
       _ActionCategory(
         icon: Icons.assignment_rounded,
         title: 'التقارير والمناوبات',
-        subtitle: 'تقارير الضباط وكشوفات المناوبات والإحصاءات',
+        subtitle: 'تقارير الضباط وكشوفات المناوبات',
         color: const Color(0xFF6D3FA8),
-        actionTitles: const ['تقارير ضباط الأمن', 'تقارير المناوبة PDF', 'مناوبات اليوم', 'المناوبات السابقة', 'التقارير والإحصاءات'],
+        actionTitles: const ['تقارير ضباط الأمن', 'تقارير المناوبة PDF', 'مناوبات اليوم', 'المناوبات السابقة'],
       ),
       _ActionCategory(
         icon: Icons.forum_outlined,
