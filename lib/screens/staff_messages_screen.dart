@@ -163,7 +163,7 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
                   SwitchListTile(
                     contentPadding: EdgeInsets.zero,
                     title: const Text('تخصيص تنسيق هذه الملاحظة على الشريط'),
-                    subtitle: const Text('لن يؤثر هذا الاختيار على الإعدادات العامة.'),
+                    subtitle: const Text('يُطبّق عند تعميم المشرف على جميع ضباط الأمن فقط، ولا يغيّر الإعدادات العامة.'),
                     value: customTickerStyle,
                     onChanged: (v) => refresh(() => customTickerStyle = v),
                   ),
