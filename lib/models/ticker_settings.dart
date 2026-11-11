@@ -8,6 +8,7 @@ class TickerSettings {
     this.fontFamily = 'sans-serif',
     this.direction = 'left_to_right',
     this.bold = true,
+    this.backgroundPreset = 'burgundy',
   });
 
   final int speedSeconds;
@@ -15,6 +16,28 @@ class TickerSettings {
   final String fontFamily;
   final String direction;
   final bool bold;
+  final String backgroundPreset;
+
+  static const Map<String, List<Color>> backgroundPresets = {
+    'burgundy': [Color(0xFF71303A), Color(0xFF24191D), Color(0xFF51252D), Color(0xFF24191D)],
+    'navy': [Color(0xFF174A78), Color(0xFF102A43), Color(0xFF23618C), Color(0xFF102A43)],
+    'emerald': [Color(0xFF176B57), Color(0xFF123B35), Color(0xFF25836A), Color(0xFF123B35)],
+    'purple': [Color(0xFF68428A), Color(0xFF302044), Color(0xFF8056A5), Color(0xFF302044)],
+    'slate': [Color(0xFF526477), Color(0xFF263442), Color(0xFF687C90), Color(0xFF263442)],
+    'amber': [Color(0xFF9A6425), Color(0xFF493018), Color(0xFFB47A32), Color(0xFF493018)],
+  };
+
+  static const Map<String, String> backgroundLabels = {
+    'burgundy': 'خمري وفحمي',
+    'navy': 'أزرق ملكي',
+    'emerald': 'أخضر زمردي',
+    'purple': 'بنفسجي أنيق',
+    'slate': 'رمادي داكن',
+    'amber': 'ذهبي دافئ',
+  };
+
+  List<Color> get backgroundColors =>
+      backgroundPresets[backgroundPreset] ?? backgroundPresets['burgundy']!;
 
   factory TickerSettings.fromMap(Map<String, dynamic>? data) {
     if (data == null) return const TickerSettings();
@@ -25,6 +48,8 @@ class TickerSettings {
           ? data['fontFamily'] as String : 'sans-serif',
       direction: data['direction'] == 'right_to_left' ? 'right_to_left' : 'left_to_right',
       bold: data['bold'] is bool ? data['bold'] as bool : true,
+      backgroundPreset: backgroundPresets.containsKey(data['backgroundPreset'])
+          ? data['backgroundPreset'] as String : 'burgundy',
     );
   }
 
@@ -34,6 +59,7 @@ class TickerSettings {
     'fontFamily': fontFamily,
     'direction': direction,
     'bold': bold,
+    'backgroundPreset': backgroundPreset,
     'updatedAt': FieldValue.serverTimestamp(),
   };
 
