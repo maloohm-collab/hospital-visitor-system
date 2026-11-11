@@ -126,7 +126,7 @@ class _WorkLocationScreenState extends State<WorkLocationScreen> {
     if (!automatic) {
       final yes = await showDialog<bool>(context: context, builder: (c) => AlertDialog(
         title: const Text('إنهاء المناوبة؟'),
-        content: const Text('سيتم إغلاق الموقع الحالي وحفظ السجل والملاحظات لدى المستلمين.'),
+        content: const Text('سيتم إغلاق موقع العمل وحفظ سجل المناوبة.'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('رجوع')),
           FilledButton(onPressed: () => Navigator.pop(c, true), child: const Text('إنهاء المناوبة')),
