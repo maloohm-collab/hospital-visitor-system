@@ -71,7 +71,10 @@ class _TickerSettingsScreenState extends State<TickerSettingsScreen> {
                   style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
                 const SizedBox(height: 18),
                 _section('سرعة الحركة'),
-                Text('مدة الدورة: ${_settings.speedSeconds} ثانية'),
+                Text(
+                  'الزمن المرجعي: ${_settings.speedSeconds} ثانية لكل 1200 بكسل '
+                  '(قيمة أقل = حركة أسرع)',
+                ),
                 Slider(
                   min: 12, max: 120, divisions: 36,
                   value: _settings.speedSeconds.toDouble(),
