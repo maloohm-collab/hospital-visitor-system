@@ -184,6 +184,17 @@ class DashboardScreen extends StatelessWidget {
     } else if (userRole == 'supervisor') {
       actions.addAll([
         _AdminAction(
+          icon: Icons.campaign_rounded,
+          title: 'نشر ملاحظة على الشريط الإخباري',
+          color: const Color(0xFF6B2632),
+          onTap: () => Navigator.push(context, MaterialPageRoute(
+            builder: (_) => const StaffMessagesScreen(
+              userRole: 'supervisor',
+              openComposerOnStart: true,
+            ),
+          )),
+        ),
+        _AdminAction(
           icon: Icons.sticky_note_2_rounded,
           title: 'مواقع الضباط والملاحظات',
           color: const Color(0xFFD28A25),
@@ -410,7 +421,7 @@ class DashboardScreen extends StatelessWidget {
         title: 'المراسلات والتنبيهات',
         subtitle: 'تنبيهات المشرف والرسائل والإشعارات',
         color: const Color(0xFFB45309),
-        actionTitles: const ['تنبيهات المشرف المناوب', 'الإشعارات والملحوظات'],
+        actionTitles: const ['نشر ملاحظة على الشريط الإخباري', 'تنبيهات المشرف المناوب', 'الإشعارات والملحوظات'],
       ),
       _ActionCategory(
         icon: Icons.account_circle_outlined,
