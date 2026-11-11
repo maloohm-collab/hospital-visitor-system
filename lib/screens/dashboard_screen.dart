@@ -14,6 +14,7 @@ import 'notifications_screen.dart';
 import 'ticker_management_screen.dart';
 import 'ticker_settings_screen.dart';
 import 'staff_messages_screen.dart';
+import 'security_inbox_screen.dart';
 import 'emergency_duty_screen.dart';
 import 'work_location_screen.dart';
 import 'duty_roster_screen.dart';
@@ -71,7 +72,7 @@ class DashboardScreen extends StatelessWidget {
               ));
             } else if (index == 2) {
               Navigator.push(context, MaterialPageRoute(
-                builder: (_) => StaffMessagesScreen(userRole: userRole),
+                builder: (_) => const SecurityInboxScreen(),
               ));
             } else if (index == 3) {
               Navigator.push(context, MaterialPageRoute(
@@ -153,162 +154,37 @@ class DashboardScreen extends StatelessWidget {
     }
 
     if (userRole == 'security_officer') {
+      if (userRole == 'security_officer') {
+      actions.add(_AdminAction(
+        icon: Icons.inbox_rounded,
+        title: 'الوارد والتنبيهات',
+        color: const Color(0xFF087E78),
+        onTap: () => Navigator.push(context, MaterialPageRoute(
+          builder: (_) => const SecurityInboxScreen(),
+        )),
+      ));
+    } else {
       actions.addAll([
         _AdminAction(
-          icon: Icons.location_on_rounded,
-          title: 'مباشرة العمل',
+          icon: Icons.mark_chat_unread_rounded,
+          title: userRole == 'admin'
+              ? 'تنبيهات الإدارة / مدير الموقع'
+              : 'تنبيهات المشرف المناوب',
           color: const Color(0xFF087E78),
           onTap: () => Navigator.push(context, MaterialPageRoute(
-            builder: (_) => const WorkLocationScreen(userRole: 'security_officer'),
+            builder: (_) => StaffMessagesScreen(userRole: userRole),
           )),
         ),
         _AdminAction(
-          icon: Icons.person_add_alt_1_rounded,
-          title: 'تنظيم زيارة',
-          color: teal,
-          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const VisitorFormScreen())),
-        ),
-        _AdminAction(
-          icon: Icons.campaign_rounded,
-          title: 'إرسال بلاغ',
-          color: const Color(0xFF8757A5),
-          onTap: () => Navigator.push(context, MaterialPageRoute(
-            builder: (_) => StaffMessagesScreen(
-              userRole: userRole,
-              openComposerOnStart: true,
-            ),
-          )),
-        ),
-      ]);
-    } else if (userRole == 'supervisor') {
-      actions.addAll([
-        _AdminAction(
-          icon: Icons.campaign_rounded,
-          title: 'نشر ملاحظة على الشريط الإخباري',
-          color: const Color(0xFF6B2632),
-          onTap: () => Navigator.push(context, MaterialPageRoute(
-            builder: (_) => const StaffMessagesScreen(
-              userRole: 'supervisor',
-              openComposerOnStart: true,
-            ),
-          )),
-        ),
-        _AdminAction(
-          icon: Icons.sticky_note_2_rounded,
-          title: 'مواقع الضباط والملاحظات',
+          icon: Icons.notifications_active_rounded,
+          title: 'الإشعارات والملحوظات',
           color: const Color(0xFFD28A25),
           onTap: () => Navigator.push(context, MaterialPageRoute(
-            builder: (_) => const WorkLocationScreen(userRole: 'supervisor'),
-          )),
-        ),
-        _AdminAction(
-          icon: Icons.fact_check_rounded,
-          title: 'تقارير ضباط الأمن',
-          color: const Color(0xFF8757A5),
-          onTap: () => Navigator.push(context, MaterialPageRoute(
-            builder: (_) => ReportCenterScreen(userRole: userRole),
-          )),
-        ),
-        _AdminAction(
-          icon: Icons.picture_as_pdf_rounded,
-          title: 'تقارير المناوبة PDF',
-          color: const Color(0xFF27865B),
-          onTap: () => Navigator.push(context, MaterialPageRoute(
-            builder: (_) => DutyReportsScreen(userRole: userRole),
-          )),
-        ),
-      ]);
-    } else {
-      actions.addAll([
-        _AdminAction(
-          icon: Icons.mark_email_read_rounded,
-          title: 'التقارير المرفوعة للإدارة',
-          color: const Color(0xFF8757A5),
-          onTap: () => Navigator.push(context, MaterialPageRoute(
-            builder: (_) => ReportCenterScreen(userRole: userRole),
-          )),
-        ),
-        _AdminAction(
-          icon: Icons.picture_as_pdf_rounded,
-          title: 'أرشيف تقارير PDF',
-          color: const Color(0xFF27865B),
-          onTap: () => Navigator.push(context, MaterialPageRoute(
-            builder: (_) => DutyReportsScreen(userRole: userRole),
-          )),
-        ),
-        _AdminAction(
-          icon: Icons.admin_panel_settings_rounded,
-          title: 'طلبات الحسابات',
-          color: const Color(0xFF7656A8),
-          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AdminApprovalScreen())),
-        ),
-        _AdminAction(
-          icon: Icons.manage_accounts_rounded,
-          title: 'إدارة الموظفين',
-          color: const Color(0xFFB42318),
-          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const StaffManagementScreen())),
-        ),
-        _AdminAction(
-          icon: Icons.campaign_rounded,
-          title: 'إدارة ملاحظات الشريط الإخباري',
-          color: const Color(0xFF6B2632),
-          onTap: () => Navigator.push(context, MaterialPageRoute(
-            builder: (_) => const TickerManagementScreen(userRole: 'admin'),
+            builder: (_) => NotificationsScreen(userRole: userRole),
           )),
         ),
       ]);
     }
-
-    if (userRole == 'security_officer' || userRole == 'supervisor') {
-      actions.add(_AdminAction(
-        icon: Icons.picture_as_pdf_rounded,
-        title: 'كشوف المناوبات',
-        color: const Color(0xFF087E78),
-        onTap: () => Navigator.push(context, MaterialPageRoute(
-          builder: (_) => const SecurityDutyRostersHubScreen(),
-        )),
-      ));
-    } else {
-      actions.add(_AdminAction(
-        icon: Icons.calendar_month_rounded,
-        title: 'جدول المناوبات',
-        color: const Color(0xFF087E78),
-        onTap: () => Navigator.push(context, MaterialPageRoute(
-          builder: (_) => DutyRosterScreen(userRole: userRole),
-        )),
-      ));
-    }
-
-    if (userRole != 'security_officer') {
-      actions.add(_AdminAction(
-        icon: Icons.info_outline_rounded,
-        title: 'عن التطبيق والمؤسس',
-        color: const Color(0xFF14558A),
-        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const FounderScreen())),
-      ));
-    }
-
-    actions.addAll([
-      _AdminAction(
-        icon: Icons.mark_chat_unread_rounded,
-        title: userRole == 'admin'
-            ? 'تنبيهات الإدارة / مدير الموقع'
-            : userRole == 'supervisor'
-                ? 'تنبيهات المشرف المناوب'
-                : 'الوارد من الإدارة والمشرف',
-        color: const Color(0xFF087E78),
-        onTap: () => Navigator.push(context, MaterialPageRoute(
-          builder: (_) => StaffMessagesScreen(userRole: userRole),
-        )),
-      ),
-      _AdminAction(
-        icon: Icons.notifications_active_rounded,
-        title: 'الإشعارات والملحوظات',
-        color: const Color(0xFFD28A25),
-        onTap: () => Navigator.push(context, MaterialPageRoute(
-          builder: (_) => NotificationsScreen(userRole: userRole),
-        )),
-      ),
       _AdminAction(
         icon: Icons.account_circle_rounded,
         title: 'حسابي',
@@ -379,7 +255,7 @@ class DashboardScreen extends StatelessWidget {
         title: 'الوارد والتنبيهات',
         subtitle: 'رسائل الإدارة والمشرف والإشعارات المهمة',
         color: const Color(0xFFB45309),
-        actionTitles: const ['الوارد من الإدارة والمشرف', 'الإشعارات والملحوظات'],
+        actionTitles: const ['الوارد والتنبيهات'],
       ),
       _ActionCategory(
         icon: Icons.account_circle_outlined,
