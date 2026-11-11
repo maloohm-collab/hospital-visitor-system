@@ -10,7 +10,6 @@ import 'duty_reports_screen.dart';
 import 'visitor_form_screen.dart';
 import 'visitor_logs_screen.dart';
 import 'visitor_reports_screen.dart';
-import 'local_operations_log_screen.dart';
 import 'admin_approval_screen.dart';
 import 'report_center_screen.dart';
 import 'notifications_screen.dart';
