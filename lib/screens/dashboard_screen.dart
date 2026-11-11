@@ -186,6 +186,17 @@ class DashboardScreen extends StatelessWidget {
           color: const Color(0xFF8757A5),
           onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ReportCenterScreen(userRole: userRole))),
         ),
+        _AdminAction(
+          icon: Icons.note_add_rounded,
+          title: 'إرسال ملاحظة أو تنبيه',
+          color: const Color(0xFF6D3FA8),
+          onTap: () => Navigator.push(context, MaterialPageRoute(
+            builder: (_) => StaffMessagesScreen(
+              userRole: userRole,
+              openComposerOnStart: true,
+            ),
+          )),
+        ),
       ]);
     } else if (userRole == 'supervisor') {
       actions.addAll([
@@ -306,7 +317,7 @@ class DashboardScreen extends StatelessWidget {
     actions.addAll([
       _AdminAction(
         icon: Icons.mark_chat_unread_rounded,
-        title: userRole == 'admin' ? 'تنبيهات الإدارة / مدير الموقع' : userRole == 'supervisor' ? 'تنبيهات المشرف المناوب' : 'ملاحظاتي ومراسلاتي',
+        title: userRole == 'admin' ? 'تنبيهات الإدارة / مدير الموقع' : userRole == 'supervisor' ? 'تنبيهات المشرف المناوب' : 'الوارد من الإدارة والمشرف',
         color: const Color(0xFF087E78),
         onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => StaffMessagesScreen(userRole: userRole))),
       ),
@@ -381,14 +392,14 @@ class DashboardScreen extends StatelessWidget {
         title: 'المراسلات',
         subtitle: 'إرسال التقارير والملاحظات والتنبيهات عند الحاجة',
         color: const Color(0xFF6D3FA8),
-        actionTitles: const ['تقاريري', 'ملاحظاتي ومراسلاتي'],
+        actionTitles: const ['تقاريري', 'إرسال ملاحظة أو تنبيه'],
       ),
       _ActionCategory(
         icon: Icons.inbox_outlined,
         title: 'الوارد والتنبيهات',
         subtitle: 'متابعة الإشعارات والتنبيهات الواردة',
         color: const Color(0xFFB45309),
-        actionTitles: const ['الإشعارات والملحوظات'],
+        actionTitles: const ['الوارد من الإدارة والمشرف', 'الإشعارات والملحوظات'],
       ),
       _ActionCategory(
         icon: Icons.account_circle_outlined,
