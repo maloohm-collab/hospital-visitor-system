@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import '../models/ticker_settings.dart';
 import '../screens/notifications_screen.dart';
 import '../screens/staff_messages_screen.dart';
 
@@ -35,6 +36,7 @@ class _DashboardNewsTickerState extends State<DashboardNewsTicker>
   late final String _uid;
   late final Stream<QuerySnapshot<Map<String, dynamic>>> _notifications;
   late final Stream<QuerySnapshot<Map<String, dynamic>>> _messages;
+  late final Stream<DocumentSnapshot<Map<String, dynamic>>> _settings;
   bool get _isAdmin => widget.userRole == 'admin';
 
   @override
@@ -45,6 +47,8 @@ class _DashboardNewsTickerState extends State<DashboardNewsTicker>
         .where('recipientUid', isEqualTo: _uid).snapshots();
     _messages = FirebaseFirestore.instance.collection('staff_messages')
         .where('showOnTicker', isEqualTo: true).snapshots();
+    _settings = FirebaseFirestore.instance.collection('app_settings')
+        .doc('news_ticker').snapshots();
     _tickerController = AnimationController(
       vsync: this, duration: const Duration(seconds: 46),
     )..repeat();
@@ -342,36 +346,50 @@ class _DashboardNewsTickerState extends State<DashboardNewsTicker>
 
   @override
   Widget build(BuildContext context) {
-    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-      stream: _notifications,
-      builder: (context, notificationSnapshot) {
-        if (!notificationSnapshot.hasData) return _adminControlOnly();
+    return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+      stream: _settings,
+      builder: (context, settingsSnapshot) {
+        final settings = TickerSettings.fromMap(settingsSnapshot.data?.data());
+        final duration = Duration(seconds: settings.speedSeconds);
+        if (_tickerController.duration != duration) {
+          final position = _tickerController.value;
+          _tickerController.stop(canceled: false);
+          _tickerController.duration = duration;
+          if (_activeTickerPointers == 0) {
+            _tickerController.repeat(min: position);
+          }
+        }
         return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-          stream: _messages,
-          builder: (context, messageSnapshot) {
-            if (!messageSnapshot.hasData) return _adminControlOnly();
-            final entries = _mergeEntries(notificationSnapshot.data!, messageSnapshot.data!);
-            final tickerText = entries.map(_entryText).where((s) => s.isNotEmpty).join('     •     ');
-            return Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (tickerText.isNotEmpty) _tickerBar(entries),
-                if (_isAdmin) ...[
-                  const SizedBox(height: 8),
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: TextButton.icon(
-                      onPressed: _composeAnnouncement,
-                      icon: const Icon(Icons.add_circle_outline_rounded, size: 18),
-                      label: const Text('إضافة ملاحظة إلى الشريط'),
-                      style: TextButton.styleFrom(
-                        foregroundColor: const Color(0xFF6B2632),
-                        textStyle: const TextStyle(fontWeight: FontWeight.w800),
+          stream: _notifications,
+          builder: (context, notificationSnapshot) {
+            if (!notificationSnapshot.hasData) return _adminControlOnly();
+            return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+              stream: _messages,
+              builder: (context, messageSnapshot) {
+                if (!messageSnapshot.hasData) return _adminControlOnly();
+                final entries = _mergeEntries(notificationSnapshot.data!, messageSnapshot.data!);
+                return Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (entries.isNotEmpty) _tickerBar(entries, settings),
+                    if (_isAdmin) ...[
+                      const SizedBox(height: 8),
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: TextButton.icon(
+                          onPressed: _composeAnnouncement,
+                          icon: const Icon(Icons.add_circle_outline_rounded, size: 18),
+                          label: const Text('إضافة ملاحظة إلى الشريط'),
+                          style: TextButton.styleFrom(
+                            foregroundColor: const Color(0xFF6B2632),
+                            textStyle: const TextStyle(fontWeight: FontWeight.w800),
+                          ),
+                        ),
                       ),
-                    ),
-                  ),
-                ],
-              ],
+                    ],
+                  ],
+                );
+              },
             );
           },
         );
@@ -390,13 +408,25 @@ class _DashboardNewsTickerState extends State<DashboardNewsTicker>
         )
       : const SizedBox.shrink();
 
-  Widget _tickerBar(List<_TickerEntry> entries) {
-    const textStyle = TextStyle(
-      color: Colors.white, fontSize: 17, fontWeight: FontWeight.w800,
+  TextStyle _entryStyle(_TickerEntry entry, TickerSettings settings) {
+    final override = entry.data['tickerStyle'];
+    if (override is! Map) return settings.textStyle.copyWith(color: Colors.white);
+    final family = ['sans-serif', 'serif', 'monospace'].contains(override['fontFamily'])
+        ? override['fontFamily'] as String : settings.fontFamily;
+    final size = override['fontSize'] is num
+        ? (override['fontSize'] as num).toDouble().clamp(12, 30)
+        : settings.fontSize;
+    final bold = override['bold'] is bool ? override['bold'] as bool : settings.bold;
+    return TextStyle(
+      color: Colors.white, fontFamily: family, fontSize: size,
+      fontWeight: bold ? FontWeight.w800 : FontWeight.w500,
     );
+  }
+
+  Widget _tickerBar(List<_TickerEntry> entries, TickerSettings settings) {
     final measuredItemsWidth = entries.fold<double>(0, (total, entry) {
       final painter = TextPainter(
-        text: TextSpan(text: _entryText(entry), style: textStyle),
+        text: TextSpan(text: _entryText(entry), style: _entryStyle(entry, settings)),
         textDirection: TextDirection.rtl,
         maxLines: 1,
       )..layout();
@@ -404,6 +434,7 @@ class _DashboardNewsTickerState extends State<DashboardNewsTicker>
     });
     final separatorsWidth = entries.length > 1 ? (entries.length - 1) * 44.0 : 0.0;
     final contentWidth = measuredItemsWidth + separatorsWidth + 60;
+    final tickerHeight = settings.fontSize + 43 > 60 ? settings.fontSize + 43 : 60.0;
     return Listener(
       onPointerDown: _pauseTicker,
       onPointerUp: _resumeTicker,
@@ -411,84 +442,79 @@ class _DashboardNewsTickerState extends State<DashboardNewsTicker>
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16),
         child: Container(
-        height: 60,
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            begin: Alignment.centerRight, end: Alignment.centerLeft,
-            colors: [Color(0xFF71303A), _ink, Color(0xFF51252D), _ink],
-            stops: [0.0, 0.36, 0.72, 1.0],
-          ),
-          borderRadius: BorderRadius.circular(17),
-          border: Border.all(color: const Color(0xFF8F4A53).withValues(alpha: .48)),
-          boxShadow: const [
-            BoxShadow(color: Color(0x1E40141D), blurRadius: 13, offset: Offset(0, 5)),
-          ],
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(17),
-          child: Row(
-            textDirection: TextDirection.rtl,
-            children: [
-              Container(
-                width: 108, alignment: Alignment.center,
-                decoration: const BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [Color(0xFF6D2C36), Color(0xFF49232A)],
-                    begin: Alignment.topRight, end: Alignment.bottomLeft,
-                  ),
-                ),
-                child: const Text('ملاحظات', style: TextStyle(
-                  color: Colors.white, fontSize: 19, fontWeight: FontWeight.w900)),
-              ),
-              Container(width: 1.4, height: 30, color: const Color(0xFFD5B9BC)),
-              Expanded(
-                child: ClipRect(
-                  child: LayoutBuilder(
-                    builder: (context, constraints) {
-                      final segmentWidth = contentWidth < constraints.maxWidth
-                          ? constraints.maxWidth
-                          : contentWidth;
-                      return AnimatedBuilder(
-                        animation: _tickerController,
-                        builder: (context, child) => Transform.translate(
-                          // اعكس المسار: تدخل الملاحظات من يسار الشاشة وتتحرك نحو اليمين.
-                          // تكرار المحتوى يجعل الانتقال عند نهاية الدورة متصلاً بلا قفزة.
-                          offset: Offset(
-                            -segmentWidth + (_tickerController.value * segmentWidth),
-                            0,
-                          ),
-                          child: child,
-                        ),
-                        child: SizedBox(
-                          width: segmentWidth * 2,
-                          child: Row(
-                            textDirection: TextDirection.ltr,
-                            children: [
-                              SizedBox(
-                                width: segmentWidth,
-                                child: _tickerItems(entries, textStyle),
-                              ),
-                              SizedBox(
-                                width: segmentWidth,
-                                child: _tickerItems(entries, textStyle),
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-              ),
+          height: tickerHeight,
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              begin: Alignment.centerRight, end: Alignment.centerLeft,
+              colors: [Color(0xFF71303A), _ink, Color(0xFF51252D), _ink],
+              stops: [0.0, 0.36, 0.72, 1.0],
+            ),
+            borderRadius: BorderRadius.circular(17),
+            border: Border.all(color: const Color(0xFF8F4A53).withValues(alpha: .48)),
+            boxShadow: const [
+              BoxShadow(color: Color(0x1E40141D), blurRadius: 13, offset: Offset(0, 5)),
             ],
           ),
-        ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(17),
+            child: Row(
+              textDirection: TextDirection.rtl,
+              children: [
+                Container(
+                  width: 108, alignment: Alignment.center,
+                  decoration: const BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [Color(0xFF6D2C36), Color(0xFF49232A)],
+                      begin: Alignment.topRight, end: Alignment.bottomLeft,
+                    ),
+                  ),
+                  child: Text('ملاحظات', style: TextStyle(
+                    color: Colors.white, fontSize: settings.fontSize,
+                    fontFamily: settings.fontFamily,
+                    fontWeight: settings.bold ? FontWeight.w900 : FontWeight.w600)),
+                ),
+                Container(width: 1.4, height: 30, color: const Color(0xFFD5B9BC)),
+                Expanded(
+                  child: ClipRect(
+                    child: LayoutBuilder(
+                      builder: (context, constraints) {
+                        final segmentWidth = contentWidth < constraints.maxWidth
+                            ? constraints.maxWidth : contentWidth;
+                        return AnimatedBuilder(
+                          animation: _tickerController,
+                          builder: (context, child) => Transform.translate(
+                            offset: Offset(
+                              settings.direction == 'left_to_right'
+                                  ? -segmentWidth + (_tickerController.value * segmentWidth)
+                                  : segmentWidth - (_tickerController.value * segmentWidth),
+                              0,
+                            ),
+                            child: child,
+                          ),
+                          child: SizedBox(
+                            width: segmentWidth * 2,
+                            child: Row(
+                              textDirection: TextDirection.ltr,
+                              children: [
+                                SizedBox(width: segmentWidth, child: _tickerItems(entries, settings)),
+                                SizedBox(width: segmentWidth, child: _tickerItems(entries, settings)),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );
   }
 
-  Widget _tickerItems(List<_TickerEntry> entries, TextStyle style) => Row(
+  Widget _tickerItems(List<_TickerEntry> entries, TickerSettings settings) => Row(
     textDirection: TextDirection.rtl,
     mainAxisSize: MainAxisSize.min,
     children: [
@@ -497,7 +523,7 @@ class _DashboardNewsTickerState extends State<DashboardNewsTicker>
           behavior: HitTestBehavior.opaque,
           onTap: () => _openEntry(entries[i]),
           child: Text(_entryText(entries[i]), maxLines: 1, softWrap: false,
-            style: style),
+            style: _entryStyle(entries[i], settings)),
         ),
         if (i != entries.length - 1)
           const Padding(
