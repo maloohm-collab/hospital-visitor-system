@@ -451,7 +451,7 @@ class DashboardScreen extends StatelessWidget {
         title: 'المراسلات والتنبيهات',
         subtitle: 'رسائل الإدارة والتنبيهات الواردة',
         color: const Color(0xFFB45309),
-        actionTitles: const ['تنبيهات الإدارة / مدير الموقع'],
+        actionTitles: const ['تنبيهات الإدارة / مدير الموقع', 'إدارة ملاحظات الشريط الإخباري'],
       ),
       _ActionCategory(
         icon: Icons.info_outline_rounded,
@@ -550,6 +550,14 @@ class DashboardScreen extends StatelessWidget {
                 title: 'تنبيهات الإدارة / مدير الموقع',
                 color: const Color(0xFF087E78),
                 onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => StaffMessagesScreen(userRole: userRole))),
+              ),
+              _AdminAction(
+                icon: Icons.campaign_rounded,
+                title: 'إدارة ملاحظات الشريط الإخباري',
+                color: const Color(0xFF6B2632),
+                onTap: () => Navigator.push(context, MaterialPageRoute(
+                  builder: (_) => const TickerManagementScreen(userRole: 'admin'),
+                )),
               ),
               _AdminAction(
                 icon: Icons.emergency_share_rounded,
