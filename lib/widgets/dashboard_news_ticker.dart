@@ -414,7 +414,7 @@ class _DashboardNewsTickerState extends State<DashboardNewsTicker>
     final family = ['sans-serif', 'serif', 'monospace'].contains(override['fontFamily'])
         ? override['fontFamily'] as String : settings.fontFamily;
     final size = override['fontSize'] is num
-        ? (override['fontSize'] as num).toDouble().clamp(12, 30)
+        ? (override['fontSize'] as num).toDouble().clamp(12, 30).toDouble()
         : settings.fontSize;
     final bold = override['bold'] is bool ? override['bold'] as bool : settings.bold;
     return TextStyle(
