@@ -15,7 +15,6 @@ class DashboardNewsTicker extends StatefulWidget {
 
 class _DashboardNewsTickerState extends State<DashboardNewsTicker>
     with SingleTickerProviderStateMixin {
-  static const _ink = Color(0xFF24191D);
   static const _priorityOrder = {'urgent': 0, 'important': 1, 'normal': 2};
   late final AnimationController _tickerController;
   int _activeTickerPointers = 0;
