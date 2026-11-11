@@ -169,17 +169,9 @@ class DashboardScreen extends StatelessWidget {
           onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const VisitorFormScreen())),
         ),
         _AdminAction(
-          icon: Icons.post_add_rounded,
-          title: 'إرسال تقرير',
+          icon: Icons.campaign_rounded,
+          title: 'إرسال بلاغ',
           color: const Color(0xFF8757A5),
-          onTap: () => Navigator.push(context, MaterialPageRoute(
-            builder: (_) => ReportCenterScreen(userRole: userRole),
-          )),
-        ),
-        _AdminAction(
-          icon: Icons.note_add_rounded,
-          title: 'إرسال ملاحظة أو تنبيه',
-          color: const Color(0xFF6D3FA8),
           onTap: () => Navigator.push(context, MaterialPageRoute(
             builder: (_) => StaffMessagesScreen(
               userRole: userRole,
@@ -268,24 +260,14 @@ class DashboardScreen extends StatelessWidget {
     }
 
     if (userRole == 'security_officer' || userRole == 'supervisor') {
-      actions.addAll([
-        _AdminAction(
-          icon: Icons.picture_as_pdf_rounded,
-          title: 'مناوبات اليوم',
-          color: const Color(0xFF087E78),
-          onTap: () => Navigator.push(context, MaterialPageRoute(
-            builder: (_) => const SecurityDutyRostersScreen(),
-          )),
-        ),
-        _AdminAction(
-          icon: Icons.archive_rounded,
-          title: 'المناوبات السابقة',
-          color: const Color(0xFF14558A),
-          onTap: () => Navigator.push(context, MaterialPageRoute(
-            builder: (_) => const SecurityDutyRostersScreen(archive: true),
-          )),
-        ),
-      ]);
+      actions.add(_AdminAction(
+        icon: Icons.picture_as_pdf_rounded,
+        title: 'كشوف المناوبات',
+        color: const Color(0xFF087E78),
+        onTap: () => Navigator.push(context, MaterialPageRoute(
+          builder: (_) => const SecurityDutyRostersHubScreen(),
+        )),
+      ));
     } else {
       actions.add(_AdminAction(
         icon: Icons.calendar_month_rounded,
@@ -297,12 +279,14 @@ class DashboardScreen extends StatelessWidget {
       ));
     }
 
-    actions.add(_AdminAction(
-      icon: Icons.info_outline_rounded,
-      title: 'عن التطبيق والمؤسس',
-      color: const Color(0xFF14558A),
-      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const FounderScreen())),
-    ));
+    if (userRole != 'security_officer') {
+      actions.add(_AdminAction(
+        icon: Icons.info_outline_rounded,
+        title: 'عن التطبيق والمؤسس',
+        color: const Color(0xFF14558A),
+        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const FounderScreen())),
+      ));
+    }
 
     actions.addAll([
       _AdminAction(
