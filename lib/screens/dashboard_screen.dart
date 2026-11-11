@@ -371,9 +371,16 @@ class DashboardScreen extends StatelessWidget {
       _ActionCategory(
         icon: Icons.forum_outlined,
         title: 'المراسلات والتنبيهات',
-        subtitle: 'تنبيهات المشرف والرسائل والإشعارات',
+        subtitle: 'تنبيهات المشرف والرسائل',
         color: const Color(0xFFB45309),
-        actionTitles: const ['نشر ملاحظة على الشريط الإخباري', 'تنبيهات المشرف المناوب', 'الإشعارات والملحوظات'],
+        actionTitles: const ['نشر ملاحظة على الشريط الإخباري', 'تنبيهات المشرف المناوب'],
+      ),
+      _ActionCategory(
+        icon: Icons.notifications_active_outlined,
+        title: 'الإشعارات',
+        subtitle: 'متابعة الإشعارات والملحوظات الواردة',
+        color: const Color(0xFFD28A25),
+        actionTitles: const ['الإشعارات والملحوظات'],
       ),
       _ActionCategory(
         icon: Icons.account_circle_outlined,
