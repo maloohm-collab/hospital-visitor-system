@@ -444,10 +444,10 @@ class _DashboardNewsTickerState extends State<DashboardNewsTicker>
         child: Container(
           height: tickerHeight,
           decoration: BoxDecoration(
-            gradient: const LinearGradient(
+            gradient: LinearGradient(
               begin: Alignment.centerRight, end: Alignment.centerLeft,
-              colors: [Color(0xFF71303A), _ink, Color(0xFF51252D), _ink],
-              stops: [0.0, 0.36, 0.72, 1.0],
+              colors: settings.backgroundColors,
+              stops: const [0.0, 0.36, 0.72, 1.0],
             ),
             borderRadius: BorderRadius.circular(17),
             border: Border.all(color: const Color(0xFF8F4A53).withValues(alpha: .48)),
@@ -462,9 +462,9 @@ class _DashboardNewsTickerState extends State<DashboardNewsTicker>
               children: [
                 Container(
                   width: 108, alignment: Alignment.center,
-                  decoration: const BoxDecoration(
+                  decoration: BoxDecoration(
                     gradient: LinearGradient(
-                      colors: [Color(0xFF6D2C36), Color(0xFF49232A)],
+                      colors: settings.backgroundColors,
                       begin: Alignment.topRight, end: Alignment.bottomLeft,
                     ),
                   ),
