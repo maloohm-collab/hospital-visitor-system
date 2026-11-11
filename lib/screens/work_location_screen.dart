@@ -38,6 +38,12 @@ class _WorkLocationScreenState extends State<WorkLocationScreen> {
   }
 
 
+  @override
+  void dispose() {
+    expiryTimer?.cancel();
+    super.dispose();
+  }
+
   void msg(String value) {
     if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(value)));
   }
