@@ -8,6 +8,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:image/image.dart' as img;
 import '../widgets/official_hospital_header.dart';
+import 'founder_screen.dart';
 
 /// ملف الحساب: يسمح بتعديل البيانات الشخصية فقط، ولا يتيح تغيير الدور أو حالة الحساب.
 class AccountProfileScreen extends StatefulWidget {
@@ -779,6 +780,14 @@ class _AccountProfileScreenState extends State<AccountProfileScreen> {
                     'لا يمكن تعديل الدور أو حالة الحساب من هذه الشاشة؛ هذه الصلاحيات للإدارة فقط.',
                     textAlign: TextAlign.center,
                     style: TextStyle(fontSize: 12, height: 1.6, color: Color(0xFF526579)),
+                  ),
+                  const SizedBox(height: 14),
+                  OutlinedButton.icon(
+                    onPressed: () => Navigator.push(context, MaterialPageRoute(
+                      builder: (_) => const FounderScreen(),
+                    )),
+                    icon: const Icon(Icons.info_outline_rounded),
+                    label: const Text('عن التطبيق والمؤسس'),
                   ),
                 ],
               ),
