@@ -175,12 +175,6 @@ class DashboardScreen extends StatelessWidget {
           onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const VisitorFormScreen())),
         ),
         _AdminAction(
-          icon: Icons.assignment_rounded,
-          title: 'سجل زياراتي',
-          color: const Color(0xFF27865B),
-          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => VisitorLogsScreen(userRole: userRole))),
-        ),
-        _AdminAction(
           icon: Icons.post_add_rounded,
           title: 'تقاريري',
           color: const Color(0xFF8757A5),
@@ -376,9 +370,9 @@ class DashboardScreen extends StatelessWidget {
       _ActionCategory(
         icon: Icons.meeting_room_outlined,
         title: 'الزيارات',
-        subtitle: 'تنظيم زيارة المرضى ومراجعة سجلات زياراتك',
+        subtitle: 'تنظيم دخول الزوار ومتابعة أوقات الدخول والخروج والتنبيه عند تجاوز المدة',
         color: const Color(0xFF047857),
-        actionTitles: const ['تنظيم زيارة', 'سجل زياراتي'],
+        actionTitles: const ['تنظيم زيارة'],
       ),
       _ActionCategory(
         icon: Icons.picture_as_pdf_outlined,
