@@ -46,11 +46,6 @@ class _WorkLocationScreenState extends State<WorkLocationScreen> {
     super.initState();
     _activeShiftsStream = db.collection('work_shifts').where('status', isEqualTo: 'active').snapshots();
     _receivedNotesStream = db.collection('work_shift_notes').where('recipientUids', arrayContains: uid).snapshots();
-    if (officer) {
-      noteVisibilityTimer = Timer.periodic(const Duration(minutes: 1), (_) {
-        if (mounted) setState(() {});
-      });
-    }
   }
 
   @override
@@ -613,7 +608,6 @@ class _WorkLocationScreenState extends State<WorkLocationScreen> {
   );
 
   Widget _activeShift(String shiftId, Map<String, dynamic> data) {
-    _ensureDraftsLoaded(shiftId);
     final siteId = data['activeLocationId'] as String?;
     final startedAt = data['startedAt'];
     if (startedAt is Timestamp && expiryShiftId != shiftId) {
@@ -654,82 +648,6 @@ class _WorkLocationScreenState extends State<WorkLocationScreen> {
         )),
       ),
       if (siteId == null) _startCard('مباشرة العمل في الموقع', () => _move(shiftId)),
-      Card(color: Colors.white, elevation: 0,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16),
-          side: const BorderSide(color: Color(0xFFDCE5ED))),
-        child: Padding(padding: const EdgeInsets.all(16), child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            const Text('إرسال ملاحظة للمشرفين / الإدارة',
-              style: TextStyle(color: navy, fontWeight: FontWeight.w900, fontSize: 16)),
-            const SizedBox(height: 8),
-            TextField(controller: note, enabled: !_draftsLoading, minLines: 2, maxLines: 5,
-              decoration: const InputDecoration(hintText: 'اكتب الملاحظة...', border: OutlineInputBorder())),
-            const SizedBox(height: 8),
-            OutlinedButton.icon(
-              onPressed: busy || _draftsLoading ? null : _saveDraftNote,
-              icon: Icon(_editingDraftIndex == null ? Icons.playlist_add_rounded : Icons.save_outlined),
-              label: Text(_editingDraftIndex == null ? 'إضافة إلى المسودات' : 'حفظ تعديل المسودة'),
-            ),
-            if (draftNotes.isNotEmpty) ...[
-              const SizedBox(height: 8),
-              const Text('المسودات — يمكنك تعديلها أو حذفها قبل الإرسال',
-                style: TextStyle(color: navy, fontWeight: FontWeight.w800)),
-              ...draftNotes.asMap().entries.map((entry) => Card(
-                color: const Color(0xFFF5FAFF),
-                elevation: 0,
-                child: ListTile(
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 10),
-                  leading: CircleAvatar(
-                    backgroundColor: teal.withOpacity(.12),
-                    child: Text('${entry.key + 1}', style: const TextStyle(color: navy, fontWeight: FontWeight.w800)),
-                  ),
-                  title: Text(entry.value, maxLines: 3, overflow: TextOverflow.ellipsis),
-                  trailing: Wrap(children: [
-                    IconButton(
-                      tooltip: 'تعديل المسودة',
-                      onPressed: busy || _draftsLoading ? null : () => _editDraft(entry.key),
-                      icon: const Icon(Icons.edit_outlined, color: navy),
-                    ),
-                    IconButton(
-                      tooltip: 'حذف المسودة',
-                      onPressed: busy || _draftsLoading ? null : () => _removeDraft(entry.key),
-                      icon: const Icon(Icons.delete_outline_rounded, color: Colors.red),
-                    ),
-                  ]),
-                ),
-              )),
-            ],
-            const SizedBox(height: 8),
-            StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-              stream: db.collection('users').where('status', isEqualTo: 'active').snapshots(),
-              builder: (context, snap) {
-                final docs = (snap.data?.docs ?? []).where((d) =>
-                  d.data()['role'] == 'supervisor' || d.data()['role'] == 'admin').toList();
-                return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  const Text('إرسال إلى:', style: TextStyle(fontWeight: FontWeight.w800)),
-                  ...docs.map((d) => CheckboxListTile(
-                    dense: true, contentPadding: EdgeInsets.zero,
-                    value: recipients.contains(d.id),
-                    title: Text((d.data()['displayName'] as String? ?? 'مستخدم') +
-                      (d.data()['role'] == 'admin' ? ' (الإدارة)' : ' (مشرف)')),
-                    onChanged: busy ? null : (v) => setState(() {
-                      if (v == true) { if (recipients.length < 5) { recipients.add(d.id); } else { msg('يمكن اختيار خمسة مستلمين كحد أقصى.'); } } else { recipients.remove(d.id); }
-                    }),
-                  )),
-                ]);
-              },
-            ),
-            FilledButton.icon(onPressed: busy ? null : () => _sendNote(
-              shiftId, data['officerName'] as String? ?? 'ضابط أمن'),
-              icon: const Icon(Icons.send_rounded), label: Text(draftNotes.isEmpty ? 'إرسال الملاحظات' : 'إرسال جميع المسودات (${draftNotes.length})'),
-              style: FilledButton.styleFrom(backgroundColor: teal, foregroundColor: Colors.white)),
-
-            const SizedBox(height: 12),
-            _recentWorkerNotes(),
-
-          ],
-        )),
-      ),
       OutlinedButton.icon(onPressed: busy ? null : () => _endShift(shiftId, siteId),
         icon: const Icon(Icons.stop_circle_outlined, color: Colors.red),
         label: const Text('إنهاء المناوبة'), style: OutlinedButton.styleFrom(foregroundColor: Colors.red)),
@@ -877,7 +795,7 @@ class _WorkLocationScreenState extends State<WorkLocationScreen> {
       );
     }
     return Scaffold(
-      appBar: AppBar(title: const Text('مباشرة العمل والملاحظات'), actions: [if (officer) IconButton(tooltip: 'المراسلات والتنبيهات', icon: const Icon(Icons.mark_chat_unread_rounded), onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const StaffMessagesScreen(userRole: 'security_officer'))))]),
+      appBar: AppBar(title: const Text('مباشرة العمل')),
       backgroundColor: const Color(0xFFF3F6FA),
       body: StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
         stream: db.collection('active_work_shifts').doc(uid).snapshots(),
@@ -892,7 +810,6 @@ class _WorkLocationScreenState extends State<WorkLocationScreen> {
             const SizedBox(height: 8), const Text('اختر موقعك الحالي ثم اضغط مباشرة العمل. سيتم تسجيل الوقت واسم الموظف تلقائيًا.',
               textAlign: TextAlign.center),
             const SizedBox(height: 20), _startCard('مباشرة العمل', _start),
-            _recentWorkerNotes(),
           ]);
           return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
             stream: db.collection('work_shifts').doc(shiftId).snapshots(),
