@@ -29,8 +29,49 @@ class _DashboardNewsTickerState extends State<DashboardNewsTicker>
   void _resumeTicker(PointerEvent event) {
     if (_activeTickerPointers > 0) _activeTickerPointers--;
     if (_activeTickerPointers == 0 && mounted && !_tickerController.isAnimating) {
-      _tickerController.repeat(min: _tickerController.value);
+      if (_tickerController.value >= 1) {
+        _tickerController.repeat();
+      } else {
+        _tickerController.forward();
+      }
     }
+  }
+
+  void _handleTickerStatus(AnimationStatus status) {
+    if (status == AnimationStatus.completed &&
+        mounted &&
+        _activeTickerPointers == 0) {
+      // Start every new cycle at the exact beginning of the duplicated track.
+      _tickerController.repeat();
+    }
+  }
+
+  void _updateTickerDuration(double segmentWidth, int referenceSeconds) {
+    // speedSeconds is the time required to travel 1200 logical pixels.
+    // This keeps the actual pixels-per-second consistent for short and long notes.
+    final milliseconds =
+        (segmentWidth * referenceSeconds * 1000 / 1200)
+            .round()
+            .clamp(1000, 2147483647)
+            .toInt();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted ||
+          _tickerController.duration?.inMilliseconds == milliseconds) {
+        return;
+      }
+      final wasPaused = _activeTickerPointers > 0;
+      _tickerController.stop(canceled: false);
+      _tickerController.duration = Duration(milliseconds: milliseconds);
+      if (!wasPaused) {
+        if (_tickerController.value >= 1) {
+          _tickerController.repeat();
+        } else {
+          // Continue from the same visual position with the new speed.
+          _tickerController.forward();
+        }
+      }
+    });
   }
   late final String _uid;
   late final Stream<QuerySnapshot<Map<String, dynamic>>> _notifications;
@@ -50,7 +91,9 @@ class _DashboardNewsTickerState extends State<DashboardNewsTicker>
         .doc('news_ticker').snapshots();
     _tickerController = AnimationController(
       vsync: this, duration: const Duration(seconds: 46),
-    )..repeat();
+    )
+      ..addStatusListener(_handleTickerStatus)
+      ..repeat();
   }
 
   @override
@@ -349,15 +392,6 @@ class _DashboardNewsTickerState extends State<DashboardNewsTicker>
       stream: _settings,
       builder: (context, settingsSnapshot) {
         final settings = TickerSettings.fromMap(settingsSnapshot.data?.data());
-        final duration = Duration(seconds: settings.speedSeconds);
-        if (_tickerController.duration != duration) {
-          final position = _tickerController.value;
-          _tickerController.stop(canceled: false);
-          _tickerController.duration = duration;
-          if (_activeTickerPointers == 0) {
-            _tickerController.repeat(min: position);
-          }
-        }
         return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
           stream: _notifications,
           builder: (context, notificationSnapshot) {
@@ -479,13 +513,14 @@ class _DashboardNewsTickerState extends State<DashboardNewsTicker>
                       builder: (context, constraints) {
                         final segmentWidth = contentWidth < constraints.maxWidth
                             ? constraints.maxWidth : contentWidth;
+                        _updateTickerDuration(segmentWidth, settings.speedSeconds);
                         return AnimatedBuilder(
                           animation: _tickerController,
                           builder: (context, child) => Transform.translate(
                             offset: Offset(
                               settings.direction == 'left_to_right'
                                   ? -segmentWidth + (_tickerController.value * segmentWidth)
-                                  : segmentWidth - (_tickerController.value * segmentWidth),
+                                  : -(_tickerController.value * segmentWidth),
                               0,
                             ),
                             child: child,
