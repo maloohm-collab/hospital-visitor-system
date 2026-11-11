@@ -111,7 +111,7 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const Text('إرسال ملاحظة أو تنبيه',
+                Text(widget.userRole == 'security_officer' ? 'إرسال بلاغ أو ملاحظة' : 'إرسال ملاحظة أو تنبيه',
                   style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: navy)),
                 Text('اختر المستلمين — المختار: ${selected.length}'),
                 Wrap(spacing: 6, children: [
@@ -670,7 +670,7 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
       ]),
     floatingActionButton: FloatingActionButton.extended(
       onPressed: compose, backgroundColor: teal, foregroundColor: Colors.white,
-      icon: const Icon(Icons.edit_notifications), label: const Text('إرسال ملاحظة')),
+      icon: const Icon(Icons.edit_notifications), label: Text(widget.userRole == 'security_officer' ? 'إرسال بلاغ' : 'إرسال ملاحظة')),
     body: Column(children: [
       Container(
         width: double.infinity,
