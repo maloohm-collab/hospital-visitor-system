@@ -15,6 +15,7 @@ import 'admin_approval_screen.dart';
 import 'report_center_screen.dart';
 import 'notifications_screen.dart';
 import 'ticker_management_screen.dart';
+import 'ticker_settings_screen.dart';
 import 'staff_messages_screen.dart';
 import 'emergency_duty_screen.dart';
 import 'work_location_screen.dart';
@@ -462,7 +463,7 @@ class DashboardScreen extends StatelessWidget {
         title: 'المراسلات والتنبيهات',
         subtitle: 'رسائل الإدارة والتنبيهات الواردة',
         color: const Color(0xFFB45309),
-        actionTitles: const ['تنبيهات الإدارة / مدير الموقع', 'إدارة ملاحظات الشريط الإخباري'],
+        actionTitles: const ['تنبيهات الإدارة / مدير الموقع', 'إدارة ملاحظات الشريط الإخباري', 'إعدادات الشريط الإخباري'],
       ),
       _ActionCategory(
         icon: Icons.info_outline_rounded,
@@ -568,6 +569,14 @@ class DashboardScreen extends StatelessWidget {
                 color: const Color(0xFF6B2632),
                 onTap: () => Navigator.push(context, MaterialPageRoute(
                   builder: (_) => const TickerManagementScreen(userRole: 'admin'),
+                )),
+              ),
+              _AdminAction(
+                icon: Icons.tune_rounded,
+                title: 'إعدادات الشريط الإخباري',
+                color: const Color(0xFF14558A),
+                onTap: () => Navigator.push(context, MaterialPageRoute(
+                  builder: (_) => const TickerSettingsScreen(userRole: 'admin'),
                 )),
               ),
               _AdminAction(
