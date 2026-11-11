@@ -19,8 +19,8 @@ class TickerSettings {
   factory TickerSettings.fromMap(Map<String, dynamic>? data) {
     if (data == null) return const TickerSettings();
     return TickerSettings(
-      speedSeconds: (data['speedSeconds'] as num?)?.toInt().clamp(12, 120) ?? 46,
-      fontSize: (data['fontSize'] as num?)?.toDouble().clamp(12, 30) ?? 17,
+      speedSeconds: (data['speedSeconds'] as num?)?.toInt().clamp(12, 120).toInt() ?? 46,
+      fontSize: (data['fontSize'] as num?)?.toDouble().clamp(12, 30).toDouble() ?? 17,
       fontFamily: ['sans-serif', 'serif', 'monospace'].contains(data['fontFamily'])
           ? data['fontFamily'] as String : 'sans-serif',
       direction: data['direction'] == 'right_to_left' ? 'right_to_left' : 'left_to_right',
