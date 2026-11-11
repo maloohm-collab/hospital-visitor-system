@@ -92,6 +92,10 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
     final selected = <String>{};
     String priority = 'normal';
     bool requestReply = false;
+    bool customTickerStyle = false;
+    double tickerFontSize = 17;
+    String tickerFontFamily = 'sans-serif';
+    bool tickerBold = true;
     bool busy = false;
 
     await showModalBottomSheet<void>(
@@ -154,6 +158,39 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
                   ],
                   onChanged: (v) => refresh(() => priority = v ?? 'normal'),
                 ),
+                if (supervisor) ...[
+                  const SizedBox(height: 8),
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text('تخصيص تنسيق هذه الملاحظة على الشريط'),
+                    subtitle: const Text('لن يؤثر هذا الاختيار على الإعدادات العامة.'),
+                    value: customTickerStyle,
+                    onChanged: (v) => refresh(() => customTickerStyle = v),
+                  ),
+                  if (customTickerStyle) ...[
+                    Text('حجم خط هذه الملاحظة: ${tickerFontSize.round()}'),
+                    Slider(
+                      min: 12, max: 30, divisions: 18, value: tickerFontSize,
+                      onChanged: (v) => refresh(() => tickerFontSize = v),
+                    ),
+                    DropdownButtonFormField<String>(
+                      value: tickerFontFamily,
+                      decoration: const InputDecoration(labelText: 'نوع الخط لهذه الملاحظة'),
+                      items: const [
+                        DropdownMenuItem(value: 'sans-serif', child: Text('خط واضح')),
+                        DropdownMenuItem(value: 'serif', child: Text('خط كلاسيكي')),
+                        DropdownMenuItem(value: 'monospace', child: Text('خط ثابت العرض')),
+                      ],
+                      onChanged: (v) => refresh(() => tickerFontFamily = v ?? 'sans-serif'),
+                    ),
+                    SwitchListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text('خط عريض للملاحظة'),
+                      value: tickerBold,
+                      onChanged: (v) => refresh(() => tickerBold = v),
+                    ),
+                  ],
+                ],
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,
                   title: const Text('طلب الرد على الملاحظة'),
@@ -230,6 +267,12 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
                           'hiddenFor': <String>[],
                           'showOnTicker': isSupervisorBroadcastToAllOfficers &&
                               recipient.data()['role'] == 'security_officer',
+                          if (supervisor && customTickerStyle && isSupervisorBroadcastToAllOfficers)
+                            'tickerStyle': {
+                              'fontSize': tickerFontSize,
+                              'fontFamily': tickerFontFamily,
+                              'bold': tickerBold,
+                            },
                           'createdAt': FieldValue.serverTimestamp(),
                         });
                       }
