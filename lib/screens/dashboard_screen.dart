@@ -166,14 +166,6 @@ class DashboardScreen extends StatelessWidget {
           )),
         ),
         _AdminAction(
-          icon: Icons.person_add_alt_1_rounded,
-          title: 'تنظيم زيارة',
-          color: teal,
-          onTap: () => Navigator.push(context, MaterialPageRoute(
-            builder: (_) => const VisitorFormScreen(),
-          )),
-        ),
-        _AdminAction(
           icon: Icons.campaign_rounded,
           title: 'إرسال بلاغ',
           color: const Color(0xFF8757A5),
@@ -317,25 +309,8 @@ class DashboardScreen extends StatelessWidget {
           )),
         ),
       ]);
-    } else {
-      actions.add(_AdminAction(
-        icon: Icons.inbox_rounded,
-        title: 'الوارد والتنبيهات',
-        color: const Color(0xFF087E78),
-        onTap: () => Navigator.push(context, MaterialPageRoute(
-          builder: (_) => const SecurityInboxScreen(),
-        )),
-      ));
     }
 
-    actions.add(_AdminAction(
-      icon: Icons.account_circle_rounded,
-      title: 'حسابي',
-      color: const Color(0xFF12B8B0),
-      onTap: () => Navigator.push(context, MaterialPageRoute(
-        builder: (_) => const AccountProfileScreen(),
-      )),
-    ));
 
     return DecoratedBox(
       decoration: const BoxDecoration(color: Color(0xFFF2F4F8)),
@@ -372,39 +347,25 @@ class DashboardScreen extends StatelessWidget {
   Widget _buildSecurityCategories(BuildContext context, List<_AdminAction> actions) {
     final categories = <_ActionCategory>[
       _ActionCategory(
-        icon: Icons.work_outline_rounded,
-        title: 'العمل والزيارات',
-        subtitle: 'مباشرة العمل وتنظيم زيارات المرضى ومتابعة خروج الزوار',
+        icon: Icons.location_on_outlined,
+        title: 'مباشرة العمل',
+        subtitle: 'تسجيل المناوبة وتحديد موقع العمل والانتقال وإنهاء المناوبة',
         color: const Color(0xFF047857),
-        actionTitles: const ['مباشرة العمل', 'تنظيم زيارة'],
+        actionTitles: const ['مباشرة العمل'],
       ),
       _ActionCategory(
         icon: Icons.picture_as_pdf_outlined,
-        title: 'المناوبات',
-        subtitle: 'كشوفات المناوبات الحالية والسابقة',
+        title: 'كشوف المناوبات',
+        subtitle: 'متابعة الكشوف الحالية والسابقة وحفظها',
         color: const Color(0xFF087E78),
         actionTitles: const ['كشوف المناوبات'],
       ),
       _ActionCategory(
         icon: Icons.send_rounded,
         title: 'إرسال بلاغ',
-        subtitle: 'إرسال تقرير أو ملاحظة أو تنبيه عند الحاجة فقط',
+        subtitle: 'إبلاغ الإدارة أو المشرف عند وجود أمر يستدعي ذلك',
         color: const Color(0xFF6D3FA8),
         actionTitles: const ['إرسال بلاغ'],
-      ),
-      _ActionCategory(
-        icon: Icons.inbox_outlined,
-        title: 'الوارد والتنبيهات',
-        subtitle: 'رسائل الإدارة والمشرف والإشعارات المهمة',
-        color: const Color(0xFFB45309),
-        actionTitles: const ['الوارد والتنبيهات'],
-      ),
-      _ActionCategory(
-        icon: Icons.account_circle_outlined,
-        title: 'حسابي',
-        subtitle: 'بيانات الحساب ومعلومات التطبيق',
-        color: const Color(0xFF1D4F91),
-        actionTitles: const ['حسابي'],
       ),
     ];
     return _buildGroupedCategories(context, actions, categories);
@@ -514,6 +475,12 @@ class DashboardScreen extends StatelessWidget {
       );
     }
 
+    final ordered = categories.length == 5
+        ? [categories[0], categories[2], categories[1], categories[3], categories[4]]
+        : categories;
+    final visible = ordered.where((category) =>
+        actions.any((action) => category.actionTitles.contains(action.title))).toList();
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
       child: Column(
@@ -531,29 +498,37 @@ class DashboardScreen extends StatelessWidget {
               ),
             ),
           ),
-          buildTile(categories[0], featured: true),
-          const SizedBox(height: 12),
-          IntrinsicHeight(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Expanded(child: buildTile(categories[2], featured: false)),
-                const SizedBox(width: 12),
-                Expanded(child: buildTile(categories[1], featured: false)),
-              ],
+          if (visible.isNotEmpty) buildTile(visible[0], featured: true),
+          if (visible.length > 1) ...[
+            const SizedBox(height: 12),
+            IntrinsicHeight(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Expanded(child: buildTile(visible[1], featured: false)),
+                  if (visible.length > 2) ...[
+                    const SizedBox(width: 12),
+                    Expanded(child: buildTile(visible[2], featured: false)),
+                  ],
+                ],
+              ),
             ),
-          ),
-          const SizedBox(height: 12),
-          IntrinsicHeight(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Expanded(child: buildTile(categories[3], featured: false)),
-                const SizedBox(width: 12),
-                Expanded(child: buildTile(categories[4], featured: false)),
-              ],
+          ],
+          if (visible.length > 3) ...[
+            const SizedBox(height: 12),
+            IntrinsicHeight(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Expanded(child: buildTile(visible[3], featured: false)),
+                  if (visible.length > 4) ...[
+                    const SizedBox(width: 12),
+                    Expanded(child: buildTile(visible[4], featured: false)),
+                  ],
+                ],
+              ),
             ),
-          ),
+          ],
         ],
       ),
     );
