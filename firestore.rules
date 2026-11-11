@@ -269,10 +269,8 @@ service cloud.firestore {
       }
 
     match /visitor_logs/{visitId} {
-      // Save a record immediately when the visitor enters.
       allow create: if isActiveUser()
-        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role
-          in ['admin', 'supervisor', 'security_officer']
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'security_officer'
         && request.resource.data.keys().hasOnly([
           'visitId', 'floorId', 'floorName', 'department', 'roomNumber',
           'visitorCount', 'visitDate', 'entryAt', 'exitAt', 'notes',
@@ -287,9 +285,7 @@ service cloud.firestore {
         && request.resource.data.createdBy == request.auth.uid
         && request.resource.data.createdByName is string
         && request.resource.data.createdByPhone is string
-        && request.resource.data.floorId in [
-          'floor_5', 'floor_4', 'floor_3', 'floor_2', 'floor_1', 'ccu'
-        ]
+        && request.resource.data.floorId in ['floor_5', 'floor_4', 'floor_3', 'floor_2', 'floor_1', 'ccu']
         && request.resource.data.floorName is string
         && request.resource.data.department is string
         && request.resource.data.roomNumber is string
@@ -302,66 +298,38 @@ service cloud.firestore {
         && request.resource.data.status == 'inside'
         && request.resource.data.createdAt == request.time;
 
-      // The creator may only add the exit time once; other fields are immutable.
       allow update: if isActiveUser()
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'security_officer'
         && resource.data.createdBy == request.auth.uid
-        && resource.data.status == 'inside'
-        && request.resource.data.status == 'completed'
-        && request.resource.data.exitAt is timestamp
-        && request.resource.data.exitAt >= resource.data.entryAt
-        && request.resource.data.updatedAt is timestamp
-        && request.resource.data.notes is string
-        && request.resource.data.diff(resource.data).affectedKeys()
-          .hasOnly(['exitAt', 'status', 'updatedAt', 'notes'])
-        && request.resource.data.keys().hasAll([
-          'visitId', 'floorId', 'floorName', 'department', 'roomNumber',
-          'visitorCount', 'visitDate', 'entryAt', 'exitAt', 'notes',
-          'status', 'createdBy', 'createdAt', 'updatedAt'
-        ]);
-
-      // Officers may hide their own completed visit records from their personal list.
-      // The shared visit record remains available to supervisors and administrators.
-      allow update: if isActiveUser()
-        && resource.data.createdBy == request.auth.uid
-        && resource.data.status == 'completed'
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['hiddenFor'])
-        && request.resource.data.hiddenFor is list
-        && request.resource.data.hiddenFor.hasAll(resource.data.get('hiddenFor', []))
-        && request.resource.data.hiddenFor.size()
-          == resource.data.get('hiddenFor', []).size() + 1
-        && !resource.data.get('hiddenFor', []).hasAny([request.auth.uid])
-        && request.resource.data.hiddenFor.hasAny([request.auth.uid]);
-
-      // The visit creator may add, edit, or clear only the notes field on their own visit,
-      // whether the visit is still inside or already completed. Other visit data stays immutable.
-      allow update: if isActiveUser()
-        && resource.data.createdBy == request.auth.uid
-        && resource.data.status in ['inside', 'completed']
-        && request.resource.data.status == resource.data.status
-        && request.resource.data.exitAt == resource.data.exitAt
-        && request.resource.data.notes is string
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['notes']);
-
-      // Staff can view their own records; supervisors and admins can review all records.
-      allow get, list: if isActiveUser()
         && (
-          resource.data.createdBy == request.auth.uid
-          || isActiveSupervisor()
-          || isActiveAdmin()
-        );
-
-      // Only completed visits can be deleted. Officers may delete their own;
-      // supervisors and administrators may delete any completed visit.
-      allow delete: if isActiveUser()
-        && resource.data.status == 'completed'
-        && (
-          isActiveAdmin()
-          || isActiveSupervisor()
-          || (
-            resource.data.createdBy == request.auth.uid
-            && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'security_officer'
+          (
+            resource.data.status == 'inside'
+            && request.resource.data.status == 'completed'
+            && request.resource.data.exitAt is timestamp
+            && request.resource.data.exitAt >= resource.data.entryAt
+            && request.resource.data.updatedAt is timestamp
+            && request.resource.data.notes is string
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['exitAt', 'status', 'updatedAt', 'notes'])
+          )
+          ||
+          (
+            resource.data.status in ['inside', 'completed']
+            && request.resource.data.status == resource.data.status
+            && request.resource.data.exitAt == resource.data.exitAt
+            && request.resource.data.notes is string
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['notes'])
           )
         );
+
+      allow get, list: if isActiveUser()
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'security_officer'
+        && resource.data.createdBy == request.auth.uid;
+
+      allow delete: if isActiveUser()
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'security_officer'
+        && resource.data.createdBy == request.auth.uid
+        && resource.data.status == 'completed'
+        && resource.data.exitAt is timestamp;
     }
 
     match /duty_reports/{reportId} {
