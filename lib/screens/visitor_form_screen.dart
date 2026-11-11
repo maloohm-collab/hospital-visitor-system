@@ -732,65 +732,123 @@ class _VisitorFormScreenState extends State<VisitorFormScreen> {
             child: const Text('تعذر تحميل الزيارات النشطة. تحقق من الاتصال وقواعد Firestore.'),
           );
         }
-        final visits = (snapshot.data?.docs ?? [])
-            .where((visit) => visit.data()['status'] == 'inside')
-            .toList();
+        final visits = snapshot.data?.docs ?? [];
+        final activeVisits = visits.where((visit) => visit.data()['status'] == 'inside').toList();
+        final completedVisits = visits.where((visit) => visit.data()['status'] == 'completed').toList();
         if (visits.isEmpty) return const SizedBox.shrink();
-
         return _buildCard(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Text(
-                'زيارات ما زالت داخل المستشفى',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: _navy),
-              ),
-              const SizedBox(height: 5),
-              const Text(
-                'يمكنك تسجيل الدخول لعدة غرف، ثم إنهاء كل زيارة من سجلها الصحيح.',
-                style: TextStyle(fontSize: 12, height: 1.5, color: _muted),
-              ),
-              const SizedBox(height: 10),
-              for (final visit in visits) ...[
-                const Divider(height: 18, color: _line),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Icon(Icons.meeting_room_outlined, color: _teal, size: 22),
-                    const SizedBox(width: 9),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'الغرفة ${visit.data()['roomNumber'] ?? '—'}',
-                            style: const TextStyle(fontWeight: FontWeight.w800, color: _navy),
-                          ),
-                          const SizedBox(height: 3),
-                          Text(
-                            '${visit.data()['floorName'] ?? ''} — ${visit.data()['department'] ?? ''}',
-                            style: const TextStyle(fontSize: 12, height: 1.4, color: _muted),
-                          ),
-                          Text(
-                            'عدد الزوار: ${visit.data()['visitorCount'] ?? 1}',
-                            style: const TextStyle(fontSize: 12, color: _muted),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    OutlinedButton(
+              if (activeVisits.isNotEmpty) ...[
+                const Text('زوار ما زالوا داخل المستشفى',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: _navy)),
+                const SizedBox(height: 8),
+                for (final visit in activeVisits) ...[
+                  const Divider(height: 18, color: _line),
+                  _buildVisitManagementRow(visit,
+                    action: OutlinedButton(
                       onPressed: _isSavingVisit ? null : () => _finishActiveVisit(visit),
-                      child: const Text('خروج + ملاحظات'),
-                    ),
-                  ],
-                ),
+                      child: const Text('تسجيل الخروج'),
+                    )),
+                ],
+              ],
+              if (completedVisits.isNotEmpty) ...[
+                if (activeVisits.isNotEmpty) const SizedBox(height: 18),
+                const Divider(height: 22, color: _line),
+                const Text('زيارات انتهت — يمكنك حذف ما تشاء',
+                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: _navy)),
+                const SizedBox(height: 8),
+                for (final visit in completedVisits) ...[
+                  const Divider(height: 14, color: _line),
+                  _buildVisitManagementRow(visit,
+                    action: IconButton(
+                      tooltip: 'حذف الزيارة بعد خروج الزوار',
+                      onPressed: _isSavingVisit ? null : () => _deleteCompletedVisit(visit),
+                      icon: const Icon(Icons.delete_outline_rounded, color: Colors.red),
+                    )),
+                ],
               ],
             ],
           ),
         );
       },
     );
+  }
+
+  Widget _buildVisitManagementRow(
+    DocumentSnapshot<Map<String, dynamic>> visit, {
+    required Widget action,
+  }) {
+    final data = visit.data() ?? <String, dynamic>{};
+    String format(dynamic value) => value is Timestamp
+        ? DateFormat('HH:mm', 'en').format(value.toDate())
+        : '—';
+    return Row(children: [
+      const Icon(Icons.meeting_room_outlined, color: _teal, size: 22),
+      const SizedBox(width: 9),
+      Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text('الغرفة ${data['roomNumber'] ?? '—'}',
+            style: const TextStyle(fontWeight: FontWeight.w800, color: _navy)),
+        const SizedBox(height: 3),
+        Text('${data['floorName'] ?? ''} — ${data['department'] ?? ''}',
+            style: const TextStyle(fontSize: 12, height: 1.4, color: _muted)),
+        Text('الزوار: ${data['visitorCount'] ?? 1} • الدخول: ${format(data['entryAt'])} • الخروج: ${format(data['exitAt'])}',
+            style: const TextStyle(fontSize: 11, color: _muted)),
+      ])),
+      const SizedBox(width: 6),
+      action,
+    ]);
+  }
+
+  Future<void> _deleteCompletedVisit(DocumentSnapshot<Map<String, dynamic>> visit) async {
+    final data = visit.data() ?? <String, dynamic>{};
+    if (data['createdBy'] != FirebaseAuth.instance.currentUser?.uid ||
+        data['status'] != 'completed' || data['exitAt'] is! Timestamp) {
+      _showMessage('لا يمكن حذف الزيارة قبل تسجيل خروج الزوار.');
+      return;
+    }
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('حذف سجل الزيارة؟'),
+        content: Text('تم تسجيل خروج زوار الغرفة ${data['roomNumber'] ?? ''}. هل تريد حذف السجل؟'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('إلغاء')),
+          FilledButton.icon(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            icon: const Icon(Icons.delete_outline_rounded),
+            label: const Text('حذف السجل'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    setState(() => _isSavingVisit = true);
+    try {
+      await visit.reference.delete();
+      if (_savedVisitId == visit.id && mounted) {
+        setState(() {
+          _savedVisitId = null;
+          _entryTime = null;
+          _exitTime = null;
+          _roomController.clear();
+          _visitorCountController.clear();
+          _notesController.clear();
+          _recordDate = DateTime.now();
+        });
+      }
+      _showMessage('تم حذف سجل الزيارة.');
+    } on FirebaseException catch (error) {
+      _showMessage(error.code == 'permission-denied'
+          ? 'لا يمكن حذف الزيارة قبل تسجيل خروج الزوار.'
+          : 'تعذر حذف الزيارة (${error.code}). حاول مجددًا.');
+    } catch (_) {
+      _showMessage('تعذر حذف الزيارة. تحقق من الاتصال ثم حاول مجددًا.');
+    } finally {
+      if (mounted) setState(() => _isSavingVisit = false);
+    }
   }
 
   Future<void> _finishActiveVisit(
