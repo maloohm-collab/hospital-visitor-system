@@ -684,6 +684,31 @@ service cloud.firestore {
       }
     }
 
+    // Shared news ticker configuration: readable by active users, writable only by admins.
+    match /app_settings/{settingId} {
+      allow get: if isActiveUser() && settingId == 'news_ticker';
+      allow list: if false;
+      allow create, update: if isActiveAdmin()
+        && settingId == 'news_ticker'
+        && request.resource.data.keys().hasOnly([
+          'speedSeconds', 'fontSize', 'fontFamily', 'direction', 'bold', 'updatedAt'
+        ])
+        && request.resource.data.keys().hasAll([
+          'speedSeconds', 'fontSize', 'fontFamily', 'direction', 'bold', 'updatedAt'
+        ])
+        && request.resource.data.speedSeconds is int
+        && request.resource.data.speedSeconds >= 12
+        && request.resource.data.speedSeconds <= 120
+        && request.resource.data.fontSize is number
+        && request.resource.data.fontSize >= 12
+        && request.resource.data.fontSize <= 30
+        && request.resource.data.fontFamily in ['sans-serif', 'serif', 'monospace']
+        && request.resource.data.direction in ['left_to_right', 'right_to_left']
+        && request.resource.data.bold is bool
+        && request.resource.data.updatedAt == request.time;
+      allow delete: if false;
+    }
+
     match /notifications/{notificationId} {
       // Admin notices plus atomic emergency assignment/arrival notices.
       allow create: if isActiveUser()
