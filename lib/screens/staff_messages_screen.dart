@@ -57,7 +57,7 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
     tabs = TabController(length: 3, vsync: this);
     archiveRefreshTimer = Timer.periodic(const Duration(minutes: 1), (_) { if (mounted) setState(() {}); });
     final messageId = widget.initialMessageId;
-    if (widget.openComposerOnStart && supervisor) {
+    if (widget.openComposerOnStart && (supervisor || widget.userRole == 'security_officer')) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) compose();
       });
