@@ -365,14 +365,14 @@ class DashboardScreen extends StatelessWidget {
         title: 'المناوبات',
         subtitle: 'كشوفات المناوبات الحالية والسابقة',
         color: const Color(0xFF087E78),
-        actionTitles: const ['مناوبات اليوم', 'المناوبات السابقة'],
+        actionTitles: const ['كشوف المناوبات'],
       ),
       _ActionCategory(
         icon: Icons.send_rounded,
         title: 'إرسال بلاغ',
         subtitle: 'إرسال تقرير أو ملاحظة أو تنبيه عند الحاجة فقط',
         color: const Color(0xFF6D3FA8),
-        actionTitles: const ['إرسال تقرير', 'إرسال ملاحظة أو تنبيه'],
+        actionTitles: const ['إرسال بلاغ'],
       ),
       _ActionCategory(
         icon: Icons.inbox_outlined,
@@ -386,7 +386,7 @@ class DashboardScreen extends StatelessWidget {
         title: 'حسابي',
         subtitle: 'بيانات الحساب ومعلومات التطبيق',
         color: const Color(0xFF1D4F91),
-        actionTitles: const ['حسابي', 'عن التطبيق والمؤسس'],
+        actionTitles: const ['حسابي'],
       ),
     ];
     return _buildGroupedCategories(context, actions, categories);
