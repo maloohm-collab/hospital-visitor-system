@@ -5,9 +5,10 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 class StaffMessagesScreen extends StatefulWidget {
-  const StaffMessagesScreen({super.key, required this.userRole, this.initialMessageId});
+  const StaffMessagesScreen({super.key, required this.userRole, this.initialMessageId, this.openComposerOnStart = false});
   final String userRole;
   final String? initialMessageId;
+  final bool openComposerOnStart;
   @override
   State<StaffMessagesScreen> createState() => _StaffMessagesScreenState();
 }
@@ -56,7 +57,11 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
     tabs = TabController(length: 3, vsync: this);
     archiveRefreshTimer = Timer.periodic(const Duration(minutes: 1), (_) { if (mounted) setState(() {}); });
     final messageId = widget.initialMessageId;
-    if (messageId != null && messageId.isNotEmpty) {
+    if (widget.openComposerOnStart && supervisor) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) compose();
+      });
+    } else if (messageId != null && messageId.isNotEmpty) {
       WidgetsBinding.instance.addPostFrameCallback((_) async {
         try {
           final doc = await db.collection('staff_messages').doc(messageId).get();
@@ -107,7 +112,7 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
                 Wrap(spacing: 6, children: [
                   TextButton(
                     onPressed: () => refresh(() => selected.addAll(users.map((u) => u.id))),
-                    child: const Text('اختيار الجميع')),
+                    child: Text(supervisor ? 'جميع ضباط الأمن' : 'اختيار الجميع')),
                   if (admin) TextButton(
                     onPressed: () => refresh(() => selected.addAll(
                       users.where((u) => u.data()['role'] == 'security_officer').map((u) => u.id))),
