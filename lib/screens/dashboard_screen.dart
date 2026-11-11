@@ -8,8 +8,6 @@ import 'account_profile_screen.dart';
 import 'staff_management_screen.dart';
 import 'duty_reports_screen.dart';
 import 'visitor_form_screen.dart';
-import 'visitor_logs_screen.dart';
-import 'visitor_reports_screen.dart';
 import 'admin_approval_screen.dart';
 import 'report_center_screen.dart';
 import 'notifications_screen.dart';
@@ -82,19 +80,7 @@ class DashboardScreen extends StatelessWidget {
             }
             return;
           }
-          if (index == 1) {
-            Navigator.push(context, MaterialPageRoute(
-              builder: (_) => VisitorLogsScreen(userRole: userRole),
-            ));
-          } else if (index == 2) {
-            Navigator.push(context, MaterialPageRoute(
-              builder: (_) => const AccountProfileScreen(),
-            ));
-          } else if (index == 3) {
-            Navigator.push(context, MaterialPageRoute(
-              builder: (_) => const DirectContactScreen(),
-            ));
-          } else if (index == 4) {
+          if (index == 1) { Navigator.push(context, MaterialPageRoute(builder: (_) => const AccountProfileScreen())); } else if (index == 2) { Navigator.push(context, MaterialPageRoute(builder: (_) => const DirectContactScreen())); } else if (index == 3) {
             Navigator.push(context, MaterialPageRoute(
               builder: (_) => const FounderScreen(),
             ));
@@ -103,7 +89,6 @@ class DashboardScreen extends StatelessWidget {
         destinations: userRole == 'security_officer'
             ? const [
                 NavigationDestination(icon: Icon(Icons.home_outlined), label: 'الرئيسية'),
-                NavigationDestination(icon: Icon(Icons.meeting_room_outlined), label: 'الزيارات'),
                 NavigationDestination(icon: Icon(Icons.inbox_outlined), label: 'الوارد'),
                 NavigationDestination(icon: Icon(Icons.account_circle_outlined), label: 'حسابي'),
               ]
@@ -223,12 +208,6 @@ class DashboardScreen extends StatelessWidget {
           color: const Color(0xFF27865B),
           onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => DutyReportsScreen(userRole: userRole))),
         ),
-        _AdminAction(
-          icon: Icons.assignment_rounded,
-          title: 'سجل الزيارات',
-          color: const Color(0xFF27865B),
-          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => VisitorLogsScreen(userRole: userRole))),
-        ),
       ]);
     } else {
       actions.addAll([
@@ -255,12 +234,6 @@ class DashboardScreen extends StatelessWidget {
           title: 'إدارة الموظفين',
           color: const Color(0xFFB42318),
           onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const StaffManagementScreen())),
-        ),
-        _AdminAction(
-          icon: Icons.assignment_rounded,
-          title: 'سجل الزيارات',
-          color: const Color(0xFF27865B),
-          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => VisitorLogsScreen(userRole: userRole))),
         ),
         _AdminAction(
           icon: Icons.campaign_rounded,
@@ -329,34 +302,7 @@ class DashboardScreen extends StatelessWidget {
       ),
     ]);
     if (userRole != 'security_officer') {
-      actions.add(_AdminAction(
-        icon: Icons.bar_chart_rounded,
-        title: 'التقارير والإحصاءات',
-        color: const Color(0xFFD28A25),
-        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => VisitorReportsScreen(userRole: userRole))),
-      ));
-    }
-
-    return DecoratedBox(
-      decoration: const BoxDecoration(color: Color(0xFFF2F4F8)),
-      child: ListView(
-        padding: EdgeInsets.zero,
-        children: [
-          _buildHero(currentUid),
-          const SizedBox(height: 4),
-          if (userRole == 'security_officer')
-            _buildSecurityCategories(context, actions)
-          else
-            _buildSupervisorCategories(context, actions),
-          const SizedBox(height: 18),
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 16),
-            child: Center(
-              child: Text(
-                'تُحدّث البيانات مباشرة من نظام المستشفى',
-                textAlign: TextAlign.center,
-                style: TextStyle(color: Color(0xFF65788A), fontSize: 11, fontWeight: FontWeight.w500),
-              ),
+      actions.add(
             ),
           ),
           const SizedBox(height: 20),
@@ -423,13 +369,6 @@ class DashboardScreen extends StatelessWidget {
         actionTitles: const ['تقارير ضباط الأمن', 'تقارير المناوبة PDF', 'مناوبات اليوم', 'المناوبات السابقة', 'التقارير والإحصاءات'],
       ),
       _ActionCategory(
-        icon: Icons.meeting_room_outlined,
-        title: 'الزيارات والسجلات',
-        subtitle: 'مراجعة سجل الزيارات',
-        color: const Color(0xFF047857),
-        actionTitles: const ['سجل الزيارات'],
-      ),
-      _ActionCategory(
         icon: Icons.forum_outlined,
         title: 'المراسلات والتنبيهات',
         subtitle: 'تنبيهات المشرف والرسائل والإشعارات',
@@ -459,9 +398,9 @@ class DashboardScreen extends StatelessWidget {
       _ActionCategory(
         icon: Icons.analytics_outlined,
         title: 'التقارير والسجلات',
-        subtitle: 'تقارير الإدارة والزيارات والموظفين والإحصاءات',
+        subtitle: 'تقارير الإدارة والموظفين',
         color: const Color(0xFF6D3FA8),
-        actionTitles: const ['تقارير الإدارة', 'أرشيف PDF', 'سجل الزيارات', 'الإحصاءات', 'سجل الموظفين والتقارير'],
+        actionTitles: const ['تقارير الإدارة', 'أرشيف PDF', 'سجل الموظفين والتقارير'],
       ),
       _ActionCategory(
         icon: Icons.manage_accounts_outlined,
@@ -621,18 +560,6 @@ class DashboardScreen extends StatelessWidget {
                 title: 'الموظفون',
                 color: const Color(0xFFB5473C),
                 onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const StaffManagementScreen())),
-              ),
-              _AdminAction(
-                icon: Icons.assignment_rounded,
-                title: 'سجل الزيارات',
-                color: const Color(0xFF27865B),
-                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => VisitorLogsScreen(userRole: userRole))),
-              ),
-              _AdminAction(
-                icon: Icons.query_stats_rounded,
-                title: 'الإحصاءات',
-                color: const Color(0xFFB7791F),
-                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => VisitorReportsScreen(userRole: userRole))),
               ),
               _AdminAction(
                 icon: Icons.manage_search_rounded,
