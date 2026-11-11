@@ -79,7 +79,7 @@ class _TickerSettingsScreenState extends State<TickerSettingsScreen> {
                   onChanged: (v) => setState(() => _settings = TickerSettings(
                     speedSeconds: v.round(), fontSize: _settings.fontSize,
                     fontFamily: _settings.fontFamily, direction: _settings.direction,
-                    bold: _settings.bold)),
+                    bold: _settings.bold, backgroundPreset: _settings.backgroundPreset)),
                 ),
                 const SizedBox(height: 8),
                 _section('حجم الخط'),
@@ -89,7 +89,7 @@ class _TickerSettingsScreenState extends State<TickerSettingsScreen> {
                   onChanged: (v) => setState(() => _settings = TickerSettings(
                     speedSeconds: _settings.speedSeconds, fontSize: v,
                     fontFamily: _settings.fontFamily, direction: _settings.direction,
-                    bold: _settings.bold)),
+                    bold: _settings.bold, backgroundPreset: _settings.backgroundPreset)),
                 ),
                 const SizedBox(height: 8),
                 _section('نوع الخط'),
@@ -102,7 +102,7 @@ class _TickerSettingsScreenState extends State<TickerSettingsScreen> {
                   ],
                   onChanged: (v) { if (v != null) setState(() => _settings = TickerSettings(
                     speedSeconds: _settings.speedSeconds, fontSize: _settings.fontSize,
-                    fontFamily: v, direction: _settings.direction, bold: _settings.bold)); },
+                    fontFamily: v, direction: _settings.direction, bold: _settings.bold, backgroundPreset: _settings.backgroundPreset)); },
                 ),
                 const SizedBox(height: 16),
                 _section('اتجاه حركة الشريط'),
@@ -111,15 +111,55 @@ class _TickerSettingsScreenState extends State<TickerSettingsScreen> {
                   groupValue: _settings.direction, title: const Text('من اليسار إلى اليمين'),
                   onChanged: (v) { if (v != null) setState(() => _settings = TickerSettings(
                     speedSeconds: _settings.speedSeconds, fontSize: _settings.fontSize,
-                    fontFamily: _settings.fontFamily, direction: v, bold: _settings.bold)); },
+                    fontFamily: _settings.fontFamily, direction: v, bold: _settings.bold, backgroundPreset: _settings.backgroundPreset)); },
                 ),
                 RadioListTile<String>(
                   contentPadding: EdgeInsets.zero, value: 'right_to_left',
                   groupValue: _settings.direction, title: const Text('من اليمين إلى اليسار'),
                   onChanged: (v) { if (v != null) setState(() => _settings = TickerSettings(
                     speedSeconds: _settings.speedSeconds, fontSize: _settings.fontSize,
-                    fontFamily: _settings.fontFamily, direction: v, bold: _settings.bold)); },
+                    fontFamily: _settings.fontFamily, direction: v, bold: _settings.bold, backgroundPreset: _settings.backgroundPreset)); },
                 ),
+                const SizedBox(height: 8),
+                _section('خلفية الشريط'),
+                DropdownButtonFormField<String>(
+                  value: _settings.backgroundPreset,
+                  decoration: const InputDecoration(
+                    border: OutlineInputBorder(),
+                    prefixIcon: Icon(Icons.palette_outlined),
+                  ),
+                  items: TickerSettings.backgroundLabels.entries.map((entry) =>
+                    DropdownMenuItem<String>(
+                      value: entry.key,
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 34, height: 20,
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: TickerSettings.backgroundPresets[entry.key]!,
+                              ),
+                              borderRadius: BorderRadius.circular(5),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Text(entry.value),
+                        ],
+                      ),
+                    ),
+                  ).toList(),
+                  onChanged: (v) {
+                    if (v != null) setState(() => _settings = TickerSettings(
+                      speedSeconds: _settings.speedSeconds,
+                      fontSize: _settings.fontSize,
+                      fontFamily: _settings.fontFamily,
+                      direction: _settings.direction,
+                      bold: _settings.bold,
+                      backgroundPreset: v,
+                    ));
+                  },
+                ),
+                const SizedBox(height: 8),
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero, title: const Text('خط عريض'),
                   value: _settings.bold,
@@ -131,7 +171,8 @@ class _TickerSettingsScreenState extends State<TickerSettingsScreen> {
                 Container(
                   height: 62, alignment: Alignment.center,
                   decoration: BoxDecoration(
-                    color: const Color(0xFF51252D), borderRadius: BorderRadius.circular(14)),
+                    gradient: LinearGradient(colors: _settings.backgroundColors),
+                    borderRadius: BorderRadius.circular(14)),
                   child: Text('معاينة الشريط الإخباري', style: _settings.textStyle.copyWith(color: Colors.white)),
                 ),
                 const SizedBox(height: 20),
