@@ -691,7 +691,7 @@ service cloud.firestore {
       allow create, update: if isActiveAdmin()
         && settingId == 'news_ticker'
         && request.resource.data.keys().hasOnly([
-          'speedSeconds', 'fontSize', 'fontFamily', 'direction', 'bold', 'updatedAt'
+          'speedSeconds', 'fontSize', 'fontFamily', 'direction', 'bold', 'backgroundPreset', 'updatedAt'
         ])
         && request.resource.data.keys().hasAll([
           'speedSeconds', 'fontSize', 'fontFamily', 'direction', 'bold', 'updatedAt'
@@ -705,6 +705,7 @@ service cloud.firestore {
         && request.resource.data.fontFamily in ['sans-serif', 'serif', 'monospace']
         && request.resource.data.direction in ['left_to_right', 'right_to_left']
         && request.resource.data.bold is bool
+        && request.resource.data.backgroundPreset in ['burgundy', 'navy', 'emerald', 'purple', 'slate', 'amber']
         && request.resource.data.updatedAt == request.time;
       allow delete: if false;
     }
