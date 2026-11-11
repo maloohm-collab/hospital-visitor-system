@@ -235,60 +235,80 @@ class _DashboardNewsTickerState extends State<DashboardNewsTicker>
                       return;
                     }
                     refresh(() => busy = true);
+                    ScaffoldMessenger.of(sheetContext).showSnackBar(
+                      const SnackBar(
+                        content: Text('جارٍ تجهيز النشر...'),
+                        duration: Duration(seconds: 2),
+                      ),
+                    );
                     try {
                       final db = FirebaseFirestore.instance;
+                      final sender = FirebaseAuth.instance.currentUser;
+                      if (sender == null || sender.uid.isEmpty) {
+                        throw StateError('انتهت جلسة الدخول. سجّل الدخول مرة أخرى.');
+                      }
                       final users = await db.collection('users')
-                          .where('status', isEqualTo: 'active').get();
+                          .where('status', isEqualTo: 'active')
+                          .get()
+                          .timeout(const Duration(seconds: 25));
                       final recipients = users.docs.where((doc) =>
                         selectedRoles.contains((doc.data()['role'] ?? '').toString()))
                         .toList();
                       if (recipients.isEmpty) {
                         throw StateError('لا يوجد مستلمون نشطون ضمن الفئات المحددة.');
                       }
-                      final sender = FirebaseAuth.instance.currentUser;
                       final tickerGroupId = db.collection('notifications').doc().id;
-                      final batch = db.batch();
-                      for (final recipient in recipients) {
-                        final ref = db.collection('notifications').doc();
-                        batch.set(ref, {
-                          'notificationId': ref.id,
-                          'recipientUid': recipient.id,
-                          'recipientRole': recipient.data()['role'] ?? '',
-                          'senderUid': sender?.uid ?? _uid,
-                          'senderEmail': sender?.email ?? '',
-                          'senderName': 'الإدارة',
-                          'title': title.text.trim(),
-                          'body': body.text.trim(),
-                          'priority': priority,
-                          'read': false,
-                          'kind': 'ticker_announcement',
-                          'tickerGroupId': tickerGroupId,
-                          'tickerVisible': true,
-                          'recipientRoles': selectedRoles.toList(),
-                          'broadcastToAll': selectedRoles.length == 3 &&
-                            selectedRoles.containsAll(
-                              const {'security_officer', 'supervisor', 'admin'},
-                            ),
-                          'createdAt': FieldValue.serverTimestamp(),
-                        });
+                      final rolesForPublish = selectedRoles.toList(growable: false);
+                      final broadcastToAll = selectedRoles.length == 3 &&
+                        selectedRoles.containsAll(
+                          const {'security_officer', 'supervisor', 'admin'},
+                        );
+                      for (var start = 0; start < recipients.length; start += 400) {
+                        final batch = db.batch();
+                        final end = (start + 400 < recipients.length)
+                            ? start + 400 : recipients.length;
+                        for (final recipient in recipients.sublist(start, end)) {
+                          final ref = db.collection('notifications').doc();
+                          batch.set(ref, {
+                            'notificationId': ref.id,
+                            'recipientUid': recipient.id,
+                            'recipientRole': recipient.data()['role'] ?? '',
+                            'senderUid': sender.uid,
+                            'senderEmail': sender.email ?? '',
+                            'senderName': 'الإدارة',
+                            'title': title.text.trim(),
+                            'body': body.text.trim(),
+                            'priority': priority,
+                            'read': false,
+                            'kind': 'ticker_announcement',
+                            'tickerGroupId': tickerGroupId,
+                            'tickerVisible': true,
+                            'recipientRoles': rolesForPublish,
+                            'broadcastToAll': broadcastToAll,
+                            'createdAt': FieldValue.serverTimestamp(),
+                          });
+                        }
+                        await batch.commit().timeout(const Duration(seconds: 25));
                       }
-                      await batch.commit();
                       if (sheetContext.mounted) Navigator.pop(sheetContext);
                       if (mounted) {
                         ScaffoldMessenger.of(this.context).showSnackBar(
-                          SnackBar(content: Text('تم نشر الملاحظة إلى ' +
+                          SnackBar(content: Text('تم نشر الملاحظة بنجاح إلى ' +
                             recipients.length.toString() + ' حساب.')),
                         );
                       }
                     } on FirebaseException catch (error) {
+                      if (!sheetContext.mounted) return;
                       refresh(() => busy = false);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('تعذر النشر (' + error.code + ').')),
+                      ScaffoldMessenger.of(sheetContext).showSnackBar(
+                        SnackBar(content: Text('تعذر النشر (' + error.code + '): ' + (error.message ?? 'تحقق من صلاحيات Firestore.'))),
                       );
                     } catch (error) {
+                      if (!sheetContext.mounted) return;
                       refresh(() => busy = false);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text(error.toString().replaceFirst('Bad state: ', ''))),
+                      ScaffoldMessenger.of(sheetContext).showSnackBar(
+                        SnackBar(content: Text('تعذر النشر: ' +
+                          error.toString().replaceFirst('Bad state: ', ''))),
                       );
                     }
                   },
