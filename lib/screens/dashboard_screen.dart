@@ -142,6 +142,7 @@ class DashboardScreen extends StatelessWidget {
 
   Widget _buildStaffDashboard(BuildContext context, String? currentUid) {
     final actions = <_AdminAction>[];
+
     if (userRole != 'security_officer') {
       actions.add(_AdminAction(
         icon: Icons.emergency_share_rounded,
@@ -154,6 +155,14 @@ class DashboardScreen extends StatelessWidget {
     if (userRole == 'security_officer') {
       actions.addAll([
         _AdminAction(
+          icon: Icons.location_on_rounded,
+          title: 'مباشرة العمل',
+          color: const Color(0xFF087E78),
+          onTap: () => Navigator.push(context, MaterialPageRoute(
+            builder: (_) => const WorkLocationScreen(userRole: 'security_officer'),
+          )),
+        ),
+        _AdminAction(
           icon: Icons.person_add_alt_1_rounded,
           title: 'تنظيم زيارة',
           color: teal,
@@ -161,9 +170,11 @@ class DashboardScreen extends StatelessWidget {
         ),
         _AdminAction(
           icon: Icons.post_add_rounded,
-          title: 'تقاريري',
+          title: 'إرسال تقرير',
           color: const Color(0xFF8757A5),
-          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ReportCenterScreen(userRole: userRole))),
+          onTap: () => Navigator.push(context, MaterialPageRoute(
+            builder: (_) => ReportCenterScreen(userRole: userRole),
+          )),
         ),
         _AdminAction(
           icon: Icons.note_add_rounded,
@@ -194,19 +205,25 @@ class DashboardScreen extends StatelessWidget {
           icon: Icons.sticky_note_2_rounded,
           title: 'مواقع الضباط والملاحظات',
           color: const Color(0xFFD28A25),
-          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const WorkLocationScreen(userRole: 'supervisor'))),
+          onTap: () => Navigator.push(context, MaterialPageRoute(
+            builder: (_) => const WorkLocationScreen(userRole: 'supervisor'),
+          )),
         ),
         _AdminAction(
           icon: Icons.fact_check_rounded,
           title: 'تقارير ضباط الأمن',
           color: const Color(0xFF8757A5),
-          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ReportCenterScreen(userRole: userRole))),
+          onTap: () => Navigator.push(context, MaterialPageRoute(
+            builder: (_) => ReportCenterScreen(userRole: userRole),
+          )),
         ),
         _AdminAction(
           icon: Icons.picture_as_pdf_rounded,
           title: 'تقارير المناوبة PDF',
           color: const Color(0xFF27865B),
-          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => DutyReportsScreen(userRole: userRole))),
+          onTap: () => Navigator.push(context, MaterialPageRoute(
+            builder: (_) => DutyReportsScreen(userRole: userRole),
+          )),
         ),
       ]);
     } else {
@@ -215,13 +232,17 @@ class DashboardScreen extends StatelessWidget {
           icon: Icons.mark_email_read_rounded,
           title: 'التقارير المرفوعة للإدارة',
           color: const Color(0xFF8757A5),
-          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ReportCenterScreen(userRole: userRole))),
+          onTap: () => Navigator.push(context, MaterialPageRoute(
+            builder: (_) => ReportCenterScreen(userRole: userRole),
+          )),
         ),
         _AdminAction(
           icon: Icons.picture_as_pdf_rounded,
           title: 'أرشيف تقارير PDF',
           color: const Color(0xFF27865B),
-          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => DutyReportsScreen(userRole: userRole))),
+          onTap: () => Navigator.push(context, MaterialPageRoute(
+            builder: (_) => DutyReportsScreen(userRole: userRole),
+          )),
         ),
         _AdminAction(
           icon: Icons.admin_panel_settings_rounded,
@@ -270,7 +291,9 @@ class DashboardScreen extends StatelessWidget {
         icon: Icons.calendar_month_rounded,
         title: 'جدول المناوبات',
         color: const Color(0xFF087E78),
-        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => DutyRosterScreen(userRole: userRole))),
+        onTap: () => Navigator.push(context, MaterialPageRoute(
+          builder: (_) => DutyRosterScreen(userRole: userRole),
+        )),
       ));
     }
 
@@ -284,25 +307,58 @@ class DashboardScreen extends StatelessWidget {
     actions.addAll([
       _AdminAction(
         icon: Icons.mark_chat_unread_rounded,
-        title: userRole == 'admin' ? 'تنبيهات الإدارة / مدير الموقع' : userRole == 'supervisor' ? 'تنبيهات المشرف المناوب' : 'الوارد من الإدارة والمشرف',
+        title: userRole == 'admin'
+            ? 'تنبيهات الإدارة / مدير الموقع'
+            : userRole == 'supervisor'
+                ? 'تنبيهات المشرف المناوب'
+                : 'الوارد من الإدارة والمشرف',
         color: const Color(0xFF087E78),
-        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => StaffMessagesScreen(userRole: userRole))),
+        onTap: () => Navigator.push(context, MaterialPageRoute(
+          builder: (_) => StaffMessagesScreen(userRole: userRole),
+        )),
       ),
       _AdminAction(
         icon: Icons.notifications_active_rounded,
         title: 'الإشعارات والملحوظات',
         color: const Color(0xFFD28A25),
-        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => NotificationsScreen(userRole: userRole))),
+        onTap: () => Navigator.push(context, MaterialPageRoute(
+          builder: (_) => NotificationsScreen(userRole: userRole),
+        )),
       ),
       _AdminAction(
         icon: Icons.account_circle_rounded,
         title: 'حسابي',
         color: const Color(0xFF12B8B0),
-        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AccountProfileScreen())),
+        onTap: () => Navigator.push(context, MaterialPageRoute(
+          builder: (_) => const AccountProfileScreen(),
+        )),
       ),
     ]);
-    if (userRole != 'security_officer') {
-      actions.add(
+
+    return DecoratedBox(
+      decoration: const BoxDecoration(color: Color(0xFFF2F4F8)),
+      child: ListView(
+        padding: EdgeInsets.zero,
+        children: [
+          _buildHero(currentUid),
+          const SizedBox(height: 4),
+          if (userRole == 'security_officer')
+            _buildSecurityCategories(context, actions)
+          else
+            _buildSupervisorCategories(context, actions),
+          const SizedBox(height: 18),
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 16),
+            child: Center(
+              child: Text(
+                'تُحدّث البيانات مباشرة من نظام المستشفى',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Color(0xFF65788A),
+                  fontSize: 11,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
             ),
           ),
           const SizedBox(height: 20),
@@ -314,37 +370,37 @@ class DashboardScreen extends StatelessWidget {
   Widget _buildSecurityCategories(BuildContext context, List<_AdminAction> actions) {
     final categories = <_ActionCategory>[
       _ActionCategory(
-        icon: Icons.meeting_room_outlined,
-        title: 'الزيارات',
-        subtitle: 'تنظيم دخول الزوار ومتابعة أوقات الدخول والخروج والتنبيه عند تجاوز المدة',
+        icon: Icons.work_outline_rounded,
+        title: 'العمل والزيارات',
+        subtitle: 'مباشرة العمل وتنظيم زيارات المرضى ومتابعة خروج الزوار',
         color: const Color(0xFF047857),
-        actionTitles: const ['تنظيم زيارة'],
+        actionTitles: const ['مباشرة العمل', 'تنظيم زيارة'],
       ),
       _ActionCategory(
         icon: Icons.picture_as_pdf_outlined,
         title: 'المناوبات',
-        subtitle: 'الاطلاع على كشوفات المناوبات الحالية والسابقة',
+        subtitle: 'كشوفات المناوبات الحالية والسابقة',
         color: const Color(0xFF087E78),
         actionTitles: const ['مناوبات اليوم', 'المناوبات السابقة'],
       ),
       _ActionCategory(
         icon: Icons.send_rounded,
-        title: 'المراسلات',
-        subtitle: 'إرسال التقارير والملاحظات والتنبيهات عند الحاجة',
+        title: 'إرسال بلاغ',
+        subtitle: 'إرسال تقرير أو ملاحظة أو تنبيه عند الحاجة فقط',
         color: const Color(0xFF6D3FA8),
-        actionTitles: const ['تقاريري', 'إرسال ملاحظة أو تنبيه'],
+        actionTitles: const ['إرسال تقرير', 'إرسال ملاحظة أو تنبيه'],
       ),
       _ActionCategory(
         icon: Icons.inbox_outlined,
         title: 'الوارد والتنبيهات',
-        subtitle: 'متابعة الإشعارات والتنبيهات الواردة',
+        subtitle: 'رسائل الإدارة والمشرف والإشعارات المهمة',
         color: const Color(0xFFB45309),
         actionTitles: const ['الوارد من الإدارة والمشرف', 'الإشعارات والملحوظات'],
       ),
       _ActionCategory(
         icon: Icons.account_circle_outlined,
         title: 'حسابي',
-        subtitle: 'بيانات الحساب ومعلومات التطبيق والمؤسس',
+        subtitle: 'بيانات الحساب ومعلومات التطبيق',
         color: const Color(0xFF1D4F91),
         actionTitles: const ['حسابي', 'عن التطبيق والمؤسس'],
       ),
