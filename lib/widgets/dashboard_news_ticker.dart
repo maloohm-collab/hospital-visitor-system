@@ -17,6 +17,21 @@ class _DashboardNewsTickerState extends State<DashboardNewsTicker>
   static const _ink = Color(0xFF24191D);
   static const _priorityOrder = {'urgent': 0, 'important': 1, 'normal': 2};
   late final AnimationController _tickerController;
+  int _activeTickerPointers = 0;
+
+  void _pauseTicker(PointerDownEvent event) {
+    _activeTickerPointers++;
+    if (_activeTickerPointers == 1 && _tickerController.isAnimating) {
+      _tickerController.stop(canceled: false);
+    }
+  }
+
+  void _resumeTicker(PointerEvent event) {
+    if (_activeTickerPointers > 0) _activeTickerPointers--;
+    if (_activeTickerPointers == 0 && mounted && !_tickerController.isAnimating) {
+      _tickerController.repeat(min: _tickerController.value);
+    }
+  }
   late final String _uid;
   late final Stream<QuerySnapshot<Map<String, dynamic>>> _notifications;
   late final Stream<QuerySnapshot<Map<String, dynamic>>> _messages;
@@ -31,7 +46,7 @@ class _DashboardNewsTickerState extends State<DashboardNewsTicker>
     _messages = FirebaseFirestore.instance.collection('staff_messages')
         .where('showOnTicker', isEqualTo: true).snapshots();
     _tickerController = AnimationController(
-      vsync: this, duration: const Duration(seconds: 34),
+      vsync: this, duration: const Duration(seconds: 46),
     )..repeat();
   }
 
@@ -377,7 +392,7 @@ class _DashboardNewsTickerState extends State<DashboardNewsTicker>
 
   Widget _tickerBar(List<_TickerEntry> entries) {
     const textStyle = TextStyle(
-      color: Colors.white, fontSize: 15, fontWeight: FontWeight.w800,
+      color: Colors.white, fontSize: 17, fontWeight: FontWeight.w800,
     );
     final measuredItemsWidth = entries.fold<double>(0, (total, entry) {
       final painter = TextPainter(
@@ -389,10 +404,14 @@ class _DashboardNewsTickerState extends State<DashboardNewsTicker>
     });
     final separatorsWidth = entries.length > 1 ? (entries.length - 1) * 44.0 : 0.0;
     final contentWidth = measuredItemsWidth + separatorsWidth + 60;
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Container(
-        height: 58,
+    return Listener(
+      onPointerDown: _pauseTicker,
+      onPointerUp: _resumeTicker,
+      onPointerCancel: _resumeTicker,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        child: Container(
+        height: 60,
         decoration: BoxDecoration(
           gradient: const LinearGradient(
             begin: Alignment.centerRight, end: Alignment.centerLeft,
@@ -419,7 +438,7 @@ class _DashboardNewsTickerState extends State<DashboardNewsTicker>
                   ),
                 ),
                 child: const Text('ملاحظات', style: TextStyle(
-                  color: Colors.white, fontSize: 17, fontWeight: FontWeight.w900)),
+                  color: Colors.white, fontSize: 19, fontWeight: FontWeight.w900)),
               ),
               Container(width: 1.4, height: 30, color: const Color(0xFFD5B9BC)),
               Expanded(
@@ -464,6 +483,7 @@ class _DashboardNewsTickerState extends State<DashboardNewsTicker>
             ],
           ),
         ),
+        ),
       ),
     );
   }
@@ -482,7 +502,7 @@ class _DashboardNewsTickerState extends State<DashboardNewsTicker>
         if (i != entries.length - 1)
           const Padding(
             padding: EdgeInsets.symmetric(horizontal: 22),
-            child: Text('•', style: TextStyle(color: Color(0xFFD6B9BD), fontSize: 15)),
+            child: Text('•', style: TextStyle(color: Color(0xFFD6B9BD), fontSize: 17)),
           ),
       ],
     ],
