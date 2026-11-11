@@ -5,10 +5,11 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 class StaffMessagesScreen extends StatefulWidget {
-  const StaffMessagesScreen({super.key, required this.userRole, this.initialMessageId, this.openComposerOnStart = false});
+  const StaffMessagesScreen({super.key, required this.userRole, this.initialMessageId, this.openComposerOnStart = false, this.embedded = false});
   final String userRole;
   final String? initialMessageId;
   final bool openComposerOnStart;
+  final bool embedded;
   @override
   State<StaffMessagesScreen> createState() => _StaffMessagesScreenState();
 }
@@ -662,32 +663,36 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('المراسلات والتنبيهات'),
+    appBar: widget.embedded ? null : AppBar(title: const Text('المراسلات والتنبيهات'),
       actions: [
         IconButton(tooltip: 'معلومة حول الحذف التلقائي', onPressed: archiveSettings, icon: const Icon(Icons.settings_outlined)),
         IconButton(tooltip: 'إخفاء كل الأرشيف', onPressed: hideAllArchive, icon: const Icon(Icons.delete_sweep_outlined)),
-      ],
-      bottom: PreferredSize(
-        preferredSize: const Size.fromHeight(54),
-        child: Container(
-          width: double.infinity,
-          color: navy,
-          child: TabBar(
-            controller: tabs,
-            labelColor: Colors.white,
-            unselectedLabelColor: Colors.white,
-            labelStyle: const TextStyle(fontSize: 17, fontWeight: FontWeight.w900),
-            unselectedLabelStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
-            indicatorColor: Colors.white,
-            indicatorWeight: 3,
-            tabs: const [Tab(text: 'الوارد'), Tab(text: 'الصادر'), Tab(text: 'الأرشيف')],
-          ),
-        ),
-      )),
+      ]),
     floatingActionButton: FloatingActionButton.extended(
       onPressed: compose, backgroundColor: teal, foregroundColor: Colors.white,
       icon: const Icon(Icons.edit_notifications), label: const Text('إرسال ملاحظة')),
     body: Column(children: [
+      Container(
+        width: double.infinity,
+        color: navy,
+        padding: const EdgeInsets.symmetric(horizontal: 6),
+        child: Row(children: [
+          Expanded(child: TabBar(
+            controller: tabs,
+            labelColor: Colors.white,
+            unselectedLabelColor: Colors.white,
+            labelStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
+            unselectedLabelStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+            indicatorColor: const Color(0xFFE8CB84),
+            indicatorWeight: 3,
+            tabs: const [Tab(text: 'الوارد'), Tab(text: 'الصادر'), Tab(text: 'الأرشيف')],
+          )),
+          IconButton(tooltip: 'إعدادات الأرشيف', onPressed: archiveSettings,
+            icon: const Icon(Icons.settings_outlined, color: Colors.white)),
+          IconButton(tooltip: 'إخفاء كل الأرشيف', onPressed: hideAllArchive,
+            icon: const Icon(Icons.delete_sweep_outlined, color: Colors.white)),
+        ]),
+      ),
       Padding(padding: const EdgeInsets.fromLTRB(14, 12, 14, 4), child: TextField(
         decoration: const InputDecoration(prefixIcon: Icon(Icons.search), hintText: 'ابحث في المراسلات...'),
         onChanged: (v) => setState(() => search=v))),
