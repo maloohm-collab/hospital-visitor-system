@@ -1068,7 +1068,7 @@ service cloud.firestore {
           'messageId', 'threadId', 'senderUid', 'senderName', 'senderRole', 'senderLabel',
           'recipientUid', 'recipientName', 'recipientRole', 'recipientLabel', 'locationName', 'title', 'body',
           'priority', 'requestReply', 'replyStatus', 'attachments', 'read',
-          'hiddenFor', 'showOnTicker', 'createdAt'
+          'hiddenFor', 'showOnTicker', 'tickerStyle', 'createdAt'
         ])
         && request.resource.data.keys().hasAll([
           'messageId', 'threadId', 'senderUid', 'senderName', 'senderRole', 'senderLabel',
@@ -1098,6 +1098,19 @@ service cloud.firestore {
         && request.resource.data.hiddenFor is list
         && (!request.resource.data.keys().hasAny(['showOnTicker'])
           || request.resource.data.showOnTicker is bool)
+        && (!request.resource.data.keys().hasAny(['tickerStyle'])
+          || (
+            isActiveSupervisor()
+            && request.resource.data.showOnTicker == true
+            && request.resource.data.tickerStyle is map
+            && request.resource.data.tickerStyle.keys().hasOnly(['fontSize', 'fontFamily', 'bold'])
+            && request.resource.data.tickerStyle.keys().hasAll(['fontSize', 'fontFamily', 'bold'])
+            && request.resource.data.tickerStyle.fontSize is number
+            && request.resource.data.tickerStyle.fontSize >= 12
+            && request.resource.data.tickerStyle.fontSize <= 30
+            && request.resource.data.tickerStyle.fontFamily in ['sans-serif', 'serif', 'monospace']
+            && request.resource.data.tickerStyle.bold is bool
+          ))
         && request.resource.data.createdAt == request.time
         && (
           isActiveAdmin()
