@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'ticker_settings_screen.dart';
 
 class TickerManagementScreen extends StatefulWidget {
   const TickerManagementScreen({super.key, required this.userRole});
@@ -248,8 +249,21 @@ class _TickerManagementScreenState extends State<TickerManagementScreen> {
     if (widget.userRole != 'admin') return const Scaffold(
       body: Center(child: Text('هذه الشاشة متاحة للإدارة فقط.')));
     return Scaffold(
-      appBar: AppBar(title: const Text('إدارة ملاحظات الشريط الإخباري'),
-        backgroundColor: navy, foregroundColor: Colors.white),
+      appBar: AppBar(
+        title: const Text('إدارة ملاحظات الشريط الإخباري'),
+        backgroundColor: navy,
+        foregroundColor: Colors.white,
+        actions: [
+          TextButton.icon(
+            onPressed: () => Navigator.push(context, MaterialPageRoute(
+              builder: (_) => TickerSettingsScreen(userRole: widget.userRole),
+            )),
+            icon: const Icon(Icons.tune_rounded, color: Colors.white),
+            label: const Text('إعدادات الشريط', style: TextStyle(color: Colors.white)),
+          ),
+          const SizedBox(width: 6),
+        ],
+      ),
       backgroundColor: const Color(0xFFF2F4F8),
       body: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
         stream: _notices, builder: (context, ns) {
