@@ -118,7 +118,9 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
                     : 'اختر المستلمين — المختار: ${selected.length}'),
                 Wrap(spacing: 6, children: [
                   TextButton(
-                    onPressed: () => refresh(() => selected.addAll(users.map((u) => u.id))),
+                    onPressed: () => refresh(() => selected.addAll(
+                      users.where((u) => !supervisor ||
+                        u.data()['role'] == 'security_officer').map((u) => u.id))),
                     child: Text(supervisor ? 'جميع ضباط الأمن' : 'اختيار الجميع')),
                   if (admin) TextButton(
                     onPressed: () => refresh(() => selected.addAll(
@@ -278,7 +280,8 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
                           'hiddenFor': <String>[],
                           'showOnTicker': isSupervisorBroadcastToAllOfficers &&
                               recipient.data()['role'] == 'security_officer',
-                          if (supervisor && customTickerStyle && isSupervisorBroadcastToAllOfficers)
+                          if (supervisor && customTickerStyle && isSupervisorBroadcastToAllOfficers &&
+                              recipient.data()['role'] == 'security_officer')
                             'tickerStyle': {
                               'fontSize': tickerFontSize,
                               'fontFamily': tickerFontFamily,
