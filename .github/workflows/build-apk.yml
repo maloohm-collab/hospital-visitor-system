@@ -5,6 +5,7 @@ on:
   workflow_dispatch:
   push:
     branches:
+      - work/next-development
       - work/next-release-development-2026-11-09
 
 permissions:
