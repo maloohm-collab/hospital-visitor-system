@@ -22,6 +22,7 @@ import 'security_duty_rosters_screen.dart';
 import 'staff_duty_history_screen.dart';
 import 'founder_screen.dart';
 import 'garage_violations_screen.dart';
+import 'work_site_notes_screen.dart';
 
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({super.key, this.userRole = 'security_officer'});
@@ -164,6 +165,14 @@ class DashboardScreen extends StatelessWidget {
           color: const Color(0xFF087E78),
           onTap: () => Navigator.push(context, MaterialPageRoute(
             builder: (_) => const WorkLocationScreen(userRole: 'security_officer'),
+          )),
+        ),
+        _AdminAction(
+          icon: Icons.sticky_note_2_rounded,
+          title: 'ملاحظات مواقع العمل',
+          color: const Color(0xFF087E78),
+          onTap: () => Navigator.push(context, MaterialPageRoute(
+            builder: (_) => const WorkSiteNotesScreen(),
           )),
         ),
         _AdminAction(
@@ -367,7 +376,7 @@ class DashboardScreen extends StatelessWidget {
         title: 'إرسال بلاغ',
         subtitle: 'إبلاغ الإدارة أو المشرف عند وجود أمر يستدعي ذلك',
         color: const Color(0xFF6D3FA8),
-        actionTitles: const ['إرسال بلاغ', 'مخالفات الكراجات'],
+        actionTitles: const ['ملاحظات مواقع العمل', 'إرسال بلاغ', 'مخالفات الكراجات'],
       ),
     ];
     return _buildGroupedCategories(context, actions, categories);
