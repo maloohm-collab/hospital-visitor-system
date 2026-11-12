@@ -957,7 +957,32 @@ service cloud.firestore {
         && exists(/databases/$(database)/documents/work_shifts/$(request.resource.data.shiftId))
         && get(/databases/$(database)/documents/work_shifts/$(request.resource.data.shiftId)).data.officerUid == request.auth.uid
         && get(/databases/$(database)/documents/work_shifts/$(request.resource.data.shiftId)).data.status == 'active'
-        && get(/databases/$(database)/documents/work_shifts/$(request.resource.data.shiftId)).data.activeLocationName == request.resource.data.locationName;
+        && get(/databases/$(database)/documents/work_shifts/$(request.resource.data.shiftId)).data.activeLocationName == request.resource.data.locationName
+        || (
+          isActiveUser()
+          && request.resource.data.keys().hasOnly([
+            'noteId', 'shiftId', 'officerUid', 'officerName', 'locationName', 'body',
+            'recipientUids', 'createdAt', 'forwardedFromNoteId', 'forwardedByUid', 'forwardedByName'
+          ])
+          && request.resource.data.keys().hasAll([
+            'noteId', 'shiftId', 'officerUid', 'officerName', 'locationName', 'body',
+            'recipientUids', 'createdAt', 'forwardedFromNoteId', 'forwardedByUid', 'forwardedByName'
+          ])
+          && (isActiveAdmin() || isActiveSupervisor())
+          && request.resource.data.noteId == noteId
+          && request.resource.data.forwardedFromNoteId is string
+          && request.resource.data.forwardedByUid == request.auth.uid
+          && request.resource.data.forwardedByName is string
+          && request.resource.data.createdAt == request.time
+          && validWorkNoteRecipients(request.resource.data)
+          && exists(/databases/$(database)/documents/work_shift_notes/$(request.resource.data.forwardedFromNoteId))
+          && request.auth.uid in get(/databases/$(database)/documents/work_shift_notes/$(request.resource.data.forwardedFromNoteId)).data.recipientUids
+          && request.resource.data.officerUid == get(/databases/$(database)/documents/work_shift_notes/$(request.resource.data.forwardedFromNoteId)).data.officerUid
+          && request.resource.data.officerName == get(/databases/$(database)/documents/work_shift_notes/$(request.resource.data.forwardedFromNoteId)).data.officerName
+          && request.resource.data.shiftId == get(/databases/$(database)/documents/work_shift_notes/$(request.resource.data.forwardedFromNoteId)).data.shiftId
+          && request.resource.data.locationName == get(/databases/$(database)/documents/work_shift_notes/$(request.resource.data.forwardedFromNoteId)).data.locationName
+          && request.resource.data.body == get(/databases/$(database)/documents/work_shift_notes/$(request.resource.data.forwardedFromNoteId)).data.body
+        );
 
       allow get, list: if isActiveUser()
         && (
