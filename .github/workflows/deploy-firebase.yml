@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
   push:
     branches:
-      - work/next-release-development-2026-11-09
+      - work/next-development
     paths:
       - firestore.rules
       - firestore.indexes.json
@@ -19,8 +19,8 @@ concurrency:
 
 jobs:
   deploy:
-    name: Deploy Firestore rules and indexes
-    if: github.ref == 'refs/heads/work/next-release-development-2026-11-09'
+    name: Deploy Firestore rules only
+    if: github.ref == 'refs/heads/work/next-development'
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
@@ -46,4 +46,4 @@ jobs:
         run: node --check functions/index.js
 
       - name: Deploy Firestore rules and indexes only (Storage and Cloud Functions deferred until Blaze is enabled)
-        run: firebase deploy --project hospital-visitor-system --only firestore:rules,firestore:indexes --non-interactive
+        run: firebase deploy --project hospital-visitor-system --only firestore:rules --non-interactive
