@@ -439,7 +439,7 @@ class DashboardScreen extends StatelessWidget {
         title: 'العمليات والإشراف الميداني',
         subtitle: 'متابعة مواقع العمل والتعامل مع الحالات الطارئة',
         color: const Color(0xFF087E78),
-        actionTitles: const ['الطوارئ', 'ملاحظات مواقع العمل الواردة', 'بلاغات مخالفات الكراجات'],
+        actionTitles: const ['الطوارئ', 'متابعة مواقع الضباط', 'ملاحظات مواقع العمل الواردة', 'بلاغات مخالفات الكراجات'],
       ),
       _ActionCategory(
         icon: Icons.analytics_outlined,
