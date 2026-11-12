@@ -21,7 +21,6 @@ import 'staff_duty_history_screen.dart';
 import 'founder_screen.dart';
 import 'garage_violations_screen.dart';
 import 'work_site_notes_screen.dart';
-import 'work_site_notes_inbox_screen.dart';
 
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({super.key, this.userRole = 'security_officer'});
@@ -79,6 +78,10 @@ class DashboardScreen extends StatelessWidget {
               Navigator.push(context, MaterialPageRoute(
                 builder: (_) => const AccountProfileScreen(),
               ));
+            } else if (index == 4) {
+              Navigator.push(context, MaterialPageRoute(
+                builder: (_) => const DirectContactScreen(),
+              ));
             }
             return;
           }
@@ -94,6 +97,7 @@ class DashboardScreen extends StatelessWidget {
                 NavigationDestination(icon: Icon(Icons.meeting_room_outlined), label: 'الزيارات'),
                 NavigationDestination(icon: Icon(Icons.inbox_outlined), label: 'الوارد'),
                 NavigationDestination(icon: Icon(Icons.account_circle_outlined), label: 'حسابي'),
+                NavigationDestination(icon: Icon(Icons.contacts_outlined), label: 'تواصل مباشر'),
               ]
             : const [
                 NavigationDestination(icon: Icon(Icons.home_outlined), label: 'الرئيسية'),
@@ -186,6 +190,14 @@ class DashboardScreen extends StatelessWidget {
           )),
         ),
         _AdminAction(
+          icon: Icons.assignment_rounded,
+          title: 'تقاريري الرسمية',
+          color: const Color(0xFF8053A6),
+          onTap: () => Navigator.push(context, MaterialPageRoute(
+            builder: (_) => ReportCenterScreen(userRole: 'security_officer'),
+          )),
+        ),
+        _AdminAction(
           icon: Icons.directions_car_filled_rounded,
           title: 'مخالفات الكراجات',
           color: const Color(0xFF087E58),
@@ -213,14 +225,6 @@ class DashboardScreen extends StatelessWidget {
           color: const Color(0xFFD28A25),
           onTap: () => Navigator.push(context, MaterialPageRoute(
             builder: (_) => const WorkLocationScreen(userRole: 'supervisor'),
-          )),
-        ),
-        _AdminAction(
-          icon: Icons.sticky_note_2_rounded,
-          title: 'ملاحظات مواقع العمل الواردة',
-          color: const Color(0xFF16845B),
-          onTap: () => Navigator.push(context, MaterialPageRoute(
-            builder: (_) => const WorkSiteNotesInboxScreen(userRole: 'supervisor'),
           )),
         ),
         _AdminAction(
@@ -363,9 +367,16 @@ class DashboardScreen extends StatelessWidget {
         actionTitles: const ['كشوف المناوبات'],
       ),
       _ActionCategory(
+        icon: Icons.assignment_outlined,
+        title: 'التقارير الرسمية',
+        subtitle: 'إنشاء تقرير رسمي ليصل إلى المشرف للمراجعة ثم الإدارة عند الحاجة',
+        color: const Color(0xFF8053A6),
+        actionTitles: const ['تقاريري الرسمية'],
+      ),
+      _ActionCategory(
         icon: Icons.send_rounded,
-        title: 'إرسال بلاغ',
-        subtitle: 'إبلاغ الإدارة أو المشرف عند وجود أمر يستدعي ذلك',
+        title: 'البلاغات والملاحظات',
+        subtitle: 'إرسال بلاغ عام أو ملاحظة مرتبطة بموقع العمل أو مخالفة كراج',
         color: const Color(0xFF6D3FA8),
         actionTitles: const ['ملاحظات مواقع العمل', 'إرسال بلاغ', 'مخالفات الكراجات'],
       ),
@@ -380,7 +391,7 @@ class DashboardScreen extends StatelessWidget {
         title: 'الإشراف الميداني',
         subtitle: 'متابعة مواقع الضباط والملاحظات والبلاغات الميدانية',
         color: const Color(0xFF087E78),
-        actionTitles: const ['متابعة مواقع الضباط', 'ملاحظات مواقع العمل الواردة', 'الطوارئ وتسليم المناوبة', 'بلاغات مخالفات الكراجات'],
+        actionTitles: const ['متابعة مواقع الضباط', 'الطوارئ وتسليم المناوبة', 'بلاغات مخالفات الكراجات'],
       ),
       _ActionCategory(
         icon: Icons.assignment_rounded,
@@ -407,14 +418,14 @@ class DashboardScreen extends StatelessWidget {
         title: 'العمليات والإشراف الميداني',
         subtitle: 'متابعة مواقع الضباط والملاحظات والبلاغات الميدانية',
         color: const Color(0xFF087E78),
-        actionTitles: const ['متابعة مواقع الضباط', 'ملاحظات مواقع العمل الواردة', 'بلاغات مخالفات الكراجات'],
+        actionTitles: const ['متابعة مواقع الضباط', 'بلاغات مخالفات الكراجات'],
       ),
       _ActionCategory(
         icon: Icons.analytics_outlined,
         title: 'التقارير والسجلات',
         subtitle: 'تقارير الإدارة والموظفين',
         color: const Color(0xFF6D3FA8),
-        actionTitles: const ['تقارير الإدارة', 'أرشيف PDF', 'سجل الموظفين والتقارير'],
+        actionTitles: const ['تقارير الإدارة', 'سجل الموظفين والتقارير'],
       ),
       _ActionCategory(
         icon: Icons.manage_accounts_outlined,
@@ -550,12 +561,6 @@ class DashboardScreen extends StatelessWidget {
                 onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ReportCenterScreen(userRole: userRole))),
               ),
               _AdminAction(
-                icon: Icons.picture_as_pdf_rounded,
-                title: 'أرشيف PDF',
-                color: const Color(0xFF27865B),
-                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => DutyReportsScreen(userRole: userRole))),
-              ),
-              _AdminAction(
                 icon: Icons.admin_panel_settings_rounded,
                 title: 'طلبات الحسابات',
                 color: const Color(0xFF7656A8),
@@ -585,14 +590,6 @@ class DashboardScreen extends StatelessWidget {
                 title: 'متابعة مواقع الضباط',
                 color: const Color(0xFFD28A25),
                 onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const WorkLocationScreen(userRole: 'admin'))),
-              ),
-              _AdminAction(
-                icon: Icons.sticky_note_2_rounded,
-                title: 'ملاحظات مواقع العمل الواردة',
-                color: const Color(0xFF16845B),
-                onTap: () => Navigator.push(context, MaterialPageRoute(
-                  builder: (_) => const WorkSiteNotesInboxScreen(userRole: 'admin'),
-                )),
               ),
               _AdminAction(
                 icon: Icons.directions_car_filled_rounded,
