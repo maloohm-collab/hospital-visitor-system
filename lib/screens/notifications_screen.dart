@@ -9,6 +9,7 @@ import 'security_duty_rosters_screen.dart';
 import 'duty_roster_screen.dart';
 import 'report_center_screen.dart';
 import 'work_location_screen.dart';
+import 'work_site_notes_inbox_screen.dart';
 import 'visitor_logs_screen.dart';
 import 'visitor_form_screen.dart';
 import '../widgets/app_search_field.dart';
@@ -170,6 +171,12 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     if (kind == 'staff_message' || kind == 'staff_message_reply') {
       await Navigator.push(context, MaterialPageRoute(
         builder: (_) => StaffMessagesScreen(userRole: widget.userRole),
+      ));
+      return;
+    }
+    if (kind == 'work_site_note') {
+      await Navigator.push(context, MaterialPageRoute(
+        builder: (_) => WorkSiteNotesInboxScreen(userRole: widget.userRole),
       ));
       return;
     }
