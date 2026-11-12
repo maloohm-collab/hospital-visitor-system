@@ -84,7 +84,7 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
       if (d.id == uid) return false;
       final role = d.data()['role'];
       if (admin) return ['admin', 'supervisor', 'security_officer'].contains(role);
-      if (supervisor) return role == 'security_officer';
+      if (supervisor) return ['security_officer', 'admin'].contains(role);
       return ['admin', 'supervisor'].contains(role);
     }).toList();
 
@@ -113,7 +113,9 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
               children: [
                 Text(widget.userRole == 'security_officer' ? 'إرسال بلاغ أو ملاحظة' : 'إرسال ملاحظة أو تنبيه',
                   style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: navy)),
-                Text('اختر المستلمين — المختار: ${selected.length}'),
+                Text(supervisor
+                    ? 'اختر الضباط أو الإدارة — ستصل نسخة للإدارة تلقائياً: ${selected.length}'
+                    : 'اختر المستلمين — المختار: ${selected.length}'),
                 Wrap(spacing: 6, children: [
                   TextButton(
                     onPressed: () => refresh(() => selected.addAll(users.map((u) => u.id))),
@@ -233,6 +235,14 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
                       final threadId = db.collection('staff_messages').doc().id;
                       final selectedRecipients =
                           users.where((d) => selected.contains(d.id)).toList();
+                      // Every supervisor note is mirrored to all active administrators.
+                      // Admins explicitly selected above are not duplicated.
+                      final messageRecipients = <QueryDocumentSnapshot<Map<String, dynamic>>>[
+                        ...selectedRecipients,
+                        if (senderRole == 'supervisor')
+                          ...users.where((d) =>
+                            d.data()['role'] == 'admin' && !selected.contains(d.id)),
+                      ];
                       final activeOfficerIds = users
                           .where((d) => d.data()['role'] == 'security_officer')
                           .map((d) => d.id)
@@ -243,7 +253,7 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
                           activeOfficerIds.every(selected.contains);
                       final refs = <DocumentReference<Map<String, dynamic>>>[];
                       final messageBatch = db.batch();
-                      for (final recipient in selectedRecipients) {
+                      for (final recipient in messageRecipients) {
                         final ref = db.collection('staff_messages').doc(threadId + '_' + recipient.id);
                         refs.add(ref);
                         messageBatch.set(ref, {
@@ -279,7 +289,7 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
                       }
                       await messageBatch.commit();
                       var notificationFailures = 0;
-                      for (final recipient in selectedRecipients) {
+                      for (final recipient in messageRecipients) {
                         final messageId = threadId + '_' + recipient.id;
                         final notificationRef = db.collection('notifications')
                             .doc('staff_message_$messageId');
@@ -306,7 +316,9 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
                       }
                       if (ctx.mounted) Navigator.pop(sheet);
                       toast(notificationFailures == 0
-                        ? 'تم إرسال الملاحظة وإشعار جميع المستلمين (' + refs.length.toString() + ').'
+                        ? (senderRole == 'supervisor'
+                            ? 'تم إيصال الملاحظة للضباط ونسخة للإدارة (' + refs.length.toString() + ' مستلماً).'
+                            : 'تم إرسال الملاحظة وإشعار جميع المستلمين (' + refs.length.toString() + ').')
                         : 'تم إرسال الملاحظة إلى ' + refs.length.toString() +
                           ' مستلم، لكن تعذر إنشاء ' + notificationFailures.toString() + ' إشعار.');
                     } on FirebaseException catch (e) {
