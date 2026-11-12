@@ -85,7 +85,7 @@ class _GarageViolationsScreenState extends State<GarageViolationsScreen> {
           'التفاصيل: $note\n'
           'موجّه إلى: $destinationLabel\n'
           'مبلّغ البلاغ: $name\n\n'
-          'يرجى إرفاق الصور أو الفيديوهات الخاصة بهذا البلاغ في المحادثة نفسها.';
+          'يمكنك، إذا رغبت، إرفاق الصور أو الفيديوهات الخاصة بهذا البلاغ في المحادثة نفسها؛ الإرفاق اختياري.';
       final uri = Uri.parse('https://wa.me/?text=${Uri.encodeComponent(message)}');
       final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
       if (!mounted) return;
@@ -236,7 +236,7 @@ class _GarageViolationsScreenState extends State<GarageViolationsScreen> {
                 child: const Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Icon(Icons.info_outline, color: Color(0xFF087E58), size: 20),
                   SizedBox(width: 8),
-                  Expanded(child: Text('بعد فتح واتساب وإرسال نص البلاغ، أرسل الصور أو الفيديوهات الخاصة بالمخالفة نفسها في المحادثة ذاتها. لا تُرفع الوسائط إلى التطبيق.',
+                  Expanded(child: Text('إرسال الصور أو الفيديوهات الخاصة بالمخالفة اختياري. إذا كانت لديك وسائط وترغب بإرسالها، فأرسلها في محادثة واتساب نفسها بعد نص البلاغ. لا تُرفع الوسائط إلى التطبيق.',
                       style: TextStyle(color: Color(0xFF245B4B), height: 1.5, fontSize: 12))),
                 ]),
               ),
