@@ -21,6 +21,7 @@ import 'duty_roster_screen.dart';
 import 'security_duty_rosters_screen.dart';
 import 'staff_duty_history_screen.dart';
 import 'founder_screen.dart';
+import 'garage_violations_screen.dart';
 
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({super.key, this.userRole = 'security_officer'});
@@ -176,6 +177,14 @@ class DashboardScreen extends StatelessWidget {
             ),
           )),
         ),
+        _AdminAction(
+          icon: Icons.directions_car_filled_rounded,
+          title: 'مخالفات الكراجات',
+          color: const Color(0xFF087E58),
+          onTap: () => Navigator.push(context, MaterialPageRoute(
+            builder: (_) => const GarageViolationsScreen(userRole: 'security_officer'),
+          )),
+        ),
       ]);
     } else if (userRole == 'supervisor') {
       actions.addAll([
@@ -196,6 +205,14 @@ class DashboardScreen extends StatelessWidget {
           color: const Color(0xFFD28A25),
           onTap: () => Navigator.push(context, MaterialPageRoute(
             builder: (_) => const WorkLocationScreen(userRole: 'supervisor'),
+          )),
+        ),
+        _AdminAction(
+          icon: Icons.directions_car_filled_rounded,
+          title: 'بلاغات مخالفات الكراجات',
+          color: const Color(0xFF087E58),
+          onTap: () => Navigator.push(context, MaterialPageRoute(
+            builder: (_) => const GarageViolationsScreen(userRole: 'supervisor'),
           )),
         ),
         _AdminAction(
@@ -350,7 +367,7 @@ class DashboardScreen extends StatelessWidget {
         title: 'إرسال بلاغ',
         subtitle: 'إبلاغ الإدارة أو المشرف عند وجود أمر يستدعي ذلك',
         color: const Color(0xFF6D3FA8),
-        actionTitles: const ['إرسال بلاغ'],
+        actionTitles: const ['إرسال بلاغ', 'مخالفات الكراجات'],
       ),
     ];
     return _buildGroupedCategories(context, actions, categories);
@@ -363,7 +380,7 @@ class DashboardScreen extends StatelessWidget {
         title: 'الإشراف الميداني',
         subtitle: 'متابعة مواقع الضباط والطوارئ وتسليم المناوبات',
         color: const Color(0xFF087E78),
-        actionTitles: const ['مواقع الضباط والملاحظات', 'الطوارئ وتسليم المناوبة'],
+        actionTitles: const ['مواقع الضباط والملاحظات', 'الطوارئ وتسليم المناوبة', 'بلاغات مخالفات الكراجات'],
       ),
       _ActionCategory(
         icon: Icons.assignment_rounded,
@@ -404,7 +421,7 @@ class DashboardScreen extends StatelessWidget {
         title: 'العمليات والإشراف الميداني',
         subtitle: 'متابعة مواقع العمل والتعامل مع الحالات الطارئة',
         color: const Color(0xFF087E78),
-        actionTitles: const ['الطوارئ', 'ملاحظات مواقع العمل'],
+        actionTitles: const ['الطوارئ', 'ملاحظات مواقع العمل', 'بلاغات مخالفات الكراجات'],
       ),
       _ActionCategory(
         icon: Icons.analytics_outlined,
@@ -609,6 +626,14 @@ class DashboardScreen extends StatelessWidget {
                 title: 'ملاحظات مواقع العمل',
                 color: const Color(0xFFD28A25),
                 onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const WorkLocationScreen(userRole: 'admin'))),
+              ),
+              _AdminAction(
+                icon: Icons.directions_car_filled_rounded,
+                title: 'بلاغات مخالفات الكراجات',
+                color: const Color(0xFF087E58),
+                onTap: () => Navigator.push(context, MaterialPageRoute(
+                  builder: (_) => const GarageViolationsScreen(userRole: 'admin'),
+                )),
               ),
             ];
             return _buildAdminCategories(context, actions);
