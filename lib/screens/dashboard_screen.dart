@@ -323,21 +323,6 @@ class DashboardScreen extends StatelessWidget {
             _buildSecurityCategories(context, actions)
           else
             _buildSupervisorCategories(context, actions),
-          const SizedBox(height: 18),
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 16),
-            child: Center(
-              child: Text(
-                'تُحدّث البيانات مباشرة من نظام المستشفى',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: Color(0xFF65788A),
-                  fontSize: 11,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ),
-          ),
           const SizedBox(height: 20),
         ],
       ),
