@@ -75,7 +75,7 @@ class _WorkSiteNotesScreenState extends State<WorkSiteNotesScreen> {
       title:Text(old==null?'إضافة ملاحظة للموقع':'تعديل الملاحظة'),
       content:SizedBox(width:double.maxFinite,child:TextField(
         controller:controller, autofocus:true, minLines:4, maxLines:8, maxLength:1000,
-        textDirection:TextDirection.rtl,
+        textDirection:Directionality.of(context),
         decoration:const InputDecoration(hintText:'اكتب الملاحظة المتعلقة بموقع عملك...',border:OutlineInputBorder()),
       )),
       actions:[
