@@ -304,7 +304,6 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
                             'senderUid': uid,
                             'senderEmail': auth.currentUser?.email ?? '',
                             'senderName': personName(sender),
-                            'senderRole': senderRole,
                             'title': title.text.trim(),
                             'body': body.text.trim(),
                             'priority': priority,
