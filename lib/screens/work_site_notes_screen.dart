@@ -96,13 +96,40 @@ class _WorkSiteNotesScreenState extends State<WorkSiteNotesScreen> {
       if(old==null) {
         final profile=await db.collection('users').doc(uid).get();
         final ref=db.collection('work_shift_notes').doc();
+        final officerName = (profile.data()?['displayName'] as String? ?? 'ضابط الأمن').trim();
         await ref.set({
           'noteId':ref.id, 'shiftId':shiftId, 'officerUid':uid,
-          'officerName':(profile.data()?['displayName'] as String? ?? 'ضابط الأمن').trim(),
+          'officerName':officerName,
           'locationName':site, 'body':body, 'recipientUids':recipients!.toList(),
           'createdAt':FieldValue.serverTimestamp(), 'hiddenFromOfficer':false,
         });
-        notice('تم إرسال الملاحظة إلى المستلمين المحددين.');
+        var notified = 0;
+        for (final recipientUid in recipients) {
+          try {
+            final recipient = await db.collection('users').doc(recipientUid).get();
+            final recipientData = recipient.data() ?? <String, dynamic>{};
+            final notificationRef = db.collection('notifications').doc('work_site_note_${ref.id}_$recipientUid');
+            await notificationRef.set({
+              'notificationId':notificationRef.id,
+              'recipientUid':recipientUid,
+              'recipientRole':recipientData['role'] ?? '',
+              'senderUid':uid,
+              'senderEmail':FirebaseAuth.instance.currentUser?.email ?? '',
+              'senderName':officerName,
+              'title':'ملاحظة جديدة من موقع العمل',
+              'body':'ملاحظة من $officerName في موقع $site: $body',
+              'priority':'normal',
+              'read':false,
+              'kind':'work_site_note',
+              'relatedId':ref.id,
+              'createdAt':FieldValue.serverTimestamp(),
+            });
+            notified++;
+          } catch (_) {}
+        }
+        notice(notified == recipients.length
+          ? 'تم إرسال الملاحظة وإشعار المستلمين.'
+          : 'تم إرسال الملاحظة، وتعذر إنشاء بعض الإشعارات ($notified من ${recipients.length}).');
       } else {
         await db.collection('work_shift_notes').doc(noteId).update({
           'body':body, 'updatedAt':FieldValue.serverTimestamp(),
