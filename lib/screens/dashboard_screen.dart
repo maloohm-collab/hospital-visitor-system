@@ -358,32 +358,46 @@ class DashboardScreen extends StatelessWidget {
   Widget _buildAdminCategories(BuildContext context, List<_AdminAction> actions) {
     final categories = <_ActionCategory>[
       _ActionCategory(
-        icon: Icons.policy_outlined,
-        title: 'العمليات والإشراف الميداني',
-        subtitle: 'متابعة مواقع الضباط والملاحظات والبلاغات الميدانية',
+        icon: Icons.manage_accounts_outlined,
+        title: 'إدارة الحسابات والموظفين',
+        subtitle: 'مراجعة طلبات الحسابات وإدارة بيانات الموظفين وصلاحياتهم',
+        color: const Color(0xFF7656A8),
+        actionTitles: const ['طلبات الحسابات', 'الموظفون'],
+      ),
+      _ActionCategory(
+        icon: Icons.calendar_month_outlined,
+        title: 'جدول المناوبات',
+        subtitle: 'إعداد كشوف المناوبات وتعديلها واعتمادها ونشرها — مسؤولية الإدارة',
         color: const Color(0xFF087E78),
+        actionTitles: const ['جدول المناوبات'],
+      ),
+      _ActionCategory(
+        icon: Icons.location_on_outlined,
+        title: 'المتابعة الميدانية',
+        subtitle: 'متابعة مواقع الضباط واستقبال بلاغات مخالفات الكراجات',
+        color: const Color(0xFF047857),
         actionTitles: const ['متابعة مواقع الضباط', 'بلاغات مخالفات الكراجات'],
       ),
       _ActionCategory(
         icon: Icons.analytics_outlined,
         title: 'التقارير والسجلات',
-        subtitle: 'تقارير الإدارة والموظفين',
+        subtitle: 'الاطلاع على التقارير المرفوعة وسجل الموظفين والتقارير السابقة',
         color: const Color(0xFF6D3FA8),
         actionTitles: const ['تقارير الإدارة', 'سجل الموظفين والتقارير'],
       ),
       _ActionCategory(
-        icon: Icons.manage_accounts_outlined,
-        title: 'إدارة الموظفين والمناوبات',
-        subtitle: 'طلبات الحسابات وإدارة الكادر وجدولة المناوبات',
-        color: const Color(0xFF047857),
-        actionTitles: const ['طلبات الحسابات', 'الموظفون', 'جدول المناوبات'],
+        icon: Icons.message_outlined,
+        title: 'التعليمات والمراسلات',
+        subtitle: 'إصدار توجيهات الإدارة واستقبال المراسلات والملاحظات',
+        color: const Color(0xFFB45309),
+        actionTitles: const ['التعليمات والمراسلات'],
       ),
       _ActionCategory(
-        icon: Icons.mark_chat_unread_outlined,
-        title: 'المراسلات والتنبيهات',
-        subtitle: 'رسائل الإدارة والتنبيهات الواردة',
-        color: const Color(0xFFB45309),
-        actionTitles: const ['تنبيهات الإدارة / مدير الموقع', 'إدارة ملاحظات الشريط الإخباري'],
+        icon: Icons.campaign_outlined,
+        title: 'إدارة الشريط الإخباري',
+        subtitle: 'إضافة ملاحظات الشريط الإخباري وتعديلها وإدارتها',
+        color: const Color(0xFF6B2632),
+        actionTitles: const ['إدارة ملاحظات الشريط الإخباري'],
       ),
     ];
     return _buildGroupedCategories(context, actions, categories);
@@ -465,6 +479,10 @@ class DashboardScreen extends StatelessWidget {
               ),
             ),
           ],
+          if (visible.length > 5) ...[
+            const SizedBox(height: 12),
+            buildTile(visible[5], featured: false),
+          ],
         ],
       ),
     );
@@ -486,7 +504,7 @@ class DashboardScreen extends StatelessWidget {
             final actions = <_AdminAction>[
               _AdminAction(
                 icon: Icons.mark_chat_unread_rounded,
-                title: 'تنبيهات الإدارة / مدير الموقع',
+                title: 'التعليمات والمراسلات',
                 color: const Color(0xFF087E78),
                 onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => StaffMessagesScreen(userRole: userRole))),
               ),
