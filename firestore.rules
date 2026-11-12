@@ -925,40 +925,39 @@ service cloud.firestore {
     }
 
     match /work_shift_notes/{noteId} {
+      function isOfficerOwner() {
+        return isActiveUser()
+          && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'security_officer'
+          && resource.data.officerUid == request.auth.uid;
+      }
+
       allow create: if isActiveUser()
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'security_officer'
+        && request.resource.data.keys().hasOnly([
+          'noteId', 'shiftId', 'officerUid', 'officerName', 'locationName',
+          'body', 'recipientUids', 'createdAt', 'hiddenFromOfficer'
+        ])
         && request.resource.data.keys().hasAll([
-          'noteId', 'shiftId', 'officerUid', 'officerName', 'locationName', 'body', 'recipientUids', 'createdAt'
+          'noteId', 'shiftId', 'officerUid', 'officerName', 'locationName',
+          'body', 'recipientUids', 'createdAt', 'hiddenFromOfficer'
         ])
         && request.resource.data.noteId == noteId
-        && request.resource.data.officerUid is string
+        && request.resource.data.officerUid == request.auth.uid
         && request.resource.data.officerName is string
         && request.resource.data.locationName is string
+        && request.resource.data.locationName.size() >= 2
         && request.resource.data.body is string
         && request.resource.data.body.size() >= 2
+        && request.resource.data.body.size() <= 1000
+        && request.resource.data.hiddenFromOfficer == false
         && request.resource.data.createdAt == request.time
         && validWorkNoteRecipients(request.resource.data)
-        && (
-          (
-            request.resource.data.keys().hasOnly([
-              'noteId', 'shiftId', 'officerUid', 'officerName', 'locationName', 'body', 'recipientUids', 'createdAt',
-              'forwardedFromNoteId', 'forwardedByUid', 'forwardedByName'
-            ])
-            && request.resource.data.keys().hasAll([
-              'forwardedFromNoteId', 'forwardedByUid', 'forwardedByName'
-            ])
-            && (isActiveAdmin() || isActiveSupervisor())
-            && request.resource.data.forwardedFromNoteId is string
-            && request.resource.data.forwardedByUid == request.auth.uid
-            && request.resource.data.forwardedByName is string
-            && exists(/databases/$(database)/documents/work_shift_notes/$(request.resource.data.forwardedFromNoteId))
-            && request.auth.uid in get(/databases/$(database)/documents/work_shift_notes/$(request.resource.data.forwardedFromNoteId)).data.recipientUids
-            && request.resource.data.officerUid == get(/databases/$(database)/documents/work_shift_notes/$(request.resource.data.forwardedFromNoteId)).data.officerUid
-            && request.resource.data.officerName == get(/databases/$(database)/documents/work_shift_notes/$(request.resource.data.forwardedFromNoteId)).data.officerName
-            && request.resource.data.shiftId == get(/databases/$(database)/documents/work_shift_notes/$(request.resource.data.forwardedFromNoteId)).data.shiftId
-            && request.resource.data.locationName == get(/databases/$(database)/documents/work_shift_notes/$(request.resource.data.forwardedFromNoteId)).data.locationName
-            && request.resource.data.body == get(/databases/$(database)/documents/work_shift_notes/$(request.resource.data.forwardedFromNoteId)).data.body
-          )
-        );
+        && exists(/databases/$(database)/documents/active_work_shifts/$(request.auth.uid))
+        && get(/databases/$(database)/documents/active_work_shifts/$(request.auth.uid)).data.shiftId == request.resource.data.shiftId
+        && exists(/databases/$(database)/documents/work_shifts/$(request.resource.data.shiftId))
+        && get(/databases/$(database)/documents/work_shifts/$(request.resource.data.shiftId)).data.officerUid == request.auth.uid
+        && get(/databases/$(database)/documents/work_shifts/$(request.resource.data.shiftId)).data.status == 'active'
+        && get(/databases/$(database)/documents/work_shifts/$(request.resource.data.shiftId)).data.activeLocationName == request.resource.data.locationName;
 
       allow get, list: if isActiveUser()
         && (
@@ -966,7 +965,6 @@ service cloud.firestore {
             resource.data.officerUid == request.auth.uid
             && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'security_officer'
             && resource.data.hiddenFromOfficer == false
-            && request.time < resource.data.createdAt + duration.value(10, 'h')
           )
           || (
             request.auth.uid in resource.data.recipientUids
@@ -974,18 +972,28 @@ service cloud.firestore {
           )
         );
 
-      allow update: if isActiveUser()
-        && resource.data.officerUid == request.auth.uid
-        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'security_officer'
+      allow update: if (
+        isOfficerOwner()
         && resource.data.hiddenFromOfficer == false
-        && resource.data.ownerDeleteUntil is timestamp
-        && request.time < resource.data.ownerDeleteUntil
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['hiddenFromOfficer'])
-        && request.resource.data.hiddenFromOfficer == true;
-
-      allow delete: if isActiveUser()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['body', 'updatedAt'])
+        && request.resource.data.body is string
+        && request.resource.data.body.size() >= 2
+        && request.resource.data.body.size() <= 1000
+        && request.resource.data.updatedAt == request.time
+      ) || (
+        isActiveUser()
         && request.auth.uid in resource.data.recipientUids
-        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['supervisor', 'admin'];
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['supervisor', 'admin']
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['hiddenFromOfficer'])
+        && request.resource.data.hiddenFromOfficer == true
+      );
+
+      allow delete: if isOfficerOwner()
+        || (
+          isActiveUser()
+          && request.auth.uid in resource.data.recipientUids
+          && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['supervisor', 'admin']
+        );
     }
 
 
