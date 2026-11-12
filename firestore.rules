@@ -269,7 +269,7 @@ service cloud.firestore {
       }
 
     match /visitor_logs/{visitId} {
-      allow create: if isActiveUser()
+      allow create: if (isActiveUser()
         && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'security_officer'
         && request.resource.data.keys().hasOnly([
           'visitId', 'floorId', 'floorName', 'department', 'roomNumber',
@@ -957,7 +957,7 @@ service cloud.firestore {
         && exists(/databases/$(database)/documents/work_shifts/$(request.resource.data.shiftId))
         && get(/databases/$(database)/documents/work_shifts/$(request.resource.data.shiftId)).data.officerUid == request.auth.uid
         && get(/databases/$(database)/documents/work_shifts/$(request.resource.data.shiftId)).data.status == 'active'
-        && get(/databases/$(database)/documents/work_shifts/$(request.resource.data.shiftId)).data.activeLocationName == request.resource.data.locationName
+        && get(/databases/$(database)/documents/work_shifts/$(request.resource.data.shiftId)).data.activeLocationName == request.resource.data.locationName)
         || (
           isActiveUser()
           && request.resource.data.keys().hasOnly([
