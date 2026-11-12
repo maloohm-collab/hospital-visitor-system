@@ -23,6 +23,7 @@ import 'staff_duty_history_screen.dart';
 import 'founder_screen.dart';
 import 'garage_violations_screen.dart';
 import 'work_site_notes_screen.dart';
+import 'work_site_notes_inbox_screen.dart';
 
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({super.key, this.userRole = 'security_officer'});
@@ -209,11 +210,19 @@ class DashboardScreen extends StatelessWidget {
           )),
         ),
         _AdminAction(
-          icon: Icons.sticky_note_2_rounded,
-          title: 'مواقع الضباط والملاحظات',
+          icon: Icons.location_searching_rounded,
+          title: 'متابعة مواقع الضباط',
           color: const Color(0xFFD28A25),
           onTap: () => Navigator.push(context, MaterialPageRoute(
             builder: (_) => const WorkLocationScreen(userRole: 'supervisor'),
+          )),
+        ),
+        _AdminAction(
+          icon: Icons.sticky_note_2_rounded,
+          title: 'ملاحظات مواقع العمل الواردة',
+          color: const Color(0xFF16845B),
+          onTap: () => Navigator.push(context, MaterialPageRoute(
+            builder: (_) => const WorkSiteNotesInboxScreen(userRole: 'supervisor'),
           )),
         ),
         _AdminAction(
@@ -389,7 +398,7 @@ class DashboardScreen extends StatelessWidget {
         title: 'الإشراف الميداني',
         subtitle: 'متابعة مواقع الضباط والطوارئ وتسليم المناوبات',
         color: const Color(0xFF087E78),
-        actionTitles: const ['مواقع الضباط والملاحظات', 'الطوارئ وتسليم المناوبة', 'بلاغات مخالفات الكراجات'],
+        actionTitles: const ['متابعة مواقع الضباط', 'ملاحظات مواقع العمل الواردة', 'الطوارئ وتسليم المناوبة', 'بلاغات مخالفات الكراجات'],
       ),
       _ActionCategory(
         icon: Icons.assignment_rounded,
@@ -430,7 +439,7 @@ class DashboardScreen extends StatelessWidget {
         title: 'العمليات والإشراف الميداني',
         subtitle: 'متابعة مواقع العمل والتعامل مع الحالات الطارئة',
         color: const Color(0xFF087E78),
-        actionTitles: const ['الطوارئ', 'ملاحظات مواقع العمل', 'بلاغات مخالفات الكراجات'],
+        actionTitles: const ['الطوارئ', 'ملاحظات مواقع العمل الواردة', 'بلاغات مخالفات الكراجات'],
       ),
       _ActionCategory(
         icon: Icons.analytics_outlined,
@@ -631,10 +640,18 @@ class DashboardScreen extends StatelessWidget {
                 onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const FounderScreen())),
               ),
               _AdminAction(
-                icon: Icons.sticky_note_2_rounded,
-                title: 'ملاحظات مواقع العمل',
+                icon: Icons.location_searching_rounded,
+                title: 'متابعة مواقع الضباط',
                 color: const Color(0xFFD28A25),
                 onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const WorkLocationScreen(userRole: 'admin'))),
+              ),
+              _AdminAction(
+                icon: Icons.sticky_note_2_rounded,
+                title: 'ملاحظات مواقع العمل الواردة',
+                color: const Color(0xFF16845B),
+                onTap: () => Navigator.push(context, MaterialPageRoute(
+                  builder: (_) => const WorkSiteNotesInboxScreen(userRole: 'admin'),
+                )),
               ),
               _AdminAction(
                 icon: Icons.directions_car_filled_rounded,
