@@ -296,7 +296,7 @@ service cloud.firestore {
         && request.resource.data.exitAt == null
         && request.resource.data.notes is string
         && request.resource.data.status == 'inside'
-        && request.resource.data.createdAt == request.time;
+        && request.resource.data.createdAt == request.time);
 
       allow update: if isActiveUser()
         && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'security_officer'
@@ -940,7 +940,7 @@ service cloud.firestore {
           && resource.data.officerUid == request.auth.uid;
       }
 
-      allow create: if isActiveUser()
+      allow create: if (isActiveUser()
         && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'security_officer'
         && request.resource.data.keys().hasOnly([
           'noteId', 'shiftId', 'officerUid', 'officerName', 'locationName',
