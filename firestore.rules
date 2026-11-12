@@ -1149,6 +1149,60 @@ service cloud.firestore {
       }
     }
 
+    // Garage vehicle violation reports: officers submit their own reports;
+    // active supervisors and administrators can review and update follow-up status.
+    match /garage_violations/{violationId} {
+      allow create: if isActiveUser()
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'security_officer'
+        && request.resource.data.keys().hasOnly([
+          'violationId', 'ticketNumber', 'plateNumber', 'garageName',
+          'violationType', 'note', 'destination', 'status',
+          'createdBy', 'createdByName', 'createdByRole', 'createdAt'
+        ])
+        && request.resource.data.keys().hasAll([
+          'violationId', 'ticketNumber', 'plateNumber', 'garageName',
+          'violationType', 'note', 'destination', 'status',
+          'createdBy', 'createdByName', 'createdByRole', 'createdAt'
+        ])
+        && request.resource.data.violationId == violationId
+        && request.resource.data.ticketNumber is string
+        && request.resource.data.plateNumber is string
+        && request.resource.data.plateNumber.size() >= 1
+        && request.resource.data.garageName in [
+          'كراج الكادر', 'كراج الإدارة', 'كراج الشرعي',
+          'كراج الطوارئ والخدمات', 'شارع الخدمات'
+        ]
+        && request.resource.data.violationType is string
+        && request.resource.data.note is string
+        && request.resource.data.note.size() >= 5
+        && request.resource.data.destination in ['supervisor', 'admin']
+        && request.resource.data.status == 'new'
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.createdByName is string
+        && request.resource.data.createdByRole == 'security_officer'
+        && request.resource.data.createdAt == request.time;
+
+      allow get, list: if isActiveUser() && (
+        isActiveSupervisor()
+        || isActiveAdmin()
+        || (
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'security_officer'
+          && resource.data.createdBy == request.auth.uid
+        )
+      );
+
+      allow update: if isActiveUser()
+        && (isActiveSupervisor() || isActiveAdmin())
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'status', 'reviewedBy', 'reviewedAt'
+        ])
+        && request.resource.data.status in ['new', 'in_progress', 'resolved']
+        && request.resource.data.reviewedBy == request.auth.uid
+        && request.resource.data.reviewedAt == request.time;
+
+      allow delete: if false;
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }
