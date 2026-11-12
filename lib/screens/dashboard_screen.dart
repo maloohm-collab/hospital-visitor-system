@@ -437,7 +437,7 @@ class DashboardScreen extends StatelessWidget {
       _ActionCategory(
         icon: Icons.policy_outlined,
         title: 'العمليات والإشراف الميداني',
-        subtitle: 'متابعة مواقع العمل والتعامل مع الحالات الطارئة',
+        subtitle: 'متابعة مواقع الضباط والملاحظات والبلاغات الميدانية',
         color: const Color(0xFF087E78),
         actionTitles: const ['الطوارئ', 'متابعة مواقع الضباط', 'ملاحظات مواقع العمل الواردة', 'بلاغات مخالفات الكراجات'],
       ),
@@ -640,12 +640,6 @@ class DashboardScreen extends StatelessWidget {
                 title: 'جدول المناوبات',
                 color: const Color(0xFF087E78),
                 onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => DutyRosterScreen(userRole: userRole))),
-              ),
-              _AdminAction(
-                icon: Icons.info_outline_rounded,
-                title: 'عن التطبيق والمؤسس',
-                color: const Color(0xFF14558A),
-                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const FounderScreen())),
               ),
               _AdminAction(
                 icon: Icons.location_searching_rounded,
