@@ -1092,7 +1092,7 @@ service cloud.firestore {
         && (
           isActiveAdmin()
           || (isActiveSupervisor()
-            && request.resource.data.recipientRole == 'security_officer')
+            && request.resource.data.recipientRole in ['security_officer', 'admin'])
           || (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'security_officer'
             && request.resource.data.recipientRole in ['supervisor', 'admin'])
         );
