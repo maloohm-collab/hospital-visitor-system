@@ -362,7 +362,7 @@ service cloud.firestore {
           (
             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'security_officer'
             && request.resource.data.createdByRole == 'security_officer'
-            && request.resource.data.type in ['security_incident', 'shift_summary']
+            && request.resource.data.type == 'security_incident'
             && request.resource.data.destination == 'supervisor'
             && request.resource.data.status == 'submitted'
           )
@@ -410,30 +410,14 @@ service cloud.firestore {
           == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.displayName
         && request.resource.data.reviewedAt == request.time
         && request.resource.data.updatedAt == request.time
-      ) || (
-        isActiveUser()
-        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'security_officer'
-        && resource.data.createdBy == request.auth.uid
-        && resource.data.createdByRole == 'security_officer'
-        && resource.data.type == 'shift_summary'
-        && resource.data.destination == 'supervisor'
-        && resource.data.status == 'submitted'
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-          'title', 'body', 'priority', 'updatedAt'
-        ])
-        && request.resource.data.reportId == resource.data.reportId
-        && request.resource.data.createdBy == resource.data.createdBy
-        && request.resource.data.createdAt == resource.data.createdAt
-        && request.resource.data.type == 'shift_summary'
-        && request.resource.data.destination == 'supervisor'
-        && request.resource.data.status == 'submitted'
-        && request.resource.data.updatedAt == request.time
       );
 
       // A report owner may edit only the text fields; routing and review state stay protected.
       allow update: if isActiveUser()
         && resource.data.createdBy == request.auth.uid
         && !(resource.data.destination == 'admin' && resource.data.status in ['forwarded', 'acknowledged'])
+        && !(get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'security_officer'
+          && resource.data.type == 'shift_summary')
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
           'title', 'body', 'employeeName', 'priority', 'updatedAt'
         ])
@@ -955,24 +939,6 @@ service cloud.firestore {
         && validWorkNoteRecipients(request.resource.data)
         && (
           (
-            request.resource.data.keys().hasOnly([
-              'noteId', 'shiftId', 'officerUid', 'officerName', 'locationName', 'body', 'recipientUids', 'createdAt',
-              'ownerDeleteUntil', 'hiddenFromOfficer'
-            ])
-            && request.resource.data.hiddenFromOfficer == false
-            && request.resource.data.ownerDeleteUntil is timestamp
-            && request.resource.data.ownerDeleteUntil > request.time
-            && request.resource.data.ownerDeleteUntil <= request.time + duration.value(24, 'h')
-            && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'security_officer'
-            && request.resource.data.officerUid == request.auth.uid
-            && exists(/databases/$(database)/documents/work_shifts/$(request.resource.data.shiftId))
-            && get(/databases/$(database)/documents/work_shifts/$(request.resource.data.shiftId)).data.officerUid == request.auth.uid
-            && get(/databases/$(database)/documents/work_shifts/$(request.resource.data.shiftId)).data.status == 'active'
-            && request.time < get(/databases/$(database)/documents/work_shifts/$(request.resource.data.shiftId)).data.startedAt + duration.value(8, 'h')
-            && exists(/databases/$(database)/documents/active_work_shifts/$(request.auth.uid))
-            && get(/databases/$(database)/documents/active_work_shifts/$(request.auth.uid)).data.shiftId == request.resource.data.shiftId
-          )
-          || (
             request.resource.data.keys().hasOnly([
               'noteId', 'shiftId', 'officerUid', 'officerName', 'locationName', 'body', 'recipientUids', 'createdAt',
               'forwardedFromNoteId', 'forwardedByUid', 'forwardedByName'
