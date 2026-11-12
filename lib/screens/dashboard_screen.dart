@@ -149,17 +149,6 @@ class DashboardScreen extends StatelessWidget {
   Widget _buildStaffDashboard(BuildContext context, String? currentUid) {
     final actions = <_AdminAction>[];
 
-    if (userRole != 'security_officer') {
-      actions.add(_AdminAction(
-        icon: Icons.emergency_share_rounded,
-        title: 'الطوارئ وتسليم المناوبة',
-        color: const Color(0xFFB42318),
-        onTap: () => Navigator.push(context, MaterialPageRoute(
-          builder: (_) => const EmergencyDutyScreen(),
-        )),
-      ));
-    }
-
     if (userRole == 'security_officer') {
       actions.addAll([
         _AdminAction(
@@ -207,51 +196,14 @@ class DashboardScreen extends StatelessWidget {
         ),
       ]);
     } else if (userRole == 'supervisor') {
-      actions.addAll([
-        _AdminAction(
-          icon: Icons.campaign_rounded,
-          title: 'نشر ملاحظة على الشريط الإخباري',
-          color: const Color(0xFF6B2632),
-          onTap: () => Navigator.push(context, MaterialPageRoute(
-            builder: (_) => const StaffMessagesScreen(
-              userRole: 'supervisor',
-              openComposerOnStart: true,
-            ),
-          )),
-        ),
-        _AdminAction(
-          icon: Icons.location_searching_rounded,
-          title: 'متابعة مواقع الضباط',
-          color: const Color(0xFFD28A25),
-          onTap: () => Navigator.push(context, MaterialPageRoute(
-            builder: (_) => const WorkLocationScreen(userRole: 'supervisor'),
-          )),
-        ),
-        _AdminAction(
-          icon: Icons.directions_car_filled_rounded,
-          title: 'بلاغات مخالفات الكراجات',
-          color: const Color(0xFF087E58),
-          onTap: () => Navigator.push(context, MaterialPageRoute(
-            builder: (_) => const GarageViolationsScreen(userRole: 'supervisor'),
-          )),
-        ),
-        _AdminAction(
-          icon: Icons.fact_check_rounded,
-          title: 'تقارير ضباط الأمن',
-          color: const Color(0xFF8757A5),
-          onTap: () => Navigator.push(context, MaterialPageRoute(
-            builder: (_) => ReportCenterScreen(userRole: userRole),
-          )),
-        ),
-        _AdminAction(
-          icon: Icons.picture_as_pdf_rounded,
-          title: 'تقارير المناوبة PDF',
-          color: const Color(0xFF27865B),
-          onTap: () => Navigator.push(context, MaterialPageRoute(
-            builder: (_) => DutyReportsScreen(userRole: userRole),
-          )),
-        ),
-      ]);
+      actions.add(_AdminAction(
+        icon: Icons.campaign_rounded,
+        title: 'التعليمات والمراسلات',
+        color: const Color(0xFF6D3FA8),
+        onTap: () => Navigator.push(context, MaterialPageRoute(
+          builder: (_) => StaffMessagesScreen(userRole: 'supervisor'),
+        )),
+      ));
     } else {
       actions.addAll([
         _AdminAction(
@@ -317,7 +269,7 @@ class DashboardScreen extends StatelessWidget {
       ));
     }
 
-    if (userRole != 'security_officer') {
+    if (userRole == 'admin') {
       actions.addAll([
         _AdminAction(
           icon: Icons.mark_chat_unread_rounded,
@@ -387,25 +339,18 @@ class DashboardScreen extends StatelessWidget {
   Widget _buildSupervisorCategories(BuildContext context, List<_AdminAction> actions) {
     final categories = <_ActionCategory>[
       _ActionCategory(
-        icon: Icons.admin_panel_settings_outlined,
-        title: 'الإشراف الميداني',
-        subtitle: 'متابعة مواقع الضباط والملاحظات والبلاغات الميدانية',
-        color: const Color(0xFF087E78),
-        actionTitles: const ['متابعة مواقع الضباط', 'الطوارئ وتسليم المناوبة', 'بلاغات مخالفات الكراجات'],
-      ),
-      _ActionCategory(
-        icon: Icons.assignment_rounded,
-        title: 'التقارير والمناوبات',
-        subtitle: 'مراجعة تقارير الضباط ومتابعة كشوف المناوبات',
+        icon: Icons.campaign_rounded,
+        title: 'التعليمات والمراسلات',
+        subtitle: 'إصدار التعليمات والملاحظات للضباط، واستقبال توجيهات الإدارة ومراسلات الموظفين',
         color: const Color(0xFF6D3FA8),
-        actionTitles: const ['تقارير ضباط الأمن', 'تقارير المناوبة PDF', 'كشوف المناوبات'],
+        actionTitles: const ['التعليمات والمراسلات'],
       ),
       _ActionCategory(
-        icon: Icons.forum_outlined,
-        title: 'المراسلات والتنبيهات',
-        subtitle: 'تنبيهات المشرف والرسائل',
-        color: const Color(0xFFB45309),
-        actionTitles: const ['نشر ملاحظة على الشريط الإخباري', 'تنبيهات المشرف المناوب'],
+        icon: Icons.picture_as_pdf_outlined,
+        title: 'كشوف المناوبة',
+        subtitle: 'الاطلاع على كشوف المناوبات الحالية والسابقة',
+        color: const Color(0xFF087E78),
+        actionTitles: const ['كشوف المناوبات'],
       ),
     ];
     return _buildGroupedCategories(context, actions, categories);
