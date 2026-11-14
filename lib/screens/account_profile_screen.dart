@@ -6,6 +6,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'auth_screen.dart';
 import 'package:image/image.dart' as img;
 import '../widgets/official_hospital_header.dart';
 import 'founder_screen.dart';
@@ -494,6 +495,42 @@ class _AccountProfileScreenState extends State<AccountProfileScreen> {
     }
   }
 
+  Future<void> _confirmLockApp() async {
+    final shouldLock = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('قفل التطبيق'),
+        content: const Text(
+          'سيُقفل التطبيق مع إبقاء جلسة الحساب محفوظة بأمان على هذا الجهاز. '
+          'يمكنك العودة بالرمز السريع أو بالبريد الإلكتروني وكلمة المرور. '
+          'لن يتم إنهاء جلسة الحساب.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('إلغاء'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('قفل التطبيق'),
+          ),
+        ],
+      ),
+    );
+    if (shouldLock != true || !mounted) return;
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+    await _secureStorage.write(
+      key: 'hospital_visitor_local_lock_${user.uid}',
+      value: 'locked',
+    );
+    if (!mounted) return;
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (_) => const AuthScreen()),
+      (_) => false,
+    );
+  }
+
   String _roleLabel(String role) {
     switch (role) {
       case 'admin': return 'الإدارة';
@@ -788,6 +825,17 @@ class _AccountProfileScreenState extends State<AccountProfileScreen> {
                     )),
                     icon: const Icon(Icons.info_outline_rounded),
                     label: const Text('عن التطبيق والمؤسس'),
+                  ),
+                  const SizedBox(height: 12),
+                  OutlinedButton.icon(
+                    onPressed: _saving ? null : _confirmLockApp,
+                    icon: const Icon(Icons.lock_outline_rounded),
+                    label: const Text('قفل التطبيق'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: const Color(0xFFB42318),
+                      side: const BorderSide(color: Color(0xFFD6A2A2)),
+                      minimumSize: const Size.fromHeight(48),
+                    ),
                   ),
                 ],
               ),
