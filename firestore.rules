@@ -1086,13 +1086,13 @@ service cloud.firestore {
         && request.resource.data.keys().hasOnly([
           'messageId', 'threadId', 'senderUid', 'senderName', 'senderRole', 'senderLabel',
           'recipientUid', 'recipientName', 'recipientRole', 'recipientLabel', 'locationName', 'title', 'body',
-          'priority', 'requestReply', 'replyStatus', 'attachments', 'read',
+          'messageType', 'isAdminCopy', 'priority', 'requestReply', 'replyStatus', 'attachments', 'read',
           'hiddenFor', 'showOnTicker', 'tickerStyle', 'createdAt'
         ])
         && request.resource.data.keys().hasAll([
           'messageId', 'threadId', 'senderUid', 'senderName', 'senderRole', 'senderLabel',
           'recipientUid', 'recipientName', 'recipientRole', 'recipientLabel', 'locationName', 'title', 'body',
-          'priority', 'requestReply', 'replyStatus', 'attachments', 'read',
+          'messageType', 'isAdminCopy', 'priority', 'requestReply', 'replyStatus', 'attachments', 'read',
           'hiddenFor', 'createdAt'
         ])
         && request.resource.data.messageId == messageId
@@ -1108,6 +1108,13 @@ service cloud.firestore {
         && request.resource.data.title.size() >= 3
         && request.resource.data.body is string
         && request.resource.data.body.size() >= 0
+        && request.resource.data.messageType in ['instruction', 'note']
+        && request.resource.data.isAdminCopy is bool
+        && request.resource.data.isAdminCopy == (
+          request.resource.data.senderRole == 'supervisor'
+          && request.resource.data.recipientRole == 'admin'
+          && request.resource.data.messageType == 'instruction'
+        )
         && request.resource.data.priority in ['normal', 'important', 'urgent']
         && request.resource.data.requestReply is bool
         && request.resource.data.replyStatus in ['pending', 'not_required']
@@ -1134,9 +1141,20 @@ service cloud.firestore {
         && (
           isActiveAdmin()
           || (isActiveSupervisor()
-            && request.resource.data.recipientRole in ['security_officer', 'admin'])
-          || (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'security_officer'
-            && request.resource.data.recipientRole in ['supervisor', 'admin'])
+            && (
+              request.resource.data.recipientRole == 'security_officer'
+              || (
+                request.resource.data.recipientRole == 'admin'
+                && request.resource.data.messageType == 'instruction'
+                && request.resource.data.isAdminCopy == true
+              )
+            ))
+          || (
+            get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'security_officer'
+            && request.resource.data.recipientRole in ['supervisor', 'admin']
+            && request.resource.data.messageType == 'note'
+            && request.resource.data.isAdminCopy == false
+          )
         );
 
       allow get, list: if isMessageParticipant()
