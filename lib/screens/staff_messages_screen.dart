@@ -74,8 +74,8 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
   Future<void> compose() async {
     final snapshot = await db.collection('users').where('status', isEqualTo: 'active').get();
     if (!mounted) return;
-    final users = snapshot.docs.where((d) {
-      if (d.id == uid) return false;
+    final activeUsers = snapshot.docs.where((d) => d.id != uid).toList();
+    final users = activeUsers.where((d) {
       final role = d.data()['role'];
       if (admin) return ['admin', 'supervisor', 'security_officer'].contains(role);
       if (supervisor) return role == 'security_officer';
@@ -85,6 +85,7 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
     final title = TextEditingController();
     final body = TextEditingController();
     final selected = <String>{};
+    String messageType = widget.userRole == 'security_officer' ? 'note' : 'instruction';
     String priority = 'normal';
     bool requestReply = false;
     bool busy = false;
@@ -101,8 +102,21 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const Text('إرسال ملاحظة أو تنبيه',
+                const Text('إرسال تعليمة أو ملاحظة',
                   style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: navy)),
+                if (admin || supervisor)
+                  DropdownButtonFormField<String>(
+                    value: messageType,
+                    decoration: const InputDecoration(labelText: 'نوع الرسالة'),
+                    items: const [
+                      DropdownMenuItem(value: 'instruction', child: Text('تعليمة')),
+                      DropdownMenuItem(value: 'note', child: Text('ملاحظة')),
+                    ],
+                    onChanged: (value) => refresh(() => messageType = value ?? 'instruction'),
+                  )
+                else
+                  const Text('نوع الرسالة: ملاحظة ميدانية'),
+                const SizedBox(height: 8),
                 Text('اختر المستلمين — المختار: ${selected.length}'),
                 Wrap(spacing: 6, children: [
                   TextButton(
@@ -175,6 +189,9 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
                       final senderSnap = await db.collection('users').doc(uid).get();
                       final sender = senderSnap.data() ?? <String, dynamic>{};
                       final senderRole = (sender['role'] ?? '').toString();
+                      if (senderRole == 'security_officer' && messageType != 'note') {
+                        throw StateError('ضابط الأمن يستطيع إرسال الملاحظات الميدانية فقط.');
+                      }
                       if (!['admin', 'supervisor', 'security_officer'].contains(senderRole)) {
                         throw StateError('تعذر التحقق من دور حساب المرسل. أعد تسجيل الدخول ثم حاول مجدداً.');
                       }
@@ -187,10 +204,32 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
                           currentLocation = (shift.data()?['activeLocationName'] ?? '').toString();
                         }
                       }
+                      final selectedRecipients = users.where((d) => selected.contains(d.id)).toList();
+                      final adminCopies = senderRole == 'supervisor' && messageType == 'instruction'
+                          ? activeUsers.where((d) => d.data()['role'] == 'admin').toList()
+                          : <QueryDocumentSnapshot<Map<String, dynamic>>>[];
+                      if (senderRole == 'supervisor' &&
+                          messageType == 'instruction' &&
+                          adminCopies.isEmpty) {
+                        throw StateError('لا يوجد حساب إداري نشط لاستلام نسخة من التعليمة.');
+                      }
+
+                      final recipientsByUid = <String, QueryDocumentSnapshot<Map<String, dynamic>>>{};
+                      for (final recipient in selectedRecipients) {
+                        recipientsByUid[recipient.id] = recipient;
+                      }
+                      for (final recipient in adminCopies) {
+                        recipientsByUid[recipient.id] = recipient;
+                      }
+
                       final threadId = db.collection('staff_messages').doc().id;
                       final refs = <DocumentReference<Map<String, dynamic>>>[];
                       final messageBatch = db.batch();
-                      for (final recipient in users.where((d) => selected.contains(d.id))) {
+                      for (final recipient in recipientsByUid.values) {
+                        final isAdminCopy = senderRole == 'supervisor' &&
+                            messageType == 'instruction' &&
+                            recipient.data()['role'] == 'admin';
+                        final recipientRequestsReply = requestReply && !isAdminCopy;
                         final ref = db.collection('staff_messages').doc(threadId + '_' + recipient.id);
                         refs.add(ref);
                         messageBatch.set(ref, {
@@ -207,9 +246,11 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
                           'locationName': currentLocation,
                           'title': title.text.trim(),
                           'body': body.text.trim(),
+                          'messageType': messageType,
+                          'isAdminCopy': isAdminCopy,
                           'priority': priority,
-                          'requestReply': requestReply,
-                          'replyStatus': requestReply ? 'pending' : 'not_required',
+                          'requestReply': recipientRequestsReply,
+                          'replyStatus': recipientRequestsReply ? 'pending' : 'not_required',
                           'attachments': <Map<String, dynamic>>[],
                           'read': false,
                           'hiddenFor': <String>[],
@@ -218,7 +259,7 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
                       }
                       await messageBatch.commit();
                       var notificationFailures = 0;
-                      for (final recipient in users.where((d) => selected.contains(d.id))) {
+                      for (final recipient in recipientsByUid.values) {
                         final messageId = threadId + '_' + recipient.id;
                         final notificationRef = db.collection('notifications')
                             .doc('staff_message_$messageId');
@@ -243,9 +284,13 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
                         }
                       }
                       if (ctx.mounted) Navigator.pop(sheet);
+                      final copySummary = adminCopies.isEmpty
+                          ? ''
+                          : '، مع إرسال نسخة للإدارة (' + adminCopies.length.toString() + ')';
                       toast(notificationFailures == 0
-                        ? 'تم إرسال الملاحظة وإشعار جميع المستلمين (' + refs.length.toString() + ').'
-                        : 'تم إرسال الملاحظة إلى ' + refs.length.toString() +
+                        ? 'تم إرسال ' + (messageType == 'instruction' ? 'التعليمة' : 'الملاحظة') +
+                          ' إلى ' + selectedRecipients.length.toString() + ' مستلم' + copySummary + '.'
+                        : 'تم إرسال الرسالة إلى ' + refs.length.toString() +
                           ' مستلم، لكن تعذر إنشاء ' + notificationFailures.toString() + ' إشعار.');
                     } on FirebaseException catch (e) {
                       refresh(() => busy = false);
@@ -549,6 +594,14 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
           title: Text((d['title'] ?? 'ملاحظة').toString(),
             style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900, color: navy)),
           subtitle: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(d['messageType'] == 'instruction'
+                ? (d['isAdminCopy'] == true ? 'تعليمة إشرافية — نسخة للإدارة' : 'تعليمة')
+                : 'ملاحظة',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w900,
+                color: d['messageType'] == 'instruction' ? const Color(0xFF9A6A13) : teal,
+              )),
             Text(sent
               ? 'إلى: ' + (d['recipientName'] ?? 'مستخدم').toString() + ' — ' +
                 (d['recipientLabel'] ?? roleSignature(d['recipientRole']?.toString(), d)).toString()
