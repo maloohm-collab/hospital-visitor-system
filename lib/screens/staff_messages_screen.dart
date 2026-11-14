@@ -165,7 +165,7 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
                 ),
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,
-                  title: const Text('طلب الرد على الملاحظة'),
+                  title: const Text('طلب رد أو توضيح (اختياري)'),
                   value: requestReply,
                   onChanged: (v) => refresh(() => requestReply = v),
                 ),
