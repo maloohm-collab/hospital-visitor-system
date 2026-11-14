@@ -36,7 +36,7 @@ class _DashboardNewsTickerState extends State<DashboardNewsTicker>
 
   void _selectTickerEntry(int index, int count) {
     if (count <= 0 || !mounted) return;
-    setState(() => _activeEntryIndex = index.clamp(0, count - 1));
+    setState(() => _activeEntryIndex = index.clamp(0, count - 1).toInt());
     if (_activeTickerPointers == 0) {
       _tickerController
         ..stop(canceled: false)
