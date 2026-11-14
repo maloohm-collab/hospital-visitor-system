@@ -4,9 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
-import '../screens/auth_screen.dart';
 import '../screens/notifications_screen.dart';
 
 /// Shared compact identity header for administration, supervisors and officers.
@@ -27,8 +25,6 @@ class DashboardHeader extends StatelessWidget {
   static const _navyLight = Color(0xFF12305A);
   static const _gold = Color(0xFFE8CB84);
   static const _goldDeep = Color(0xFFC9A24B);
-  static const _secureStorage = FlutterSecureStorage();
-  static const _lockKey = 'hospital_visitor_local_lock_';
 
   @override
   Widget build(BuildContext context) {
@@ -109,24 +105,6 @@ class DashboardHeader extends StatelessWidget {
                           _headerAction(
                             tooltip: 'الإشعارات',
                             child: _notificationButton(context),
-                          ),
-                          const SizedBox(width: 10),
-                          _headerAction(
-                            tooltip: 'قفل التطبيق',
-                            child: IconButton(
-                              tooltip: 'تسجيل الخروج',
-                              padding: EdgeInsets.zero,
-                              constraints: const BoxConstraints.tightFor(
-                                width: 44,
-                                height: 44,
-                              ),
-                              onPressed: () => _confirmSignOut(context),
-                              icon: const Icon(
-                                Icons.logout_rounded,
-                                color: _gold,
-                                size: 22,
-                              ),
-                            ),
                           ),
                         ],
                       ),
@@ -224,34 +202,6 @@ class DashboardHeader extends StatelessWidget {
     );
   }
 
-  Future<void> _confirmSignOut(BuildContext context) async {
-    final shouldSignOut = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('قفل التطبيق'),
-        content: const Text('سيُقفل التطبيق مع إبقاء جلسة الحساب محفوظة بأمان على هذا الجهاز، لتتمكن من العودة بالرمز السريع أو بالبريد الإلكتروني وكلمة المرور. لا يتم إنهاء جلسة Firebase بهذه الخطوة.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('إلغاء'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(dialogContext, true),
-            child: const Text('قفل التطبيق'),
-          ),
-        ],
-      ),
-    );
-    if (shouldSignOut != true || !context.mounted) return;
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return;
-    await _secureStorage.write(key: '$_lockKey${user.uid}', value: 'locked');
-    if (!context.mounted) return;
-    Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(builder: (_) => const AuthScreen()),
-      (_) => false,
-    );
-  }
 }
 
 /// Independent account identity card displayed over the bottom edge of the header.
@@ -295,6 +245,9 @@ class DashboardAccountCard extends StatelessWidget {
           builder: (context, userSnapshot) {
             final rawName = (userSnapshot.data?.data()?['displayName'] ?? '').toString().trim();
             final shownName = rawName.isEmpty ? (userRole == 'admin' ? 'المسؤول' : 'الموظف') : rawName;
+            final accountStatus =
+                userSnapshot.data?.data()?['status']?.toString() ?? 'active';
+            final isActive = accountStatus == 'active';
             final initial = String.fromCharCode(shownName.runes.first);
             return StreamBuilder<DateTime>(
               stream: Stream<DateTime>.periodic(const Duration(seconds: 1), (_) => DateTime.now()),
@@ -333,6 +286,32 @@ class DashboardAccountCard extends StatelessWidget {
                           Text(_roleLabel(), style: const TextStyle(color: _muted, fontSize: 12, fontWeight: FontWeight.w700)),
                           const SizedBox(height: 2),
                           Text(shownName, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: _ink, fontSize: 15.5, fontWeight: FontWeight.w900)),
+                          const SizedBox(height: 3),
+                          Row(
+                            children: [
+                              Container(
+                                width: 7,
+                                height: 7,
+                                decoration: BoxDecoration(
+                                  color: isActive
+                                      ? const Color(0xFF16A34A)
+                                      : const Color(0xFFDC2626),
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                              const SizedBox(width: 5),
+                              Text(
+                                isActive ? 'نشط الآن' : 'غير نشط',
+                                style: TextStyle(
+                                  color: isActive
+                                      ? const Color(0xFF15803D)
+                                      : const Color(0xFFB42318),
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                            ],
+                          ),
                         ],
                       ),
                     ),

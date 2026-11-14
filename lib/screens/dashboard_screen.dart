@@ -295,6 +295,7 @@ class DashboardScreen extends StatelessWidget {
             _buildSecurityCategories(context, actions)
           else
             _buildSupervisorCategories(context, actions),
+          _buildLastUpdatedFooter(),
           const SizedBox(height: 20),
         ],
       ),
@@ -412,10 +413,13 @@ class DashboardScreen extends StatelessWidget {
       final groupedActions = actions
           .where((action) => category.actionTitles.contains(action.title))
           .toList();
+      final compact = category.title == 'إدارة الحسابات والموظفين' ||
+          category.title == 'إدارة الشريط الإخباري';
       return _ActionCategoryTile(
         category: category,
         count: groupedActions.length,
-        featured: featured,
+        featured: featured && !compact,
+        compact: compact,
         onTap: () => Navigator.push(
           context,
           MaterialPageRoute(
@@ -485,6 +489,33 @@ class DashboardScreen extends StatelessWidget {
           ],
         ],
       ),
+    );
+  }
+
+  Widget _buildLastUpdatedFooter() {
+    return StreamBuilder<DateTime>(
+      stream: Stream<DateTime>.periodic(
+        const Duration(minutes: 1),
+        (_) => DateTime.now(),
+      ),
+      initialData: DateTime.now(),
+      builder: (context, snapshot) {
+        final now = snapshot.data ?? DateTime.now();
+        final time =
+            '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+          child: Text(
+            'آخر تحديث $time — مباشر من نظام المستشفى',
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              color: Color(0xFF586678),
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -565,17 +596,8 @@ class DashboardScreen extends StatelessWidget {
             return _buildAdminCategories(context, actions);
           },
         ),
-        const SizedBox(height: 18),
-        const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 16),
-          child: Center(
-          child: Text(
-            'تُحدّث البيانات مباشرة من نظام المستشفى',
-            textAlign: TextAlign.center,
-            style: TextStyle(color: Color(0xFF65788A), fontSize: 11, fontWeight: FontWeight.w500),
-          ),
-        ),
-        ),
+        const SizedBox(height: 8),
+        _buildLastUpdatedFooter(),
         ],
       ),
     );
@@ -589,12 +611,14 @@ class _ActionCategoryTile extends StatefulWidget {
     required this.category,
     required this.count,
     required this.featured,
+    required this.compact,
     required this.onTap,
   });
 
   final _ActionCategory category;
   final int count;
   final bool featured;
+  final bool compact;
   final VoidCallback onTap;
 
   @override
@@ -608,6 +632,7 @@ class _ActionCategoryTileState extends State<_ActionCategoryTile> {
   Widget build(BuildContext context) {
     final category = widget.category;
     final featured = widget.featured;
+    final compact = widget.compact;
     final radius = BorderRadius.circular(22);
     return AnimatedScale(
       scale: _pressed ? 0.975 : 1,
@@ -657,8 +682,57 @@ class _ActionCategoryTileState extends State<_ActionCategoryTile> {
                   Container(
                     width: double.infinity,
                     constraints: BoxConstraints(minHeight: featured ? 108 : 0),
-                    padding: EdgeInsets.all(featured ? 16 : 14),
-                    child: featured
+                    padding: EdgeInsets.symmetric(
+                      horizontal: compact ? 14 : (featured ? 16 : 14),
+                      vertical: compact ? 9 : (featured ? 16 : 14),
+                    ),
+                    child: compact
+                        ? Row(
+                            children: [
+                              Container(
+                                width: 40,
+                                height: 40,
+                                decoration: BoxDecoration(
+                                  color: category.color.withValues(alpha: 0.12),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Icon(category.icon, color: category.color, size: 22),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      category.title,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                        color: Color(0xFF0A1B33),
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w900,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      category.subtitle,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                        color: Color(0xFF586678),
+                                        fontSize: 10.5,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              _CategoryCount(count: widget.count, featured: false, color: category.color),
+                              const Icon(Icons.chevron_left_rounded, color: Color(0xFF7A8DA0), size: 22),
+                            ],
+                          )
+                        : featured
                         ? Row(
                             children: [
                               Container(
@@ -716,7 +790,7 @@ class _ActionCategoryTileState extends State<_ActionCategoryTile> {
                               const SizedBox(height: 12),
                               Text(category.title, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Color(0xFF0A1B33), fontSize: 15, height: 1.3, fontWeight: FontWeight.w900)),
                               const SizedBox(height: 4),
-                              Text(category.subtitle, maxLines: 3, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Color(0xFF5B6B82), fontSize: 11.5, height: 1.5)),
+                              Text(category.subtitle, maxLines: 3, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Color(0xFF586678), fontSize: 11, height: 1.5)),
                             ],
                           ),
                   ),
@@ -736,16 +810,30 @@ class _CategoryCount extends StatelessWidget {
   final bool featured;
   final Color color;
 
+  String _label() {
+    if (count == 1) return 'خدمة واحدة';
+    if (count == 2) return 'خدمتان';
+    if (count >= 3 && count <= 10) return '$count خدمات';
+    return '$count خدمة';
+  }
+
   @override
   Widget build(BuildContext context) => Container(
-    constraints: const BoxConstraints(minWidth: 26, minHeight: 26),
+    constraints: const BoxConstraints(minHeight: 24),
     alignment: Alignment.center,
     padding: const EdgeInsets.symmetric(horizontal: 8),
     decoration: BoxDecoration(
       color: featured ? const Color(0xFFE8CB84) : color.withValues(alpha: 0.12),
       borderRadius: BorderRadius.circular(9),
     ),
-    child: Text('$count', style: TextStyle(color: featured ? const Color(0xFF0A1B33) : color, fontSize: 13, fontWeight: FontWeight.w900)),
+    child: Text(
+      _label(),
+      style: TextStyle(
+        color: featured ? const Color(0xFF0A1B33) : const Color(0xFF586678),
+        fontSize: 10.5,
+        fontWeight: FontWeight.w800,
+      ),
+    ),
   );
 }
 
