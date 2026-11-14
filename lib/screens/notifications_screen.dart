@@ -170,7 +170,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     }
     if (kind == 'staff_message' || kind == 'staff_message_reply') {
       await Navigator.push(context, MaterialPageRoute(
-        builder: (_) => StaffMessagesScreen(userRole: widget.userRole),
+        builder: (_) => StaffMessagesScreen(
+          userRole: widget.userRole,
+          initialMessageId: relatedId.isNotEmpty ? relatedId : null,
+        ),
       ));
       return;
     }
