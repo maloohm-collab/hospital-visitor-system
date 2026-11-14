@@ -8,6 +8,7 @@ on:
       - main
       - work/next-development
       - work/next-release-development-2026-11-09
+      - feature/dashboard-card-spacing-readability
 
 permissions:
   contents: read
