@@ -1,3 +1,17 @@
+// ═══════════════════════════════════════════════════════════════
+//  اسم الملف   : dashboard_screen.dart
+//  آخر تحديث   : 15/11/2026
+//  الوصف       : الشاشة الرئيسية لكل الأدوار (إدارة / مشرف / ضابط أمن).
+//  تعديلات هذا التحديث:
+//    • بطاقة "إدارة الحسابات والموظفين" تبقى مميزة لكن بارتفاع أقل.
+//    • شارة برتقالية "طلبات معلّقة" على بطاقة الحسابات (من account_requests).
+//    • أسهم التنقل متوافقة مع اتجاه RTL (تشير لليسار = التقدّم).
+//    • رفع التباين وحجم الخط للأوصاف الرمادية والعدّادات.
+//    • تقليل المسافة بين الهيدر وشريط الملاحظات.
+//    • مدير الموقع (admin): تمرير showPortrait للهيدر وبطاقة الحساب
+//      لعرض صورته المفرغة (انظر dashboard_header.dart).
+// ═══════════════════════════════════════════════════════════════
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'direct_contact_screen.dart';
@@ -128,19 +142,19 @@ class DashboardScreen extends StatelessWidget {
           children: [
             Padding(
               padding: const EdgeInsets.only(bottom: 44),
-              child: DashboardHeader(userRole: userRole, currentUid: currentUid),
+              child: DashboardHeader(userRole: userRole, currentUid: currentUid, showPortrait: userRole == 'admin'),
             ),
             Positioned(
               left: 0,
               right: 0,
               bottom: 0,
-              child: DashboardAccountCard(userRole: userRole, currentUid: currentUid),
+              child: DashboardAccountCard(userRole: userRole, currentUid: currentUid, showPortrait: userRole == 'admin'),
             ),
           ],
         ),
-        const SizedBox(height: 18),
+        const SizedBox(height: 12),
         DashboardNewsTicker(userRole: userRole),
-        const SizedBox(height: 6),
+        const SizedBox(height: 4),
       ],
     );
   }
@@ -413,11 +427,17 @@ class DashboardScreen extends StatelessWidget {
       final groupedActions = actions
           .where((action) => category.actionTitles.contains(action.title))
           .toList();
-      final compact = category.title == 'إدارة الحسابات والموظفين' ||
-          category.title == 'إدارة الشريط الإخباري';
+      // الصف النحيف للشريط الإخباري فقط؛ بطاقة الحسابات تبقى مميزة.
+      final compact = category.title == 'إدارة الشريط الإخباري';
+      // مجموع الشارات العاجلة (مثل طلبات الحسابات المعلّقة) داخل هذه البطاقة.
+      final alertCount = groupedActions.fold<int>(
+        0,
+        (sum, action) => sum + (int.tryParse(action.badge ?? '') ?? 0),
+      );
       return _ActionCategoryTile(
         category: category,
         count: groupedActions.length,
+        alertCount: alertCount,
         featured: featured && !compact,
         compact: compact,
         onTap: () => Navigator.push(
@@ -509,8 +529,8 @@ class DashboardScreen extends StatelessWidget {
             'آخر تحديث $time — مباشر من نظام المستشفى',
             textAlign: TextAlign.center,
             style: const TextStyle(
-              color: Color(0xFF586678),
-              fontSize: 12,
+              color: Color(0xFF4A586B),
+              fontSize: 12.5,
               fontWeight: FontWeight.w700,
             ),
           ),
@@ -613,10 +633,12 @@ class _ActionCategoryTile extends StatefulWidget {
     required this.featured,
     required this.compact,
     required this.onTap,
+    this.alertCount = 0,
   });
 
   final _ActionCategory category;
   final int count;
+  final int alertCount;
   final bool featured;
   final bool compact;
   final VoidCallback onTap;
@@ -681,10 +703,10 @@ class _ActionCategoryTileState extends State<_ActionCategoryTile> {
                     ),
                   Container(
                     width: double.infinity,
-                    constraints: BoxConstraints(minHeight: featured ? 108 : 0),
+                    constraints: BoxConstraints(minHeight: featured ? 88 : 0),
                     padding: EdgeInsets.symmetric(
                       horizontal: compact ? 14 : (featured ? 16 : 14),
-                      vertical: compact ? 9 : (featured ? 16 : 14),
+                      vertical: compact ? 9 : (featured ? 12 : 14),
                     ),
                     child: compact
                         ? Row(
@@ -720,16 +742,19 @@ class _ActionCategoryTileState extends State<_ActionCategoryTile> {
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
                                       style: const TextStyle(
-                                        color: Color(0xFF586678),
-                                        fontSize: 10.5,
+                                        color: Color(0xFF4A586B),
+                                        fontSize: 11.5,
                                       ),
                                     ),
                                   ],
                                 ),
                               ),
                               const SizedBox(width: 6),
-                              _CategoryCount(count: widget.count, featured: false, color: category.color),
-                              const Icon(Icons.chevron_left_rounded, color: Color(0xFF7A8DA0), size: 22),
+                              _CategoryCount(count: widget.count, alertCount: widget.alertCount, featured: false, color: category.color),
+                              const Directionality(
+                                textDirection: TextDirection.ltr,
+                                child: Icon(Icons.chevron_left_rounded, color: Color(0xFF5B6B82), size: 22),
+                              ),
                             ],
                           )
                         : featured
@@ -756,12 +781,12 @@ class _ActionCategoryTileState extends State<_ActionCategoryTile> {
                                   children: [
                                     Text(category.title, style: const TextStyle(color: Colors.white, fontSize: 17, height: 1.3, fontWeight: FontWeight.w900)),
                                     const SizedBox(height: 3),
-                                    Text(category.subtitle, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Color(0xFFC9D6EA), fontSize: 12, height: 1.45)),
+                                    Text(category.subtitle, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Color(0xFFD6E1F2), fontSize: 12.5, height: 1.45)),
                                   ],
                                 ),
                               ),
                               const SizedBox(width: 8),
-                              _CategoryCount(count: widget.count, featured: true, color: category.color),
+                              _CategoryCount(count: widget.count, alertCount: widget.alertCount, featured: true, color: category.color),
                               const SizedBox(width: 4),
                               const Directionality(
                                 textDirection: TextDirection.ltr,
@@ -784,13 +809,13 @@ class _ActionCategoryTileState extends State<_ActionCategoryTile> {
                                     child: Icon(category.icon, color: category.color, size: 24),
                                   ),
                                   const Spacer(),
-                                  _CategoryCount(count: widget.count, featured: false, color: category.color),
+                                  _CategoryCount(count: widget.count, alertCount: widget.alertCount, featured: false, color: category.color),
                                 ],
                               ),
                               const SizedBox(height: 12),
                               Text(category.title, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Color(0xFF0A1B33), fontSize: 15, height: 1.3, fontWeight: FontWeight.w900)),
                               const SizedBox(height: 4),
-                              Text(category.subtitle, maxLines: 3, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Color(0xFF586678), fontSize: 11, height: 1.5)),
+                              Text(category.subtitle, maxLines: 3, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Color(0xFF4A586B), fontSize: 12, height: 1.5)),
                             ],
                           ),
                   ),
@@ -804,9 +829,16 @@ class _ActionCategoryTileState extends State<_ActionCategoryTile> {
   }
 }
 
+/// شارة عدد الخدمات داخل البطاقة، مع شارة برتقالية اختيارية للطلبات المعلّقة.
 class _CategoryCount extends StatelessWidget {
-  const _CategoryCount({required this.count, required this.featured, required this.color});
+  const _CategoryCount({
+    required this.count,
+    required this.featured,
+    required this.color,
+    this.alertCount = 0,
+  });
   final int count;
+  final int alertCount;
   final bool featured;
   final Color color;
 
@@ -817,24 +849,52 @@ class _CategoryCount extends StatelessWidget {
     return '$count خدمة';
   }
 
+  String _alertLabel() {
+    // في البطاقة المميزة المساحة أضيق، فنستخدم صيغة قصيرة.
+    if (featured) return 'معلّق: $alertCount';
+    if (alertCount == 1) return 'طلب معلّق';
+    if (alertCount == 2) return 'طلبان معلّقان';
+    if (alertCount >= 3 && alertCount <= 10) return '$alertCount طلبات معلّقة';
+    return '$alertCount طلباً معلّقاً';
+  }
+
+  Widget _chip({required String text, required Color bg, required Color fg}) =>
+      Container(
+        constraints: const BoxConstraints(minHeight: 24),
+        alignment: Alignment.center,
+        padding: const EdgeInsets.symmetric(horizontal: 8),
+        decoration: BoxDecoration(
+          color: bg,
+          borderRadius: BorderRadius.circular(9),
+        ),
+        child: Text(
+          text,
+          style: TextStyle(color: fg, fontSize: 11.5, fontWeight: FontWeight.w800),
+        ),
+      );
+
   @override
-  Widget build(BuildContext context) => Container(
-    constraints: const BoxConstraints(minHeight: 24),
-    alignment: Alignment.center,
-    padding: const EdgeInsets.symmetric(horizontal: 8),
-    decoration: BoxDecoration(
-      color: featured ? const Color(0xFFE8CB84) : color.withValues(alpha: 0.12),
-      borderRadius: BorderRadius.circular(9),
-    ),
-    child: Text(
-      _label(),
-      style: TextStyle(
-        color: featured ? const Color(0xFF0A1B33) : const Color(0xFF586678),
-        fontSize: 10.5,
-        fontWeight: FontWeight.w800,
-      ),
-    ),
-  );
+  Widget build(BuildContext context) {
+    final countChip = _chip(
+      text: _label(),
+      bg: featured ? const Color(0xFFE8CB84) : color.withValues(alpha: 0.12),
+      fg: featured ? const Color(0xFF0A1B33) : const Color(0xFF3F4D61),
+    );
+    if (alertCount <= 0) return countChip;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        _chip(
+          text: _alertLabel(),
+          bg: featured ? const Color(0xFFFB923C) : const Color(0xFFFFEDD5),
+          fg: featured ? const Color(0xFF0A1B33) : const Color(0xFF9A3412),
+        ),
+        const SizedBox(height: 4),
+        countChip,
+      ],
+    );
+  }
 }
 
 class _ActionCategory {
@@ -890,7 +950,10 @@ class _ActionCategoryScreen extends StatelessWidget {
                       const SizedBox(width: 13),
                       Expanded(child: Text(action.title, style: const TextStyle(color: Color(0xFF173653), fontSize: 16, fontWeight: FontWeight.w800))),
                       if (action.badge != null) Text(action.badge!, style: const TextStyle(color: Color(0xFFD92D20), fontWeight: FontWeight.w900)),
-                      const Icon(Icons.chevron_left_rounded, color: Color(0xFF7A8DA0)),
+                      const Directionality(
+                        textDirection: TextDirection.ltr,
+                        child: Icon(Icons.chevron_left_rounded, color: Color(0xFF5B6B82)),
+                      ),
                     ],
                   ),
                 ),
