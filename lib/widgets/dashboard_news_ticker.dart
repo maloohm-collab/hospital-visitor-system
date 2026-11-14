@@ -18,6 +18,32 @@ class _DashboardNewsTickerState extends State<DashboardNewsTicker>
   static const _priorityOrder = {'urgent': 0, 'important': 1, 'normal': 2};
   late final AnimationController _tickerController;
   int _activeTickerPointers = 0;
+  int _activeEntryIndex = 0;
+
+  void _changeTickerEntry(int delta, int count) {
+    if (count <= 1 || !mounted) return;
+    setState(() {
+      _activeEntryIndex = (_activeEntryIndex + delta) % count;
+      if (_activeEntryIndex < 0) _activeEntryIndex += count;
+    });
+    if (_activeTickerPointers == 0) {
+      _tickerController
+        ..stop(canceled: false)
+        ..value = 0
+        ..repeat();
+    }
+  }
+
+  void _selectTickerEntry(int index, int count) {
+    if (count <= 0 || !mounted) return;
+    setState(() => _activeEntryIndex = index.clamp(0, count - 1));
+    if (_activeTickerPointers == 0) {
+      _tickerController
+        ..stop(canceled: false)
+        ..value = 0
+        ..repeat();
+    }
+  }
 
   void _pauseTicker(PointerDownEvent event) {
     _activeTickerPointers++;
@@ -121,17 +147,10 @@ class _DashboardNewsTickerState extends State<DashboardNewsTicker>
           (kind == 'ticker_announcement' || kind == null) &&
           (data['senderName'] ?? '').toString() == 'الإدارة' &&
           (
-            ((data['recipientRoles'] is List) &&
-                (
-                  ((data['recipientRoles'] as List).length == 1 &&
-                      (data['recipientRoles'] as List).contains('security_officer')) ||
-                  ((data['recipientRoles'] as List).length == 3 &&
-                      (data['recipientRoles'] as List).toSet().containsAll(
-                        const {'security_officer', 'supervisor', 'admin'},
-                      ))
-                )) ||
+            (data['recipientRoles'] is List &&
+                (data['recipientRoles'] as List).contains(widget.userRole)) ||
             (data['recipientRoles'] == null &&
-                data['recipientRole'] == 'security_officer') ||
+                data['recipientRole'] == widget.userRole) ||
             data['broadcastToAll'] == true
           );
       if (!isAdminAnnouncement || data['tickerVisible'] == false || !_isToday(data['createdAt'])) continue;
@@ -146,7 +165,15 @@ class _DashboardNewsTickerState extends State<DashboardNewsTicker>
       ));
     }
     final seenSupervisorThreads = <String>{};
-    for (final doc in messages.docs) {
+    final orderedMessages = messages.docs.toList()
+      ..sort((a, b) {
+        final aValue = a.data()['createdAt'];
+        final bValue = b.data()['createdAt'];
+        final aDate = aValue is Timestamp ? aValue.toDate() : DateTime.fromMillisecondsSinceEpoch(0);
+        final bDate = bValue is Timestamp ? bValue.toDate() : DateTime.fromMillisecondsSinceEpoch(0);
+        return bDate.compareTo(aDate);
+      });
+    for (final doc in orderedMessages) {
       final data = doc.data();
       final hiddenFor = data['hiddenFor'];
       final isSupervisorBroadcastToOfficers =
@@ -457,16 +484,16 @@ class _DashboardNewsTickerState extends State<DashboardNewsTicker>
   }
 
   Widget _tickerBar(List<_TickerEntry> entries, TickerSettings settings) {
-    final measuredItemsWidth = entries.fold<double>(0, (total, entry) {
-      final painter = TextPainter(
-        text: TextSpan(text: _entryText(entry), style: _entryStyle(entry, settings)),
-        textDirection: TextDirection.rtl,
-        maxLines: 1,
-      )..layout();
-      return total + painter.width;
-    });
-    final separatorsWidth = entries.length > 1 ? (entries.length - 1) * 44.0 : 0.0;
-    final contentWidth = measuredItemsWidth + separatorsWidth + 60;
+    if (entries.isEmpty) return const SizedBox.shrink();
+    if (_activeEntryIndex >= entries.length) _activeEntryIndex = 0;
+    final entry = entries[_activeEntryIndex];
+    final entryText = _entryText(entry);
+    final painter = TextPainter(
+      text: TextSpan(text: entryText, style: _entryStyle(entry, settings)),
+      textDirection: TextDirection.rtl,
+      maxLines: 1,
+    )..layout();
+    final contentWidth = painter.width + 60;
     final tickerHeight = settings.fontSize + 43 > 60 ? settings.fontSize + 43 : 60.0;
     return Listener(
       onPointerDown: _pauseTicker,
@@ -474,98 +501,148 @@ class _DashboardNewsTickerState extends State<DashboardNewsTicker>
       onPointerCancel: _resumeTicker,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16),
-        child: Container(
-          height: tickerHeight,
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.centerRight, end: Alignment.centerLeft,
-              colors: settings.backgroundColors,
-              stops: const [0.0, 0.36, 0.72, 1.0],
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              height: tickerHeight,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.centerRight, end: Alignment.centerLeft,
+                  colors: settings.backgroundColors,
+                  stops: const [0.0, 0.36, 0.72, 1.0],
+                ),
+                borderRadius: BorderRadius.circular(17),
+                border: Border.all(color: const Color(0xFF8F4A53).withValues(alpha: .48)),
+                boxShadow: const [
+                  BoxShadow(color: Color(0x1E40141D), blurRadius: 13, offset: Offset(0, 5)),
+                ],
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(17),
+                child: Row(
+                  textDirection: TextDirection.rtl,
+                  children: [
+                    Container(
+                      width: 96, alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: settings.backgroundColors,
+                          begin: Alignment.topRight, end: Alignment.bottomLeft,
+                        ),
+                      ),
+                      child: Text('ملاحظات', style: TextStyle(
+                        color: Colors.white, fontSize: settings.fontSize,
+                        fontFamily: settings.fontFamily,
+                        fontWeight: settings.bold ? FontWeight.w900 : FontWeight.w600)),
+                    ),
+                    Container(width: 1.4, height: 30, color: const Color(0xFFD5B9BC)),
+                    IconButton(
+                      tooltip: 'الملاحظة السابقة',
+                      visualDensity: VisualDensity.compact,
+                      onPressed: entries.length > 1
+                          ? () => _changeTickerEntry(-1, entries.length) : null,
+                      icon: const Icon(Icons.chevron_right_rounded, color: Colors.white, size: 28),
+                    ),
+                    Expanded(
+                      child: ClipRect(
+                        child: LayoutBuilder(
+                          builder: (context, constraints) {
+                            final segmentWidth = contentWidth < constraints.maxWidth
+                                ? constraints.maxWidth : contentWidth;
+                            _updateTickerDuration(segmentWidth, settings.speedSeconds);
+                            return AnimatedBuilder(
+                              animation: _tickerController,
+                              builder: (context, child) => Transform.translate(
+                                offset: Offset(
+                                  settings.direction == 'left_to_right'
+                                      ? -segmentWidth + (_tickerController.value * segmentWidth)
+                                      : -(_tickerController.value * segmentWidth),
+                                  0,
+                                ),
+                                child: child,
+                              ),
+                              child: SizedBox(
+                                width: segmentWidth * 2,
+                                child: Row(
+                                  textDirection: TextDirection.ltr,
+                                  children: [
+                                    SizedBox(width: segmentWidth,
+                                      child: _tickerItem(entry, settings)),
+                                    SizedBox(width: segmentWidth,
+                                      child: _tickerItem(entry, settings)),
+                                  ],
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      tooltip: 'الملاحظة التالية',
+                      visualDensity: VisualDensity.compact,
+                      onPressed: entries.length > 1
+                          ? () => _changeTickerEntry(1, entries.length) : null,
+                      icon: const Icon(Icons.chevron_left_rounded, color: Colors.white, size: 28),
+                    ),
+                  ],
+                ),
+              ),
             ),
-            borderRadius: BorderRadius.circular(17),
-            border: Border.all(color: const Color(0xFF8F4A53).withValues(alpha: .48)),
-            boxShadow: const [
-              BoxShadow(color: Color(0x1E40141D), blurRadius: 13, offset: Offset(0, 5)),
-            ],
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(17),
-            child: Row(
-              textDirection: TextDirection.rtl,
+            const SizedBox(height: 5),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Container(
-                  width: 108, alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: settings.backgroundColors,
-                      begin: Alignment.topRight, end: Alignment.bottomLeft,
-                    ),
-                  ),
-                  child: Text('ملاحظات', style: TextStyle(
-                    color: Colors.white, fontSize: settings.fontSize,
-                    fontFamily: settings.fontFamily,
-                    fontWeight: settings.bold ? FontWeight.w900 : FontWeight.w600)),
-                ),
-                Container(width: 1.4, height: 30, color: const Color(0xFFD5B9BC)),
-                Expanded(
-                  child: ClipRect(
-                    child: LayoutBuilder(
-                      builder: (context, constraints) {
-                        final segmentWidth = contentWidth < constraints.maxWidth
-                            ? constraints.maxWidth : contentWidth;
-                        _updateTickerDuration(segmentWidth, settings.speedSeconds);
-                        return AnimatedBuilder(
-                          animation: _tickerController,
-                          builder: (context, child) => Transform.translate(
-                            offset: Offset(
-                              settings.direction == 'left_to_right'
-                                  ? -segmentWidth + (_tickerController.value * segmentWidth)
-                                  : -(_tickerController.value * segmentWidth),
-                              0,
-                            ),
-                            child: child,
-                          ),
-                          child: SizedBox(
-                            width: segmentWidth * 2,
-                            child: Row(
-                              textDirection: TextDirection.ltr,
-                              children: [
-                                SizedBox(width: segmentWidth, child: _tickerItems(entries, settings)),
-                                SizedBox(width: segmentWidth, child: _tickerItems(entries, settings)),
-                              ],
-                            ),
-                          ),
-                        );
-                      },
-                    ),
+                Text(
+                  '${_activeEntryIndex + 1} من ${entries.length}',
+                  style: const TextStyle(
+                    color: Color(0xFF52627A),
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
                   ),
                 ),
+                const SizedBox(width: 10),
+                for (var i = 0; i < entries.length; i++)
+                  GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () => _selectTickerEntry(i, entries.length),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 5),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 180),
+                        width: i == _activeEntryIndex ? 17 : 6,
+                        height: 6,
+                        decoration: BoxDecoration(
+                          color: i == _activeEntryIndex
+                              ? const Color(0xFFB68A42)
+                              : const Color(0xFFB9C5D4),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                    ),
+                  ),
               ],
             ),
-          ),
+          ],
         ),
       ),
     );
   }
 
-  Widget _tickerItems(List<_TickerEntry> entries, TickerSettings settings) => Row(
-    textDirection: TextDirection.rtl,
-    mainAxisSize: MainAxisSize.min,
-    children: [
-      for (var i = 0; i < entries.length; i++) ...[
-        GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTap: () => _openEntry(entries[i]),
-          child: Text(_entryText(entries[i]), maxLines: 1, softWrap: false,
-            style: _entryStyle(entries[i], settings)),
-        ),
-        if (i != entries.length - 1)
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 22),
-            child: Text('•', style: TextStyle(color: const Color(0xFFD6B9BD), fontSize: settings.fontSize)),
-          ),
-      ],
-    ],
+  Widget _tickerItem(_TickerEntry entry, TickerSettings settings) => Align(
+    alignment: Alignment.centerRight,
+    child: GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => _openEntry(entry),
+      child: Text(
+        _entryText(entry),
+        maxLines: 1,
+        softWrap: false,
+        overflow: TextOverflow.visible,
+        style: _entryStyle(entry, settings),
+      ),
+    ),
   );
 }
 
