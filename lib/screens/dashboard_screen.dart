@@ -484,7 +484,7 @@ class DashboardScreen extends StatelessWidget {
             ),
           ],
           if (visible.length > 5) ...[
-            const SizedBox(height: 12),
+            const SizedBox(height: 14),
             buildTile(visible[5], featured: false),
           ],
         ],
