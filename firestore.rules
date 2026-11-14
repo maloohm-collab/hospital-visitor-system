@@ -640,13 +640,28 @@ service cloud.firestore {
     match /app_settings/{settingId} {
       allow get: if isActiveUser() && settingId == 'news_ticker';
       allow list: if false;
+
       allow create, update: if isActiveAdmin()
         && settingId == 'news_ticker'
         && request.resource.data.keys().hasOnly([
-          'speedSeconds', 'fontSize', 'fontFamily', 'direction', 'bold', 'backgroundPreset', 'updatedAt'
+          'speedSeconds', 'fontSize', 'fontFamily', 'direction', 'bold', 'backgroundPreset',
+          'backgroundStart', 'backgroundMid', 'backgroundHighlight', 'backgroundEnd',
+          'urgentBackgroundStart', 'urgentBackgroundMid', 'urgentBackgroundHighlight',
+          'urgentBackgroundEnd', 'urgentRedMode', 'textColor', 'secondaryTextColor',
+          'accentColor', 'iconColor', 'stripColor', 'borderColor', 'progressColor',
+          'navigationColor', 'inactiveIndicatorColor', 'urgentAccentColor', 'urgentIconColor',
+          'urgentChipBackground', 'urgentChipText', 'importantChipBackground',
+          'importantChipText', 'normalChipBackground', 'normalChipText', 'updatedAt'
         ])
         && request.resource.data.keys().hasAll([
-          'speedSeconds', 'fontSize', 'fontFamily', 'direction', 'bold', 'updatedAt'
+          'speedSeconds', 'fontSize', 'fontFamily', 'direction', 'bold', 'backgroundPreset',
+          'backgroundStart', 'backgroundMid', 'backgroundHighlight', 'backgroundEnd',
+          'urgentBackgroundStart', 'urgentBackgroundMid', 'urgentBackgroundHighlight',
+          'urgentBackgroundEnd', 'urgentRedMode', 'textColor', 'secondaryTextColor',
+          'accentColor', 'iconColor', 'stripColor', 'borderColor', 'progressColor',
+          'navigationColor', 'inactiveIndicatorColor', 'urgentAccentColor', 'urgentIconColor',
+          'urgentChipBackground', 'urgentChipText', 'importantChipBackground',
+          'importantChipText', 'normalChipBackground', 'normalChipText', 'updatedAt'
         ])
         && request.resource.data.speedSeconds is int
         && request.resource.data.speedSeconds >= 12
@@ -658,7 +673,34 @@ service cloud.firestore {
         && request.resource.data.direction in ['left_to_right', 'right_to_left']
         && request.resource.data.bold is bool
         && request.resource.data.backgroundPreset in ['burgundy', 'navy', 'emerald', 'purple', 'slate', 'amber']
+        && request.resource.data.urgentRedMode is bool
+        && request.resource.data.backgroundStart is int
+        && request.resource.data.backgroundMid is int
+        && request.resource.data.backgroundHighlight is int
+        && request.resource.data.backgroundEnd is int
+        && request.resource.data.urgentBackgroundStart is int
+        && request.resource.data.urgentBackgroundMid is int
+        && request.resource.data.urgentBackgroundHighlight is int
+        && request.resource.data.urgentBackgroundEnd is int
+        && request.resource.data.textColor is int
+        && request.resource.data.secondaryTextColor is int
+        && request.resource.data.accentColor is int
+        && request.resource.data.iconColor is int
+        && request.resource.data.stripColor is int
+        && request.resource.data.borderColor is int
+        && request.resource.data.progressColor is int
+        && request.resource.data.navigationColor is int
+        && request.resource.data.inactiveIndicatorColor is int
+        && request.resource.data.urgentAccentColor is int
+        && request.resource.data.urgentIconColor is int
+        && request.resource.data.urgentChipBackground is int
+        && request.resource.data.urgentChipText is int
+        && request.resource.data.importantChipBackground is int
+        && request.resource.data.importantChipText is int
+        && request.resource.data.normalChipBackground is int
+        && request.resource.data.normalChipText is int
         && request.resource.data.updatedAt == request.time;
+
       allow delete: if false;
     }
 
