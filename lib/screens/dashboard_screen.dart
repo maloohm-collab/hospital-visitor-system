@@ -436,25 +436,25 @@ class DashboardScreen extends StatelessWidget {
         actions.any((action) => category.actionTitles.contains(action.title))).toList();
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 18),
       child: Column(
         children: [
           Align(
             alignment: Alignment.centerRight,
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(4, 0, 4, 12),
+              padding: const EdgeInsets.fromLTRB(4, 0, 4, 14),
               child: Row(
                 children: [
                   Container(width: 22, height: 3, decoration: BoxDecoration(color: const Color(0xFFC9A24B), borderRadius: BorderRadius.circular(2))),
                   const SizedBox(width: 10),
-                  const Text('الخدمات الرئيسية', style: TextStyle(color: Color(0xFF0A1B33), fontSize: 16, fontWeight: FontWeight.w900)),
+                  const Text('الخدمات الرئيسية', style: TextStyle(color: Color(0xFF0A1B33), fontSize: 17, fontWeight: FontWeight.w900)),
                 ],
               ),
             ),
           ),
           if (visible.isNotEmpty) buildTile(visible[0], featured: true),
           if (visible.length > 1) ...[
-            const SizedBox(height: 12),
+            const SizedBox(height: 14),
             IntrinsicHeight(
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -469,7 +469,7 @@ class DashboardScreen extends StatelessWidget {
             ),
           ],
           if (visible.length > 3) ...[
-            const SizedBox(height: 12),
+            const SizedBox(height: 14),
             IntrinsicHeight(
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -504,13 +504,13 @@ class DashboardScreen extends StatelessWidget {
         final time =
             '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
         return Padding(
-          padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+          padding: const EdgeInsets.fromLTRB(16, 6, 16, 14),
           child: Text(
             'آخر تحديث $time — مباشر من نظام المستشفى',
             textAlign: TextAlign.center,
             style: const TextStyle(
               color: Color(0xFF586678),
-              fontSize: 12,
+              fontSize: 13,
               fontWeight: FontWeight.w700,
             ),
           ),
@@ -681,22 +681,22 @@ class _ActionCategoryTileState extends State<_ActionCategoryTile> {
                     ),
                   Container(
                     width: double.infinity,
-                    constraints: BoxConstraints(minHeight: featured ? 108 : 0),
+                    constraints: BoxConstraints(minHeight: compact ? 78 : (featured ? 116 : 0)),
                     padding: EdgeInsets.symmetric(
-                      horizontal: compact ? 14 : (featured ? 16 : 14),
-                      vertical: compact ? 9 : (featured ? 16 : 14),
+                      horizontal: compact ? 16 : (featured ? 18 : 16),
+                      vertical: compact ? 14 : (featured ? 18 : 16),
                     ),
                     child: compact
                         ? Row(
                             children: [
                               Container(
-                                width: 40,
-                                height: 40,
+                                width: 48,
+                                height: 48,
                                 decoration: BoxDecoration(
                                   color: category.color.withValues(alpha: 0.12),
-                                  borderRadius: BorderRadius.circular(12),
+                                  borderRadius: BorderRadius.circular(14),
                                 ),
-                                child: Icon(category.icon, color: category.color, size: 22),
+                                child: Icon(category.icon, color: category.color, size: 26),
                               ),
                               const SizedBox(width: 10),
                               Expanded(
@@ -710,18 +710,21 @@ class _ActionCategoryTileState extends State<_ActionCategoryTile> {
                                       overflow: TextOverflow.ellipsis,
                                       style: const TextStyle(
                                         color: Color(0xFF0A1B33),
-                                        fontSize: 14,
+                                        fontSize: 15.5,
+                                        height: 1.25,
                                         fontWeight: FontWeight.w900,
                                       ),
                                     ),
                                     const SizedBox(height: 2),
                                     Text(
                                       category.subtitle,
-                                      maxLines: 1,
+                                      maxLines: 2,
                                       overflow: TextOverflow.ellipsis,
                                       style: const TextStyle(
                                         color: Color(0xFF586678),
-                                        fontSize: 10.5,
+                                        fontSize: 11.5,
+                                        height: 1.35,
+                                        fontWeight: FontWeight.w500,
                                       ),
                                     ),
                                   ],
@@ -754,9 +757,9 @@ class _ActionCategoryTileState extends State<_ActionCategoryTile> {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
-                                    Text(category.title, style: const TextStyle(color: Colors.white, fontSize: 17, height: 1.3, fontWeight: FontWeight.w900)),
+                                    Text(category.title, style: const TextStyle(color: Colors.white, fontSize: 18, height: 1.3, fontWeight: FontWeight.w900)),
                                     const SizedBox(height: 3),
-                                    Text(category.subtitle, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Color(0xFFC9D6EA), fontSize: 12, height: 1.45)),
+                                    Text(category.subtitle, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Color(0xFFC9D6EA), fontSize: 13, height: 1.5, fontWeight: FontWeight.w500)),
                                   ],
                                 ),
                               ),
@@ -779,18 +782,18 @@ class _ActionCategoryTileState extends State<_ActionCategoryTile> {
                                     height: 44,
                                     decoration: BoxDecoration(
                                       color: category.color.withValues(alpha: 0.12),
-                                      borderRadius: BorderRadius.circular(14),
+                                      borderRadius: BorderRadius.circular(15),
                                     ),
-                                    child: Icon(category.icon, color: category.color, size: 24),
+                                    child: Icon(category.icon, color: category.color, size: 26),
                                   ),
                                   const Spacer(),
                                   _CategoryCount(count: widget.count, featured: false, color: category.color),
                                 ],
                               ),
-                              const SizedBox(height: 12),
-                              Text(category.title, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Color(0xFF0A1B33), fontSize: 15, height: 1.3, fontWeight: FontWeight.w900)),
-                              const SizedBox(height: 4),
-                              Text(category.subtitle, maxLines: 3, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Color(0xFF586678), fontSize: 11, height: 1.5)),
+                              const SizedBox(height: 14),
+                              Text(category.title, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Color(0xFF0A1B33), fontSize: 16, height: 1.3, fontWeight: FontWeight.w900)),
+                              const SizedBox(height: 6),
+                              Text(category.subtitle, maxLines: 3, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Color(0xFF586678), fontSize: 12, height: 1.5, fontWeight: FontWeight.w500)),
                             ],
                           ),
                   ),
