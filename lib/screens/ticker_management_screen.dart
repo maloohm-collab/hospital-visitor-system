@@ -254,14 +254,14 @@ class _TickerManagementScreenState extends State<TickerManagementScreen> {
         backgroundColor: navy,
         foregroundColor: Colors.white,
         actions: [
-          TextButton.icon(
+          IconButton(
+            tooltip: 'إعدادات الشريط والألوان',
+            icon: const Icon(Icons.palette_outlined, color: Colors.white, size: 27),
             onPressed: () => Navigator.push(context, MaterialPageRoute(
               builder: (_) => TickerSettingsScreen(userRole: widget.userRole),
             )),
-            icon: const Icon(Icons.tune_rounded, color: Colors.white),
-            label: const Text('إعدادات الشريط', style: TextStyle(color: Colors.white)),
           ),
-          const SizedBox(width: 6),
+          const SizedBox(width: 4),
         ],
       ),
       backgroundColor: const Color(0xFFF2F4F8),
