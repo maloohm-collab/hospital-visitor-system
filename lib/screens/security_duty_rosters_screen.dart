@@ -11,8 +11,9 @@ import '../data/duty_roster_pdf.dart';
 import '../widgets/app_search_field.dart';
 
 class SecurityDutyRostersScreen extends StatefulWidget {
-  const SecurityDutyRostersScreen({super.key, this.archive = false, this.initialDateKey, this.initialShift});
+  const SecurityDutyRostersScreen({super.key, this.archive = false, this.initialDateKey, this.initialShift, this.embedded = false});
   final bool archive;
+  final bool embedded;
   final String? initialDateKey;
   final String? initialShift;
   @override
@@ -270,7 +271,7 @@ class _SecurityDutyRostersScreenState extends State<SecurityDutyRostersScreen> {
     final pageTitle = widget.archive ? 'المناوبات السابقة' : 'مناوبات اليوم';
     return Scaffold(
       backgroundColor: page,
-      appBar: AppBar(title: Text(pageTitle, style: const TextStyle(fontWeight: FontWeight.w900)),
+      appBar: widget.embedded ? null : AppBar(title: Text(pageTitle, style: const TextStyle(fontWeight: FontWeight.w900)),
         backgroundColor: navy, foregroundColor: Colors.white, centerTitle: true),
       body: StreamBuilder<QuerySnapshot<Map<String,dynamic>>>(
         stream: db.collection('daily_duty_rosters').where('status',isEqualTo:'published').snapshots(),
@@ -549,4 +550,36 @@ class _SecurityDutyRosterPdfScreenState extends State<SecurityDutyRosterPdfScree
           }))),
       ]));
   }
+}
+
+
+class SecurityDutyRostersHubScreen extends StatelessWidget {
+  const SecurityDutyRostersHubScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) => DefaultTabController(
+    length: 2,
+    child: Scaffold(
+      backgroundColor: const Color(0xFFF1F6FC),
+      appBar: AppBar(
+        title: const Text('كشوف المناوبات'),
+        backgroundColor: const Color(0xFF123B63),
+        foregroundColor: Colors.white,
+        centerTitle: true,
+        bottom: const TabBar(
+          labelColor: Colors.white,
+          unselectedLabelColor: Colors.white70,
+          indicatorColor: Color(0xFFE8CB84),
+          tabs: [
+            Tab(icon: Icon(Icons.today_rounded), text: 'الحالية'),
+            Tab(icon: Icon(Icons.archive_rounded), text: 'السابقة'),
+          ],
+        ),
+      ),
+      body: const TabBarView(children: [
+        SecurityDutyRostersScreen(embedded: true),
+        SecurityDutyRostersScreen(archive: true, embedded: true),
+      ]),
+    ),
+  );
 }

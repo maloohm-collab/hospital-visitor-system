@@ -79,7 +79,7 @@ class _ReportCenterScreenState extends State<ReportCenterScreen> {
               decoration: const InputDecoration(labelText: 'نوع التقرير'),
               items: [
                 const DropdownMenuItem(value: 'security_incident', child: Text('حادث أو ملاحظة أمنية')),
-                const DropdownMenuItem(value: 'shift_summary', child: Text('سير المناوبة')),
+                if (supervisor) const DropdownMenuItem(value: 'shift_summary', child: Text('سير المناوبة')),
                 if (supervisor) ...[
                   const DropdownMenuItem(value: 'technical_note', child: Text('ملاحظة فنية')),
                   const DropdownMenuItem(value: 'recommendation_positive', child: Text('توصية إيجابية')),

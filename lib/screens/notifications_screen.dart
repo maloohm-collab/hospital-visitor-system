@@ -9,12 +9,15 @@ import 'security_duty_rosters_screen.dart';
 import 'duty_roster_screen.dart';
 import 'report_center_screen.dart';
 import 'work_location_screen.dart';
+import 'work_site_notes_inbox_screen.dart';
 import 'visitor_logs_screen.dart';
+import 'visitor_form_screen.dart';
 import '../widgets/app_search_field.dart';
 
 class NotificationsScreen extends StatefulWidget {
-  const NotificationsScreen({super.key, required this.userRole});
+  const NotificationsScreen({super.key, required this.userRole, this.embedded = false});
   final String userRole;
+  final bool embedded;
   @override
   State<NotificationsScreen> createState() => _NotificationsScreenState();
 }
@@ -100,12 +103,20 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                 if (d.exists) targets[d.id] = d.data()!;
               }
               if (targets.isEmpty) { refresh(() => sending = false); message('لم يتم العثور على مستلمين نشطين.'); return; }
+              final tickerGroupId = db.collection('notifications').doc().id;
+              final recipientRoles = audience == 'all_staff'
+                  ? <String>['security_officer', 'supervisor']
+                  : audience == 'supervisors'
+                      ? <String>['supervisor']
+                      : <String>['security_officer'];
               final batch = db.batch();
               for (final entry in targets.entries) {
                 final ref = db.collection('notifications').doc();
                 batch.set(ref, {'notificationId': ref.id, 'recipientUid': entry.key, 'recipientRole': entry.value['role'] ?? '',
-                  'senderUid': sender?.uid ?? uid, 'senderEmail': sender?.email ?? '', 'title': title.text.trim(), 'body': body.text.trim(),
-                  'priority': priority, 'read': false, 'createdAt': FieldValue.serverTimestamp()});
+                  'senderUid': sender?.uid ?? uid, 'senderEmail': sender?.email ?? '', 'senderName': 'الإدارة', 'title': title.text.trim(), 'body': body.text.trim(),
+                  'priority': priority, 'read': false, 'kind': 'ticker_announcement',
+                  'tickerGroupId': tickerGroupId, 'tickerVisible': true,
+                  'recipientRoles': recipientRoles, 'createdAt': FieldValue.serverTimestamp()});
               }
               await batch.commit();
               if (ctx.mounted) Navigator.pop(sheet);
@@ -163,10 +174,22 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       ));
       return;
     }
-    if (kind.startsWith('emergency_')) {
+    if (kind == 'work_site_note') {
       await Navigator.push(context, MaterialPageRoute(
-        builder: (_) => const EmergencyDutyScreen(),
+        builder: (_) => WorkSiteNotesInboxScreen(userRole: widget.userRole),
       ));
+      return;
+    }
+    if (kind.startsWith('emergency_')) {
+      if (widget.userRole == 'security_officer') {
+        await Navigator.push(context, MaterialPageRoute(
+          builder: (_) => NotificationDetailsScreen(data: data),
+        ));
+      } else {
+        await Navigator.push(context, MaterialPageRoute(
+          builder: (_) => const EmergencyDutyScreen(),
+        ));
+      }
       return;
     }
     if (kind.startsWith('work_location') || kind.startsWith('work_shift')) {
@@ -177,13 +200,17 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     }
     if (kind.startsWith('duty_report') || kind.startsWith('report_')) {
       await Navigator.push(context, MaterialPageRoute(
-        builder: (_) => ReportCenterScreen(userRole: widget.userRole),
+        builder: (_) => widget.userRole == 'security_officer'
+            ? StaffMessagesScreen(userRole: widget.userRole)
+            : ReportCenterScreen(userRole: widget.userRole),
       ));
       return;
     }
     if (kind.startsWith('visitor')) {
       await Navigator.push(context, MaterialPageRoute(
-        builder: (_) => VisitorLogsScreen(userRole: widget.userRole),
+        builder: (_) => widget.userRole == 'security_officer'
+            ? const VisitorFormScreen()
+            : VisitorLogsScreen(userRole: widget.userRole),
       ));
       return;
     }
@@ -194,7 +221,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: Text(admin ? 'الإشعارات والملحوظات الإدارية' : 'الإشعارات')),
+    appBar: widget.embedded ? null : AppBar(title: Text(admin ? 'الإشعارات والملحوظات الإدارية' : 'الإشعارات')),
     floatingActionButton: admin ? FloatingActionButton.extended(onPressed: compose, icon: const Icon(Icons.send_rounded),
       label: const Text('إشعار الوظائف اليومية'), backgroundColor: teal, foregroundColor: Colors.white) : null,
     body: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(

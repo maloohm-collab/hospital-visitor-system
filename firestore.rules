@@ -1,5 +1,5 @@
 rules_version = '2';
-// Staff-message notification validation aligned with the message composer (minimum 3 chars).
+// Staff-message validation aligned with the composer; supervisor copies may target active admins.
 service cloud.firestore {
   match /databases/{database}/documents {
     function signedIn() {
@@ -269,10 +269,8 @@ service cloud.firestore {
       }
 
     match /visitor_logs/{visitId} {
-      // Save a record immediately when the visitor enters.
-      allow create: if isActiveUser()
-        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role
-          in ['admin', 'supervisor', 'security_officer']
+      allow create: if (isActiveUser()
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'security_officer'
         && request.resource.data.keys().hasOnly([
           'visitId', 'floorId', 'floorName', 'department', 'roomNumber',
           'visitorCount', 'visitDate', 'entryAt', 'exitAt', 'notes',
@@ -287,9 +285,7 @@ service cloud.firestore {
         && request.resource.data.createdBy == request.auth.uid
         && request.resource.data.createdByName is string
         && request.resource.data.createdByPhone is string
-        && request.resource.data.floorId in [
-          'floor_5', 'floor_4', 'floor_3', 'floor_2', 'floor_1', 'ccu'
-        ]
+        && request.resource.data.floorId in ['floor_5', 'floor_4', 'floor_3', 'floor_2', 'floor_1', 'ccu']
         && request.resource.data.floorName is string
         && request.resource.data.department is string
         && request.resource.data.roomNumber is string
@@ -300,68 +296,40 @@ service cloud.firestore {
         && request.resource.data.exitAt == null
         && request.resource.data.notes is string
         && request.resource.data.status == 'inside'
-        && request.resource.data.createdAt == request.time;
+        && request.resource.data.createdAt == request.time);
 
-      // The creator may only add the exit time once; other fields are immutable.
       allow update: if isActiveUser()
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'security_officer'
         && resource.data.createdBy == request.auth.uid
-        && resource.data.status == 'inside'
-        && request.resource.data.status == 'completed'
-        && request.resource.data.exitAt is timestamp
-        && request.resource.data.exitAt >= resource.data.entryAt
-        && request.resource.data.updatedAt is timestamp
-        && request.resource.data.notes is string
-        && request.resource.data.diff(resource.data).affectedKeys()
-          .hasOnly(['exitAt', 'status', 'updatedAt', 'notes'])
-        && request.resource.data.keys().hasAll([
-          'visitId', 'floorId', 'floorName', 'department', 'roomNumber',
-          'visitorCount', 'visitDate', 'entryAt', 'exitAt', 'notes',
-          'status', 'createdBy', 'createdAt', 'updatedAt'
-        ]);
-
-      // Officers may hide their own completed visit records from their personal list.
-      // The shared visit record remains available to supervisors and administrators.
-      allow update: if isActiveUser()
-        && resource.data.createdBy == request.auth.uid
-        && resource.data.status == 'completed'
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['hiddenFor'])
-        && request.resource.data.hiddenFor is list
-        && request.resource.data.hiddenFor.hasAll(resource.data.get('hiddenFor', []))
-        && request.resource.data.hiddenFor.size()
-          == resource.data.get('hiddenFor', []).size() + 1
-        && !resource.data.get('hiddenFor', []).hasAny([request.auth.uid])
-        && request.resource.data.hiddenFor.hasAny([request.auth.uid]);
-
-      // The visit creator may add, edit, or clear only the notes field on their own visit,
-      // whether the visit is still inside or already completed. Other visit data stays immutable.
-      allow update: if isActiveUser()
-        && resource.data.createdBy == request.auth.uid
-        && resource.data.status in ['inside', 'completed']
-        && request.resource.data.status == resource.data.status
-        && request.resource.data.exitAt == resource.data.exitAt
-        && request.resource.data.notes is string
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['notes']);
-
-      // Staff can view their own records; supervisors and admins can review all records.
-      allow get, list: if isActiveUser()
         && (
-          resource.data.createdBy == request.auth.uid
-          || isActiveSupervisor()
-          || isActiveAdmin()
-        );
-
-      // Only completed visits can be deleted. Officers may delete their own;
-      // supervisors and administrators may delete any completed visit.
-      allow delete: if isActiveUser()
-        && resource.data.status == 'completed'
-        && (
-          isActiveAdmin()
-          || isActiveSupervisor()
-          || (
-            resource.data.createdBy == request.auth.uid
-            && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'security_officer'
+          (
+            resource.data.status == 'inside'
+            && request.resource.data.status == 'completed'
+            && request.resource.data.exitAt is timestamp
+            && request.resource.data.exitAt >= resource.data.entryAt
+            && request.resource.data.updatedAt is timestamp
+            && request.resource.data.notes is string
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['exitAt', 'status', 'updatedAt', 'notes'])
+          )
+          ||
+          (
+            resource.data.status in ['inside', 'completed']
+            && request.resource.data.status == resource.data.status
+            && request.resource.data.exitAt == resource.data.exitAt
+            && request.resource.data.notes is string
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['notes'])
           )
         );
+
+      allow get, list: if isActiveUser()
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'security_officer'
+        && resource.data.createdBy == request.auth.uid;
+
+      allow delete: if isActiveUser()
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'security_officer'
+        && resource.data.createdBy == request.auth.uid
+        && resource.data.status == 'completed'
+        && resource.data.exitAt is timestamp;
     }
 
     match /duty_reports/{reportId} {
@@ -394,7 +362,7 @@ service cloud.firestore {
           (
             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'security_officer'
             && request.resource.data.createdByRole == 'security_officer'
-            && request.resource.data.type in ['security_incident', 'shift_summary']
+            && request.resource.data.type == 'security_incident'
             && request.resource.data.destination == 'supervisor'
             && request.resource.data.status == 'submitted'
           )
@@ -442,30 +410,14 @@ service cloud.firestore {
           == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.displayName
         && request.resource.data.reviewedAt == request.time
         && request.resource.data.updatedAt == request.time
-      ) || (
-        isActiveUser()
-        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'security_officer'
-        && resource.data.createdBy == request.auth.uid
-        && resource.data.createdByRole == 'security_officer'
-        && resource.data.type == 'shift_summary'
-        && resource.data.destination == 'supervisor'
-        && resource.data.status == 'submitted'
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-          'title', 'body', 'priority', 'updatedAt'
-        ])
-        && request.resource.data.reportId == resource.data.reportId
-        && request.resource.data.createdBy == resource.data.createdBy
-        && request.resource.data.createdAt == resource.data.createdAt
-        && request.resource.data.type == 'shift_summary'
-        && request.resource.data.destination == 'supervisor'
-        && request.resource.data.status == 'submitted'
-        && request.resource.data.updatedAt == request.time
       );
 
       // A report owner may edit only the text fields; routing and review state stay protected.
       allow update: if isActiveUser()
         && resource.data.createdBy == request.auth.uid
         && !(resource.data.destination == 'admin' && resource.data.status in ['forwarded', 'acknowledged'])
+        && !(get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'security_officer'
+          && resource.data.type == 'shift_summary')
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
           'title', 'body', 'employeeName', 'priority', 'updatedAt'
         ])
@@ -684,13 +636,82 @@ service cloud.firestore {
       }
     }
 
+    // Shared news ticker configuration: readable by active users, writable only by admins.
+    match /app_settings/{settingId} {
+      allow get: if isActiveUser() && settingId == 'news_ticker';
+      allow list: if false;
+
+      allow create, update: if isActiveAdmin()
+        && settingId == 'news_ticker'
+        && request.resource.data.keys().hasOnly([
+          'speedSeconds', 'fontSize', 'fontFamily', 'direction', 'bold', 'backgroundPreset',
+          'backgroundStart', 'backgroundMid', 'backgroundHighlight', 'backgroundEnd',
+          'urgentBackgroundStart', 'urgentBackgroundMid', 'urgentBackgroundHighlight',
+          'urgentBackgroundEnd', 'urgentRedMode', 'textColor', 'secondaryTextColor',
+          'accentColor', 'iconColor', 'stripColor', 'borderColor', 'progressColor',
+          'navigationColor', 'inactiveIndicatorColor', 'urgentAccentColor', 'urgentIconColor',
+          'urgentChipBackground', 'urgentChipText', 'importantChipBackground',
+          'importantChipText', 'normalChipBackground', 'normalChipText', 'updatedAt'
+        ])
+        && request.resource.data.keys().hasAll([
+          'speedSeconds', 'fontSize', 'fontFamily', 'direction', 'bold', 'backgroundPreset',
+          'backgroundStart', 'backgroundMid', 'backgroundHighlight', 'backgroundEnd',
+          'urgentBackgroundStart', 'urgentBackgroundMid', 'urgentBackgroundHighlight',
+          'urgentBackgroundEnd', 'urgentRedMode', 'textColor', 'secondaryTextColor',
+          'accentColor', 'iconColor', 'stripColor', 'borderColor', 'progressColor',
+          'navigationColor', 'inactiveIndicatorColor', 'urgentAccentColor', 'urgentIconColor',
+          'urgentChipBackground', 'urgentChipText', 'importantChipBackground',
+          'importantChipText', 'normalChipBackground', 'normalChipText', 'updatedAt'
+        ])
+        && request.resource.data.speedSeconds is int
+        && request.resource.data.speedSeconds >= 12
+        && request.resource.data.speedSeconds <= 120
+        && request.resource.data.fontSize is number
+        && request.resource.data.fontSize >= 12
+        && request.resource.data.fontSize <= 30
+        && request.resource.data.fontFamily in ['sans-serif', 'serif', 'monospace']
+        && request.resource.data.direction in ['left_to_right', 'right_to_left']
+        && request.resource.data.bold is bool
+        && request.resource.data.backgroundPreset in ['burgundy', 'navy', 'emerald', 'purple', 'slate', 'amber']
+        && request.resource.data.urgentRedMode is bool
+        && request.resource.data.backgroundStart is int
+        && request.resource.data.backgroundMid is int
+        && request.resource.data.backgroundHighlight is int
+        && request.resource.data.backgroundEnd is int
+        && request.resource.data.urgentBackgroundStart is int
+        && request.resource.data.urgentBackgroundMid is int
+        && request.resource.data.urgentBackgroundHighlight is int
+        && request.resource.data.urgentBackgroundEnd is int
+        && request.resource.data.textColor is int
+        && request.resource.data.secondaryTextColor is int
+        && request.resource.data.accentColor is int
+        && request.resource.data.iconColor is int
+        && request.resource.data.stripColor is int
+        && request.resource.data.borderColor is int
+        && request.resource.data.progressColor is int
+        && request.resource.data.navigationColor is int
+        && request.resource.data.inactiveIndicatorColor is int
+        && request.resource.data.urgentAccentColor is int
+        && request.resource.data.urgentIconColor is int
+        && request.resource.data.urgentChipBackground is int
+        && request.resource.data.urgentChipText is int
+        && request.resource.data.importantChipBackground is int
+        && request.resource.data.importantChipText is int
+        && request.resource.data.normalChipBackground is int
+        && request.resource.data.normalChipText is int
+        && request.resource.data.updatedAt == request.time;
+
+      allow delete: if false;
+    }
+
     match /notifications/{notificationId} {
       // Admin notices plus atomic emergency assignment/arrival notices.
       allow create: if isActiveUser()
         && request.resource.data.keys().hasOnly([
           'notificationId', 'recipientUid', 'recipientRole', 'senderUid',
           'senderEmail', 'title', 'body', 'priority', 'read', 'createdAt',
-          'kind', 'relatedId', 'replyId', 'senderName'
+          'kind', 'relatedId', 'replyId', 'senderName', 'tickerGroupId',
+          'tickerVisible', 'recipientRoles', 'broadcastToAll'
         ])
         && request.resource.data.keys().hasAll([
           'notificationId', 'recipientUid', 'recipientRole', 'senderUid',
@@ -737,6 +758,15 @@ service cloud.firestore {
             && get(/databases/$(database)/documents/staff_messages/$(request.resource.data.relatedId)/replies/$(request.resource.data.replyId)).data.body == request.resource.data.body
           )
           || (
+            get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'security_officer'
+            && request.resource.data.kind == 'work_site_note'
+            && request.resource.data.relatedId is string
+            && exists(/databases/$(database)/documents/work_shift_notes/$(request.resource.data.relatedId))
+            && get(/databases/$(database)/documents/work_shift_notes/$(request.resource.data.relatedId)).data.officerUid == request.auth.uid
+            && request.resource.data.recipientUid in get(/databases/$(database)/documents/work_shift_notes/$(request.resource.data.relatedId)).data.recipientUids
+            && request.resource.data.recipientRole == get(/databases/$(database)/documents/users/$(request.resource.data.recipientUid)).data.role
+          )
+          || (
             isActiveSupervisor()
             && request.resource.data.kind == 'emergency_assignment'
             && request.resource.data.relatedId is string
@@ -764,16 +794,39 @@ service cloud.firestore {
         );
 
       allow get, list: if isActiveUser()
-        && (resource.data.recipientUid == request.auth.uid
+        && (isActiveAdmin() || resource.data.recipientUid == request.auth.uid
           || resource.data.senderUid == request.auth.uid);
 
-      // Recipients may mark their own notice read, but cannot edit its content or recipient.
-      allow update: if isActiveUser()
+      // Admins may edit or hide published admin ticker notices only.
+      allow update: if (
+        isActiveAdmin()
+        && (resource.data.kind == 'ticker_announcement'
+          || (resource.data.kind == null && resource.data.senderName == 'الإدارة'))
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'title', 'body', 'priority', 'tickerVisible', 'tickerGroupId',
+          'recipientRoles', 'broadcastToAll'
+        ])
+        && request.resource.data.title is string
+        && request.resource.data.title.size() >= 3
+        && request.resource.data.body is string
+        && request.resource.data.body.size() >= 1
+        && request.resource.data.priority in ['normal', 'important', 'urgent']
+        && (!request.resource.data.keys().hasAny(['tickerVisible'])
+          || request.resource.data.tickerVisible is bool)
+        && (!request.resource.data.keys().hasAny(['tickerGroupId'])
+          || request.resource.data.tickerGroupId is string)
+        && (!request.resource.data.keys().hasAny(['recipientRoles'])
+          || request.resource.data.recipientRoles is list)
+        && (!request.resource.data.keys().hasAny(['broadcastToAll'])
+          || request.resource.data.broadcastToAll is bool)
+      ) || (
+        isActiveUser()
         && resource.data.recipientUid == request.auth.uid
         && resource.data.read == false
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read', 'readAt'])
         && request.resource.data.read == true
-        && request.resource.data.readAt == request.time;
+        && request.resource.data.readAt == request.time
+      );
 
       allow delete: if false;
     }
@@ -923,57 +976,63 @@ service cloud.firestore {
     }
 
     match /work_shift_notes/{noteId} {
-      allow create: if isActiveUser()
+      function isOfficerOwner() {
+        return isActiveUser()
+          && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'security_officer'
+          && resource.data.officerUid == request.auth.uid;
+      }
+
+      allow create: if (isActiveUser()
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'security_officer'
+        && request.resource.data.keys().hasOnly([
+          'noteId', 'shiftId', 'officerUid', 'officerName', 'locationName',
+          'body', 'recipientUids', 'createdAt', 'hiddenFromOfficer'
+        ])
         && request.resource.data.keys().hasAll([
-          'noteId', 'shiftId', 'officerUid', 'officerName', 'locationName', 'body', 'recipientUids', 'createdAt'
+          'noteId', 'shiftId', 'officerUid', 'officerName', 'locationName',
+          'body', 'recipientUids', 'createdAt', 'hiddenFromOfficer'
         ])
         && request.resource.data.noteId == noteId
-        && request.resource.data.officerUid is string
+        && request.resource.data.officerUid == request.auth.uid
         && request.resource.data.officerName is string
         && request.resource.data.locationName is string
+        && request.resource.data.locationName.size() >= 2
         && request.resource.data.body is string
         && request.resource.data.body.size() >= 2
+        && request.resource.data.body.size() <= 1000
+        && request.resource.data.hiddenFromOfficer == false
         && request.resource.data.createdAt == request.time
         && validWorkNoteRecipients(request.resource.data)
-        && (
-          (
-            request.resource.data.keys().hasOnly([
-              'noteId', 'shiftId', 'officerUid', 'officerName', 'locationName', 'body', 'recipientUids', 'createdAt',
-              'ownerDeleteUntil', 'hiddenFromOfficer'
-            ])
-            && request.resource.data.hiddenFromOfficer == false
-            && request.resource.data.ownerDeleteUntil is timestamp
-            && request.resource.data.ownerDeleteUntil > request.time
-            && request.resource.data.ownerDeleteUntil <= request.time + duration.value(24, 'h')
-            && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'security_officer'
-            && request.resource.data.officerUid == request.auth.uid
-            && exists(/databases/$(database)/documents/work_shifts/$(request.resource.data.shiftId))
-            && get(/databases/$(database)/documents/work_shifts/$(request.resource.data.shiftId)).data.officerUid == request.auth.uid
-            && get(/databases/$(database)/documents/work_shifts/$(request.resource.data.shiftId)).data.status == 'active'
-            && request.time < get(/databases/$(database)/documents/work_shifts/$(request.resource.data.shiftId)).data.startedAt + duration.value(8, 'h')
-            && exists(/databases/$(database)/documents/active_work_shifts/$(request.auth.uid))
-            && get(/databases/$(database)/documents/active_work_shifts/$(request.auth.uid)).data.shiftId == request.resource.data.shiftId
-          )
-          || (
-            request.resource.data.keys().hasOnly([
-              'noteId', 'shiftId', 'officerUid', 'officerName', 'locationName', 'body', 'recipientUids', 'createdAt',
-              'forwardedFromNoteId', 'forwardedByUid', 'forwardedByName'
-            ])
-            && request.resource.data.keys().hasAll([
-              'forwardedFromNoteId', 'forwardedByUid', 'forwardedByName'
-            ])
-            && (isActiveAdmin() || isActiveSupervisor())
-            && request.resource.data.forwardedFromNoteId is string
-            && request.resource.data.forwardedByUid == request.auth.uid
-            && request.resource.data.forwardedByName is string
-            && exists(/databases/$(database)/documents/work_shift_notes/$(request.resource.data.forwardedFromNoteId))
-            && request.auth.uid in get(/databases/$(database)/documents/work_shift_notes/$(request.resource.data.forwardedFromNoteId)).data.recipientUids
-            && request.resource.data.officerUid == get(/databases/$(database)/documents/work_shift_notes/$(request.resource.data.forwardedFromNoteId)).data.officerUid
-            && request.resource.data.officerName == get(/databases/$(database)/documents/work_shift_notes/$(request.resource.data.forwardedFromNoteId)).data.officerName
-            && request.resource.data.shiftId == get(/databases/$(database)/documents/work_shift_notes/$(request.resource.data.forwardedFromNoteId)).data.shiftId
-            && request.resource.data.locationName == get(/databases/$(database)/documents/work_shift_notes/$(request.resource.data.forwardedFromNoteId)).data.locationName
-            && request.resource.data.body == get(/databases/$(database)/documents/work_shift_notes/$(request.resource.data.forwardedFromNoteId)).data.body
-          )
+        && exists(/databases/$(database)/documents/active_work_shifts/$(request.auth.uid))
+        && get(/databases/$(database)/documents/active_work_shifts/$(request.auth.uid)).data.shiftId == request.resource.data.shiftId
+        && exists(/databases/$(database)/documents/work_shifts/$(request.resource.data.shiftId))
+        && get(/databases/$(database)/documents/work_shifts/$(request.resource.data.shiftId)).data.officerUid == request.auth.uid
+        && get(/databases/$(database)/documents/work_shifts/$(request.resource.data.shiftId)).data.status == 'active'
+        && get(/databases/$(database)/documents/work_shifts/$(request.resource.data.shiftId)).data.activeLocationName == request.resource.data.locationName)
+        || (
+          isActiveUser()
+          && request.resource.data.keys().hasOnly([
+            'noteId', 'shiftId', 'officerUid', 'officerName', 'locationName', 'body',
+            'recipientUids', 'createdAt', 'forwardedFromNoteId', 'forwardedByUid', 'forwardedByName'
+          ])
+          && request.resource.data.keys().hasAll([
+            'noteId', 'shiftId', 'officerUid', 'officerName', 'locationName', 'body',
+            'recipientUids', 'createdAt', 'forwardedFromNoteId', 'forwardedByUid', 'forwardedByName'
+          ])
+          && (isActiveAdmin() || isActiveSupervisor())
+          && request.resource.data.noteId == noteId
+          && request.resource.data.forwardedFromNoteId is string
+          && request.resource.data.forwardedByUid == request.auth.uid
+          && request.resource.data.forwardedByName is string
+          && request.resource.data.createdAt == request.time
+          && validWorkNoteRecipients(request.resource.data)
+          && exists(/databases/$(database)/documents/work_shift_notes/$(request.resource.data.forwardedFromNoteId))
+          && request.auth.uid in get(/databases/$(database)/documents/work_shift_notes/$(request.resource.data.forwardedFromNoteId)).data.recipientUids
+          && request.resource.data.officerUid == get(/databases/$(database)/documents/work_shift_notes/$(request.resource.data.forwardedFromNoteId)).data.officerUid
+          && request.resource.data.officerName == get(/databases/$(database)/documents/work_shift_notes/$(request.resource.data.forwardedFromNoteId)).data.officerName
+          && request.resource.data.shiftId == get(/databases/$(database)/documents/work_shift_notes/$(request.resource.data.forwardedFromNoteId)).data.shiftId
+          && request.resource.data.locationName == get(/databases/$(database)/documents/work_shift_notes/$(request.resource.data.forwardedFromNoteId)).data.locationName
+          && request.resource.data.body == get(/databases/$(database)/documents/work_shift_notes/$(request.resource.data.forwardedFromNoteId)).data.body
         );
 
       allow get, list: if isActiveUser()
@@ -982,7 +1041,6 @@ service cloud.firestore {
             resource.data.officerUid == request.auth.uid
             && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'security_officer'
             && resource.data.hiddenFromOfficer == false
-            && request.time < resource.data.createdAt + duration.value(10, 'h')
           )
           || (
             request.auth.uid in resource.data.recipientUids
@@ -990,18 +1048,28 @@ service cloud.firestore {
           )
         );
 
-      allow update: if isActiveUser()
-        && resource.data.officerUid == request.auth.uid
-        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'security_officer'
+      allow update: if (
+        isOfficerOwner()
         && resource.data.hiddenFromOfficer == false
-        && resource.data.ownerDeleteUntil is timestamp
-        && request.time < resource.data.ownerDeleteUntil
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['hiddenFromOfficer'])
-        && request.resource.data.hiddenFromOfficer == true;
-
-      allow delete: if isActiveUser()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['body', 'updatedAt'])
+        && request.resource.data.body is string
+        && request.resource.data.body.size() >= 2
+        && request.resource.data.body.size() <= 1000
+        && request.resource.data.updatedAt == request.time
+      ) || (
+        isActiveUser()
         && request.auth.uid in resource.data.recipientUids
-        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['supervisor', 'admin'];
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['supervisor', 'admin']
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['hiddenFromOfficer'])
+        && request.resource.data.hiddenFromOfficer == true
+      );
+
+      allow delete: if isOfficerOwner()
+        || (
+          isActiveUser()
+          && request.auth.uid in resource.data.recipientUids
+          && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['supervisor', 'admin']
+        );
     }
 
 
@@ -1019,7 +1087,7 @@ service cloud.firestore {
           'messageId', 'threadId', 'senderUid', 'senderName', 'senderRole', 'senderLabel',
           'recipientUid', 'recipientName', 'recipientRole', 'recipientLabel', 'locationName', 'title', 'body',
           'priority', 'requestReply', 'replyStatus', 'attachments', 'read',
-          'hiddenFor', 'createdAt'
+          'hiddenFor', 'showOnTicker', 'tickerStyle', 'createdAt'
         ])
         && request.resource.data.keys().hasAll([
           'messageId', 'threadId', 'senderUid', 'senderName', 'senderRole', 'senderLabel',
@@ -1047,19 +1115,48 @@ service cloud.firestore {
         && request.resource.data.attachments.size() == 0
         && request.resource.data.read == false
         && request.resource.data.hiddenFor is list
+        && (!request.resource.data.keys().hasAny(['showOnTicker'])
+          || request.resource.data.showOnTicker is bool)
+        && (!request.resource.data.keys().hasAny(['tickerStyle'])
+          || (
+            isActiveSupervisor()
+            && request.resource.data.showOnTicker == true
+            && request.resource.data.tickerStyle is map
+            && request.resource.data.tickerStyle.keys().hasOnly(['fontSize', 'fontFamily', 'bold'])
+            && request.resource.data.tickerStyle.keys().hasAll(['fontSize', 'fontFamily', 'bold'])
+            && request.resource.data.tickerStyle.fontSize is number
+            && request.resource.data.tickerStyle.fontSize >= 12
+            && request.resource.data.tickerStyle.fontSize <= 30
+            && request.resource.data.tickerStyle.fontFamily in ['sans-serif', 'serif', 'monospace']
+            && request.resource.data.tickerStyle.bold is bool
+          ))
         && request.resource.data.createdAt == request.time
         && (
           isActiveAdmin()
           || (isActiveSupervisor()
-            && request.resource.data.recipientRole == 'security_officer')
+            && request.resource.data.recipientRole in ['security_officer', 'admin'])
           || (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'security_officer'
             && request.resource.data.recipientRole in ['supervisor', 'admin'])
         );
 
-      allow get, list: if isMessageParticipant();
+      allow get, list: if isMessageParticipant()
+        || (isActiveUser() && resource.data.showOnTicker == true);
 
-      // Recipients mark messages as read; senders attach uploaded media.
-      allow update: if isActiveUser() && (
+      // Admins may edit or hide published supervisor ticker broadcasts.
+      allow update: if (
+        isActiveAdmin()
+        && resource.data.showOnTicker == true
+        && resource.data.senderRole == 'supervisor'
+        && resource.data.recipientRole == 'security_officer'
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'title', 'body', 'priority', 'showOnTicker'
+        ])
+        && request.resource.data.title is string
+        && request.resource.data.title.size() >= 3
+        && request.resource.data.body is string
+        && request.resource.data.priority in ['normal', 'important', 'urgent']
+        && request.resource.data.showOnTicker is bool
+      ) || (isActiveUser() && (
         (
           resource.data.recipientUid == request.auth.uid
           && resource.data.read == false
@@ -1084,7 +1181,7 @@ service cloud.firestore {
           && request.resource.data.replyStatus == 'replied'
           && request.resource.data.lastReplyAt == request.time
         )
-      );
+      ));
 
       allow delete: if false;
 
@@ -1134,6 +1231,60 @@ service cloud.firestore {
           && request.resource.data.archivedBy == request.auth.uid;
         allow update, delete: if false;
       }
+    }
+
+    // Garage vehicle violation reports: officers submit their own reports;
+    // active supervisors and administrators can review and update follow-up status.
+    match /garage_violations/{violationId} {
+      allow create: if isActiveUser()
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'security_officer'
+        && request.resource.data.keys().hasOnly([
+          'violationId', 'ticketNumber', 'plateNumber', 'garageName',
+          'violationType', 'note', 'destination', 'status',
+          'createdBy', 'createdByName', 'createdByRole', 'createdAt'
+        ])
+        && request.resource.data.keys().hasAll([
+          'violationId', 'ticketNumber', 'plateNumber', 'garageName',
+          'violationType', 'note', 'destination', 'status',
+          'createdBy', 'createdByName', 'createdByRole', 'createdAt'
+        ])
+        && request.resource.data.violationId == violationId
+        && request.resource.data.ticketNumber is string
+        && request.resource.data.plateNumber is string
+        && request.resource.data.plateNumber.size() >= 1
+        && request.resource.data.garageName in [
+          'كراج الكادر', 'كراج الإدارة', 'كراج الشرعي',
+          'كراج الطوارئ والخدمات', 'شارع الخدمات'
+        ]
+        && request.resource.data.violationType is string
+        && request.resource.data.note is string
+        && request.resource.data.note.size() >= 5
+        && request.resource.data.destination in ['supervisor', 'admin']
+        && request.resource.data.status == 'new'
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.createdByName is string
+        && request.resource.data.createdByRole == 'security_officer'
+        && request.resource.data.createdAt == request.time;
+
+      allow get, list: if isActiveUser() && (
+        isActiveSupervisor()
+        || isActiveAdmin()
+        || (
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'security_officer'
+          && resource.data.createdBy == request.auth.uid
+        )
+      );
+
+      allow update: if isActiveUser()
+        && (isActiveSupervisor() || isActiveAdmin())
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'status', 'reviewedBy', 'reviewedAt'
+        ])
+        && request.resource.data.status in ['new', 'in_progress', 'resolved']
+        && request.resource.data.reviewedBy == request.auth.uid
+        && request.resource.data.reviewedAt == request.time;
+
+      allow delete: if false;
     }
 
     match /{document=**} {

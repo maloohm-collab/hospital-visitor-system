@@ -5,9 +5,11 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 class StaffMessagesScreen extends StatefulWidget {
-  const StaffMessagesScreen({super.key, required this.userRole, this.initialMessageId});
+  const StaffMessagesScreen({super.key, required this.userRole, this.initialMessageId, this.openComposerOnStart = false, this.embedded = false});
   final String userRole;
   final String? initialMessageId;
+  final bool openComposerOnStart;
+  final bool embedded;
   @override
   State<StaffMessagesScreen> createState() => _StaffMessagesScreenState();
 }
@@ -56,7 +58,11 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
     tabs = TabController(length: 3, vsync: this);
     archiveRefreshTimer = Timer.periodic(const Duration(minutes: 1), (_) { if (mounted) setState(() {}); });
     final messageId = widget.initialMessageId;
-    if (messageId != null && messageId.isNotEmpty) {
+    if (widget.openComposerOnStart && (supervisor || widget.userRole == 'security_officer')) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) compose();
+      });
+    } else if (messageId != null && messageId.isNotEmpty) {
       WidgetsBinding.instance.addPostFrameCallback((_) async {
         try {
           final doc = await db.collection('staff_messages').doc(messageId).get();
@@ -78,7 +84,7 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
       if (d.id == uid) return false;
       final role = d.data()['role'];
       if (admin) return ['admin', 'supervisor', 'security_officer'].contains(role);
-      if (supervisor) return role == 'security_officer';
+      if (supervisor) return ['security_officer', 'admin'].contains(role);
       return ['admin', 'supervisor'].contains(role);
     }).toList();
 
@@ -87,6 +93,10 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
     final selected = <String>{};
     String priority = 'normal';
     bool requestReply = false;
+    bool customTickerStyle = false;
+    double tickerFontSize = 17;
+    String tickerFontFamily = 'sans-serif';
+    bool tickerBold = true;
     bool busy = false;
 
     await showModalBottomSheet<void>(
@@ -101,13 +111,17 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const Text('إرسال ملاحظة أو تنبيه',
+                Text(widget.userRole == 'security_officer' ? 'إرسال بلاغ أو ملاحظة' : 'إرسال ملاحظة أو تنبيه',
                   style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: navy)),
-                Text('اختر المستلمين — المختار: ${selected.length}'),
+                Text(supervisor
+                    ? 'اختر الضباط أو الإدارة — ستصل نسخة للإدارة تلقائياً: ${selected.length}'
+                    : 'اختر المستلمين — المختار: ${selected.length}'),
                 Wrap(spacing: 6, children: [
                   TextButton(
-                    onPressed: () => refresh(() => selected.addAll(users.map((u) => u.id))),
-                    child: const Text('اختيار الجميع')),
+                    onPressed: () => refresh(() => selected.addAll(
+                      users.where((u) => !supervisor ||
+                        u.data()['role'] == 'security_officer').map((u) => u.id))),
+                    child: Text(supervisor ? 'جميع ضباط الأمن' : 'اختيار الجميع')),
                   if (admin) TextButton(
                     onPressed: () => refresh(() => selected.addAll(
                       users.where((u) => u.data()['role'] == 'security_officer').map((u) => u.id))),
@@ -149,6 +163,39 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
                   ],
                   onChanged: (v) => refresh(() => priority = v ?? 'normal'),
                 ),
+                if (supervisor) ...[
+                  const SizedBox(height: 8),
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text('تخصيص تنسيق هذه الملاحظة على الشريط'),
+                    subtitle: const Text('يُطبّق عند تعميم المشرف على جميع ضباط الأمن فقط، ولا يغيّر الإعدادات العامة.'),
+                    value: customTickerStyle,
+                    onChanged: (v) => refresh(() => customTickerStyle = v),
+                  ),
+                  if (customTickerStyle) ...[
+                    Text('حجم خط هذه الملاحظة: ${tickerFontSize.round()}'),
+                    Slider(
+                      min: 12, max: 30, divisions: 18, value: tickerFontSize,
+                      onChanged: (v) => refresh(() => tickerFontSize = v),
+                    ),
+                    DropdownButtonFormField<String>(
+                      value: tickerFontFamily,
+                      decoration: const InputDecoration(labelText: 'نوع الخط لهذه الملاحظة'),
+                      items: const [
+                        DropdownMenuItem(value: 'sans-serif', child: Text('خط واضح')),
+                        DropdownMenuItem(value: 'serif', child: Text('خط كلاسيكي')),
+                        DropdownMenuItem(value: 'monospace', child: Text('خط ثابت العرض')),
+                      ],
+                      onChanged: (v) => refresh(() => tickerFontFamily = v ?? 'sans-serif'),
+                    ),
+                    SwitchListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text('خط عريض للملاحظة'),
+                      value: tickerBold,
+                      onChanged: (v) => refresh(() => tickerBold = v),
+                    ),
+                  ],
+                ],
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,
                   title: const Text('طلب الرد على الملاحظة'),
@@ -188,9 +235,27 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
                         }
                       }
                       final threadId = db.collection('staff_messages').doc().id;
+                      final selectedRecipients =
+                          users.where((d) => selected.contains(d.id)).toList();
+                      // Every supervisor note is mirrored to all active administrators.
+                      // Admins explicitly selected above are not duplicated.
+                      final messageRecipients = <QueryDocumentSnapshot<Map<String, dynamic>>>[
+                        ...selectedRecipients,
+                        if (senderRole == 'supervisor')
+                          ...users.where((d) =>
+                            d.data()['role'] == 'admin' && !selected.contains(d.id)),
+                      ];
+                      final activeOfficerIds = users
+                          .where((d) => d.data()['role'] == 'security_officer')
+                          .map((d) => d.id)
+                          .toSet();
+                      final isSupervisorBroadcastToAllOfficers =
+                          senderRole == 'supervisor' &&
+                          activeOfficerIds.isNotEmpty &&
+                          activeOfficerIds.every(selected.contains);
                       final refs = <DocumentReference<Map<String, dynamic>>>[];
                       final messageBatch = db.batch();
-                      for (final recipient in users.where((d) => selected.contains(d.id))) {
+                      for (final recipient in messageRecipients) {
                         final ref = db.collection('staff_messages').doc(threadId + '_' + recipient.id);
                         refs.add(ref);
                         messageBatch.set(ref, {
@@ -213,12 +278,21 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
                           'attachments': <Map<String, dynamic>>[],
                           'read': false,
                           'hiddenFor': <String>[],
+                          'showOnTicker': isSupervisorBroadcastToAllOfficers &&
+                              recipient.data()['role'] == 'security_officer',
+                          if (supervisor && customTickerStyle && isSupervisorBroadcastToAllOfficers &&
+                              recipient.data()['role'] == 'security_officer')
+                            'tickerStyle': {
+                              'fontSize': tickerFontSize,
+                              'fontFamily': tickerFontFamily,
+                              'bold': tickerBold,
+                            },
                           'createdAt': FieldValue.serverTimestamp(),
                         });
                       }
                       await messageBatch.commit();
                       var notificationFailures = 0;
-                      for (final recipient in users.where((d) => selected.contains(d.id))) {
+                      for (final recipient in messageRecipients) {
                         final messageId = threadId + '_' + recipient.id;
                         final notificationRef = db.collection('notifications')
                             .doc('staff_message_$messageId');
@@ -244,7 +318,9 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
                       }
                       if (ctx.mounted) Navigator.pop(sheet);
                       toast(notificationFailures == 0
-                        ? 'تم إرسال الملاحظة وإشعار جميع المستلمين (' + refs.length.toString() + ').'
+                        ? (senderRole == 'supervisor'
+                            ? 'تم إيصال الملاحظة للضباط ونسخة للإدارة (' + refs.length.toString() + ' مستلماً).'
+                            : 'تم إرسال الملاحظة وإشعار جميع المستلمين (' + refs.length.toString() + ').')
                         : 'تم إرسال الملاحظة إلى ' + refs.length.toString() +
                           ' مستلم، لكن تعذر إنشاء ' + notificationFailures.toString() + ' إشعار.');
                     } on FirebaseException catch (e) {
@@ -601,32 +677,36 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('المراسلات والتنبيهات'),
+    appBar: widget.embedded ? null : AppBar(title: const Text('المراسلات والتنبيهات'),
       actions: [
         IconButton(tooltip: 'معلومة حول الحذف التلقائي', onPressed: archiveSettings, icon: const Icon(Icons.settings_outlined)),
         IconButton(tooltip: 'إخفاء كل الأرشيف', onPressed: hideAllArchive, icon: const Icon(Icons.delete_sweep_outlined)),
-      ],
-      bottom: PreferredSize(
-        preferredSize: const Size.fromHeight(54),
-        child: Container(
-          width: double.infinity,
-          color: navy,
-          child: TabBar(
+      ]),
+    floatingActionButton: FloatingActionButton.extended(
+      onPressed: compose, backgroundColor: teal, foregroundColor: Colors.white,
+      icon: const Icon(Icons.edit_notifications), label: Text(widget.userRole == 'security_officer' ? 'إرسال بلاغ' : 'إرسال ملاحظة')),
+    body: Column(children: [
+      Container(
+        width: double.infinity,
+        color: navy,
+        padding: const EdgeInsets.symmetric(horizontal: 6),
+        child: Row(children: [
+          Expanded(child: TabBar(
             controller: tabs,
             labelColor: Colors.white,
             unselectedLabelColor: Colors.white,
-            labelStyle: const TextStyle(fontSize: 17, fontWeight: FontWeight.w900),
-            unselectedLabelStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
-            indicatorColor: Colors.white,
+            labelStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
+            unselectedLabelStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+            indicatorColor: const Color(0xFFE8CB84),
             indicatorWeight: 3,
             tabs: const [Tab(text: 'الوارد'), Tab(text: 'الصادر'), Tab(text: 'الأرشيف')],
-          ),
-        ),
-      )),
-    floatingActionButton: FloatingActionButton.extended(
-      onPressed: compose, backgroundColor: teal, foregroundColor: Colors.white,
-      icon: const Icon(Icons.edit_notifications), label: const Text('إرسال ملاحظة')),
-    body: Column(children: [
+          )),
+          IconButton(tooltip: 'إعدادات الأرشيف', onPressed: archiveSettings,
+            icon: const Icon(Icons.settings_outlined, color: Colors.white)),
+          IconButton(tooltip: 'إخفاء كل الأرشيف', onPressed: hideAllArchive,
+            icon: const Icon(Icons.delete_sweep_outlined, color: Colors.white)),
+        ]),
+      ),
       Padding(padding: const EdgeInsets.fromLTRB(14, 12, 14, 4), child: TextField(
         decoration: const InputDecoration(prefixIcon: Icon(Icons.search), hintText: 'ابحث في المراسلات...'),
         onChanged: (v) => setState(() => search=v))),

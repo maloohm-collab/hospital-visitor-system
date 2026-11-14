@@ -5,6 +5,7 @@ on:
   workflow_dispatch:
   push:
     branches:
+      - work/next-development
       - work/next-release-development-2026-11-09
 
 permissions:
@@ -27,7 +28,7 @@ jobs:
         uses: actions/setup-java@v5
         with:
           distribution: temurin
-          java-version: "17"
+          java-version: "21"
 
       - name: Set up Flutter
         uses: subosito/flutter-action@v2

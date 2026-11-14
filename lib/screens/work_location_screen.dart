@@ -1,14 +1,11 @@
 import 'dart:async';
-import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:intl/intl.dart';
 import '../data/duty_roster_catalog.dart';
 import '../widgets/app_search_field.dart';
-import 'staff_messages_screen.dart';
 
 class WorkLocationScreen extends StatefulWidget {
   const WorkLocationScreen({super.key, required this.userRole});
@@ -22,18 +19,10 @@ class _WorkLocationScreenState extends State<WorkLocationScreen> {
   static const teal = Color(0xFF12B8B0);
   static const locations = DutyRosterCatalog.locations;
   final db = FirebaseFirestore.instance;
-  static const _draftStorage = FlutterSecureStorage();
-  final note = TextEditingController();
-  final draftNotes = <String>[];
-  String? _draftsLoadedForShift;
-  bool _draftsLoading = false;
-  int? _editingDraftIndex;
-  final recipients = <String>{};
   String? location;
   String _searchTerm = '';
   bool busy = false;
   Timer? expiryTimer;
-  Timer? noteVisibilityTimer;
   String? expiryShiftId;
   late final Stream<QuerySnapshot<Map<String, dynamic>>> _activeShiftsStream;
   late final Stream<QuerySnapshot<Map<String, dynamic>>> _receivedNotesStream;
@@ -46,15 +35,14 @@ class _WorkLocationScreenState extends State<WorkLocationScreen> {
     super.initState();
     _activeShiftsStream = db.collection('work_shifts').where('status', isEqualTo: 'active').snapshots();
     _receivedNotesStream = db.collection('work_shift_notes').where('recipientUids', arrayContains: uid).snapshots();
-    if (officer) {
-      noteVisibilityTimer = Timer.periodic(const Duration(minutes: 1), (_) {
-        if (mounted) setState(() {});
-      });
-    }
   }
 
+
   @override
-  void dispose() { expiryTimer?.cancel(); noteVisibilityTimer?.cancel(); note.dispose(); super.dispose(); }
+  void dispose() {
+    expiryTimer?.cancel();
+    super.dispose();
+  }
 
   void msg(String value) {
     if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(value)));
@@ -138,7 +126,7 @@ class _WorkLocationScreenState extends State<WorkLocationScreen> {
     if (!automatic) {
       final yes = await showDialog<bool>(context: context, builder: (c) => AlertDialog(
         title: const Text('إنهاء المناوبة؟'),
-        content: const Text('سيتم إغلاق الموقع الحالي وحفظ السجل والملاحظات لدى المستلمين.'),
+        content: const Text('سيتم إغلاق موقع العمل وحفظ سجل المناوبة.'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('رجوع')),
           FilledButton(onPressed: () => Navigator.pop(c, true), child: const Text('إنهاء المناوبة')),
@@ -181,134 +169,6 @@ class _WorkLocationScreenState extends State<WorkLocationScreen> {
     } finally { if (mounted) setState(() => busy = false); }
   }
 
-  String _draftStorageKey(String shiftId) => 'work_note_drafts_${uid}_$shiftId';
-
-  void _ensureDraftsLoaded(String shiftId) {
-    if (_draftsLoadedForShift == shiftId || _draftsLoading) return;
-    _draftsLoading = true;
-    Future<void>(() async {
-      try {
-        final raw = await _draftStorage.read(key: _draftStorageKey(shiftId));
-        final decoded = raw == null
-            ? <String>[]
-            : (jsonDecode(raw) as List).whereType<String>().toList();
-        if (!mounted) return;
-        setState(() {
-          draftNotes
-            ..clear()
-            ..addAll(decoded);
-          _draftsLoadedForShift = shiftId;
-        });
-      } catch (_) {
-        if (mounted) {
-          setState(() {
-            draftNotes.clear();
-            _draftsLoadedForShift = shiftId;
-          });
-          msg('تعذر استعادة المسودات المحفوظة على الجهاز.');
-        }
-      } finally {
-        _draftsLoading = false;
-      }
-    });
-  }
-
-  Future<void> _persistDrafts() async {
-    final shiftId = _draftsLoadedForShift;
-    if (shiftId == null) return;
-    final key = _draftStorageKey(shiftId);
-    try {
-      if (draftNotes.isEmpty) {
-        await _draftStorage.delete(key: key);
-      } else {
-        await _draftStorage.write(key: key, value: jsonEncode(draftNotes));
-      }
-    } catch (_) {
-      if (mounted) msg('تعذر حفظ المسودات على الجهاز.');
-    }
-  }
-
-  void _saveDraftNote() {
-    if (_draftsLoading) return;
-    final value = note.text.trim();
-    if (value.length < 2) { msg('اكتب ملاحظة لا تقل عن حرفين لإضافتها للمسودات.'); return; }
-    final editing = _editingDraftIndex;
-    setState(() {
-      if (editing != null && editing >= 0 && editing < draftNotes.length) {
-        draftNotes[editing] = value;
-        _editingDraftIndex = null;
-      } else {
-        draftNotes.add(value);
-      }
-      note.clear();
-    });
-    unawaited(_persistDrafts());
-    msg(editing == null ? 'أُضيفت الملاحظة إلى المسودات.' : 'تم حفظ تعديل المسودة.');
-  }
-
-  void _editDraft(int index) {
-    if (index < 0 || index >= draftNotes.length || _draftsLoading) return;
-    setState(() {
-      note.text = draftNotes[index];
-      _editingDraftIndex = index;
-    });
-  }
-
-  void _removeDraft(int index) {
-    if (index < 0 || index >= draftNotes.length || _draftsLoading) return;
-    setState(() {
-      draftNotes.removeAt(index);
-      if (_editingDraftIndex == index) {
-        _editingDraftIndex = null;
-        note.clear();
-      } else if (_editingDraftIndex != null && _editingDraftIndex! > index) {
-        _editingDraftIndex = _editingDraftIndex! - 1;
-      }
-    });
-    unawaited(_persistDrafts());
-  }
-
-  Future<void> _sendNote(String shiftId, String officerName) async {
-    if (note.text.trim().isNotEmpty || _editingDraftIndex != null) {
-      msg('احفظ النص أو تعديل المسودة أولًا قبل الإرسال.');
-      return;
-    }
-    if (draftNotes.isEmpty) { msg('أضف ملاحظة واحدة على الأقل إلى المسودات.'); return; }
-    if (recipients.isEmpty) { msg('اختر مشرفًا أو إداريًا واحدًا على الأقل.'); return; }
-    if (busy) return;
-    setState(() => busy = true);
-    try {
-      final shiftSnapshot = await db.collection('work_shifts').doc(shiftId).get();
-      final currentLocation = (shiftSnapshot.data()?['activeLocationName'] as String? ?? '').trim();
-      final localNow = DateTime.now().toLocal();
-      final deleteUntil = DateTime(localNow.year, localNow.month, localNow.day + 1);
-      final batch = db.batch();
-      for (final body in List<String>.from(draftNotes)) {
-        final ref = db.collection('work_shift_notes').doc();
-        batch.set(ref, {
-          'noteId': ref.id, 'shiftId': shiftId, 'officerUid': uid,
-          'officerName': officerName, 'locationName': currentLocation,
-          'body': body, 'recipientUids': recipients.toList(),
-          'createdAt': FieldValue.serverTimestamp(),
-          'ownerDeleteUntil': Timestamp.fromDate(deleteUntil),
-          'hiddenFromOfficer': false,
-        });
-      }
-      await batch.commit();
-      if (mounted) {
-        setState(() {
-          draftNotes.clear();
-          _editingDraftIndex = null;
-          recipients.clear();
-        });
-      }
-      await _persistDrafts();
-      msg('تم إرسال جميع الملاحظات وحفظها لدى المستلمين.');
-    } on FirebaseException catch (e) {
-      msg('تعذر إرسال الملاحظات (' + e.code + ').');
-    } finally { if (mounted) setState(() => busy = false); }
-  }
-
   Future<void> _deleteNote(String noteId) async {
     if (officer || busy) return;
     final yes = await showDialog<bool>(
@@ -328,32 +188,6 @@ class _WorkLocationScreenState extends State<WorkLocationScreen> {
     try {
       await db.collection('work_shift_notes').doc(noteId).delete();
       msg('تم حذف الملاحظة.');
-    } on FirebaseException catch (e) {
-      msg('تعذر حذف الملاحظة (' + e.code + ').');
-    }
-  }
-
-  Future<void> _hideOwnNote(String noteId) async {
-    if (!officer || busy) return;
-    final yes = await showDialog<bool>(
-      context: context,
-      builder: (c) => AlertDialog(
-        title: const Text('حذف الملاحظة المرسلة؟'),
-        content: const Text('يمكنك حذف ملاحظتك من حسابك خلال يوم إرسالها. ستبقى النسخة لدى المشرفين والإدارة.'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('إلغاء')),
-          FilledButton(
-            onPressed: () => Navigator.pop(c, true),
-            style: FilledButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('حذف'),
-          ),
-        ],
-      ),
-    );
-    if (yes != true) return;
-    try {
-      await db.collection('work_shift_notes').doc(noteId).update({'hiddenFromOfficer': true});
-      msg('تم إخفاء الملاحظة من حسابك، وبقيت لدى المستلمين.');
     } on FirebaseException catch (e) {
       msg('تعذر حذف الملاحظة (' + e.code + ').');
     }
@@ -540,80 +374,7 @@ class _WorkLocationScreenState extends State<WorkLocationScreen> {
     )),
   );
 
-  Widget _recentWorkerNotes() => StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-    stream: db.collection('work_shift_notes')
-        .where('officerUid', isEqualTo: uid)
-        .where('hiddenFromOfficer', isEqualTo: false)
-        .where('createdAt', isGreaterThanOrEqualTo: Timestamp.fromDate(
-          DateTime.now().subtract(const Duration(hours: 10))))
-        .snapshots(),
-    builder: (context, notesSnap) {
-      if (notesSnap.hasError) {
-        return const Padding(
-          padding: EdgeInsets.all(12),
-          child: Text('تعذر تحميل ملاحظاتك الأخيرة.'),
-        );
-      }
-      final now = DateTime.now();
-      final sent = (notesSnap.data?.docs ?? []).where((doc) {
-        final item = doc.data();
-        final createdAt = item['createdAt'];
-        return !item.containsKey('forwardedFromNoteId') &&
-          createdAt is Timestamp &&
-          now.isBefore(createdAt.toDate().add(const Duration(hours: 10)));
-      }).toList()
-        ..sort((a, b) {
-          final aTime = a.data()['createdAt'] as Timestamp;
-          final bTime = b.data()['createdAt'] as Timestamp;
-          return bTime.compareTo(aTime);
-        });
-      if (sent.isEmpty) return const SizedBox.shrink();
-      return Card(
-        color: Colors.white,
-        elevation: 0,
-        margin: const EdgeInsets.only(top: 12),
-        child: Padding(
-          padding: const EdgeInsets.all(14),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const Text('ملاحظاتي المرسلة خلال آخر 10 ساعات',
-                style: TextStyle(color: navy, fontWeight: FontWeight.w900)),
-              ...sent.map((doc) {
-                final item = doc.data();
-                final deleteUntil = item['ownerDeleteUntil'];
-                final canDelete = deleteUntil is Timestamp &&
-                  DateTime.now().isBefore(deleteUntil.toDate());
-                final site = (item['locationName'] as String? ?? '').trim();
-                return ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: const Icon(Icons.sticky_note_2_outlined, color: teal),
-                  title: Text(item['body'] as String? ?? ''),
-                  subtitle: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      if (site.isNotEmpty) Text('الموقع: $site'),
-                      _time(item['createdAt']),
-                    ],
-                  ),
-                  trailing: canDelete
-                    ? IconButton(
-                        tooltip: 'إخفاء من حسابي خلال يوم الإرسال',
-                        onPressed: busy ? null : () => _hideOwnNote(doc.id),
-                        icon: const Icon(Icons.delete_outline_rounded, color: Colors.red),
-                      )
-                    : null,
-                );
-              }),
-            ],
-          ),
-        ),
-      );
-    },
-  );
-
   Widget _activeShift(String shiftId, Map<String, dynamic> data) {
-    _ensureDraftsLoaded(shiftId);
     final siteId = data['activeLocationId'] as String?;
     final startedAt = data['startedAt'];
     if (startedAt is Timestamp && expiryShiftId != shiftId) {
@@ -654,82 +415,6 @@ class _WorkLocationScreenState extends State<WorkLocationScreen> {
         )),
       ),
       if (siteId == null) _startCard('مباشرة العمل في الموقع', () => _move(shiftId)),
-      Card(color: Colors.white, elevation: 0,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16),
-          side: const BorderSide(color: Color(0xFFDCE5ED))),
-        child: Padding(padding: const EdgeInsets.all(16), child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            const Text('إرسال ملاحظة للمشرفين / الإدارة',
-              style: TextStyle(color: navy, fontWeight: FontWeight.w900, fontSize: 16)),
-            const SizedBox(height: 8),
-            TextField(controller: note, enabled: !_draftsLoading, minLines: 2, maxLines: 5,
-              decoration: const InputDecoration(hintText: 'اكتب الملاحظة...', border: OutlineInputBorder())),
-            const SizedBox(height: 8),
-            OutlinedButton.icon(
-              onPressed: busy || _draftsLoading ? null : _saveDraftNote,
-              icon: Icon(_editingDraftIndex == null ? Icons.playlist_add_rounded : Icons.save_outlined),
-              label: Text(_editingDraftIndex == null ? 'إضافة إلى المسودات' : 'حفظ تعديل المسودة'),
-            ),
-            if (draftNotes.isNotEmpty) ...[
-              const SizedBox(height: 8),
-              const Text('المسودات — يمكنك تعديلها أو حذفها قبل الإرسال',
-                style: TextStyle(color: navy, fontWeight: FontWeight.w800)),
-              ...draftNotes.asMap().entries.map((entry) => Card(
-                color: const Color(0xFFF5FAFF),
-                elevation: 0,
-                child: ListTile(
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 10),
-                  leading: CircleAvatar(
-                    backgroundColor: teal.withOpacity(.12),
-                    child: Text('${entry.key + 1}', style: const TextStyle(color: navy, fontWeight: FontWeight.w800)),
-                  ),
-                  title: Text(entry.value, maxLines: 3, overflow: TextOverflow.ellipsis),
-                  trailing: Wrap(children: [
-                    IconButton(
-                      tooltip: 'تعديل المسودة',
-                      onPressed: busy || _draftsLoading ? null : () => _editDraft(entry.key),
-                      icon: const Icon(Icons.edit_outlined, color: navy),
-                    ),
-                    IconButton(
-                      tooltip: 'حذف المسودة',
-                      onPressed: busy || _draftsLoading ? null : () => _removeDraft(entry.key),
-                      icon: const Icon(Icons.delete_outline_rounded, color: Colors.red),
-                    ),
-                  ]),
-                ),
-              )),
-            ],
-            const SizedBox(height: 8),
-            StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-              stream: db.collection('users').where('status', isEqualTo: 'active').snapshots(),
-              builder: (context, snap) {
-                final docs = (snap.data?.docs ?? []).where((d) =>
-                  d.data()['role'] == 'supervisor' || d.data()['role'] == 'admin').toList();
-                return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  const Text('إرسال إلى:', style: TextStyle(fontWeight: FontWeight.w800)),
-                  ...docs.map((d) => CheckboxListTile(
-                    dense: true, contentPadding: EdgeInsets.zero,
-                    value: recipients.contains(d.id),
-                    title: Text((d.data()['displayName'] as String? ?? 'مستخدم') +
-                      (d.data()['role'] == 'admin' ? ' (الإدارة)' : ' (مشرف)')),
-                    onChanged: busy ? null : (v) => setState(() {
-                      if (v == true) { if (recipients.length < 5) { recipients.add(d.id); } else { msg('يمكن اختيار خمسة مستلمين كحد أقصى.'); } } else { recipients.remove(d.id); }
-                    }),
-                  )),
-                ]);
-              },
-            ),
-            FilledButton.icon(onPressed: busy ? null : () => _sendNote(
-              shiftId, data['officerName'] as String? ?? 'ضابط أمن'),
-              icon: const Icon(Icons.send_rounded), label: Text(draftNotes.isEmpty ? 'إرسال الملاحظات' : 'إرسال جميع المسودات (${draftNotes.length})'),
-              style: FilledButton.styleFrom(backgroundColor: teal, foregroundColor: Colors.white)),
-
-            const SizedBox(height: 12),
-            _recentWorkerNotes(),
-
-          ],
-        )),
-      ),
       OutlinedButton.icon(onPressed: busy ? null : () => _endShift(shiftId, siteId),
         icon: const Icon(Icons.stop_circle_outlined, color: Colors.red),
         label: const Text('إنهاء المناوبة'), style: OutlinedButton.styleFrom(foregroundColor: Colors.red)),
@@ -877,7 +562,7 @@ class _WorkLocationScreenState extends State<WorkLocationScreen> {
       );
     }
     return Scaffold(
-      appBar: AppBar(title: const Text('مباشرة العمل والملاحظات'), actions: [if (officer) IconButton(tooltip: 'المراسلات والتنبيهات', icon: const Icon(Icons.mark_chat_unread_rounded), onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const StaffMessagesScreen(userRole: 'security_officer'))))]),
+      appBar: AppBar(title: const Text('مباشرة العمل')),
       backgroundColor: const Color(0xFFF3F6FA),
       body: StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
         stream: db.collection('active_work_shifts').doc(uid).snapshots(),
@@ -892,7 +577,6 @@ class _WorkLocationScreenState extends State<WorkLocationScreen> {
             const SizedBox(height: 8), const Text('اختر موقعك الحالي ثم اضغط مباشرة العمل. سيتم تسجيل الوقت واسم الموظف تلقائيًا.',
               textAlign: TextAlign.center),
             const SizedBox(height: 20), _startCard('مباشرة العمل', _start),
-            _recentWorkerNotes(),
           ]);
           return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
             stream: db.collection('work_shifts').doc(shiftId).snapshots(),
