@@ -18,6 +18,8 @@ import 'direct_contact_screen.dart';
 import 'package:flutter/material.dart';
 import '../widgets/dashboard_header.dart';
 import '../widgets/dashboard_news_ticker.dart';
+import '../models/app_appearance_settings.dart';
+import 'app_appearance_settings_screen.dart';
 import 'account_profile_screen.dart';
 import 'staff_management_screen.dart';
 import 'duty_reports_screen.dart';
@@ -298,8 +300,7 @@ class DashboardScreen extends StatelessWidget {
     }
 
 
-    return DecoratedBox(
-      decoration: const BoxDecoration(color: Color(0xFFF2F4F8)),
+    return _withAppearanceBackground(
       child: ListView(
         padding: EdgeInsets.zero,
         children: [
@@ -413,6 +414,13 @@ class DashboardScreen extends StatelessWidget {
         subtitle: 'إضافة ملاحظات الشريط الإخباري وتعديلها وإدارتها',
         color: const Color(0xFF6B2632),
         actionTitles: const ['إدارة ملاحظات الشريط الإخباري'],
+      ),
+      _ActionCategory(
+        icon: Icons.palette_outlined,
+        title: 'إدارة مظهر التطبيق',
+        subtitle: 'اختيار الخلفية وتخصيص ألوانها لجميع المستخدمين',
+        color: const Color(0xFF9A7436),
+        actionTitles: const ['إدارة مظهر التطبيق'],
       ),
     ];
     return _buildGroupedCategories(context, actions, categories);
@@ -540,8 +548,7 @@ class DashboardScreen extends StatelessWidget {
   }
 
   Widget _buildAdminDashboard(BuildContext context, String? currentUid) {
-    return DecoratedBox(
-      decoration: const BoxDecoration(color: Color(0xFFF2F4F8)),
+    return _withAppearanceBackground(
       child: ListView(
         padding: EdgeInsets.zero,
         children: [
@@ -565,6 +572,14 @@ class DashboardScreen extends StatelessWidget {
                 color: const Color(0xFF6B2632),
                 onTap: () => Navigator.push(context, MaterialPageRoute(
                   builder: (_) => const TickerManagementScreen(userRole: 'admin'),
+                )),
+              ),
+              _AdminAction(
+                icon: Icons.palette_rounded,
+                title: 'إدارة مظهر التطبيق',
+                color: const Color(0xFF9A7436),
+                onTap: () => Navigator.push(context, MaterialPageRoute(
+                  builder: (_) => const AppAppearanceSettingsScreen(userRole: 'admin'),
                 )),
               ),
               _AdminAction(
@@ -620,6 +635,28 @@ class DashboardScreen extends StatelessWidget {
         _buildLastUpdatedFooter(),
         ],
       ),
+    );
+  }
+
+  Widget _withAppearanceBackground({required Widget child}) {
+    return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+      stream: FirebaseFirestore.instance
+          .collection('app_settings')
+          .doc('app_appearance')
+          .snapshots(),
+      builder: (context, snapshot) {
+        final settings = AppAppearanceSettings.fromMap(snapshot.data?.data());
+        return DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topRight,
+              end: Alignment.bottomLeft,
+              colors: settings.gradientColors,
+            ),
+          ),
+          child: child,
+        );
+      },
     );
   }
 
