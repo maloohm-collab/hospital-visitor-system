@@ -1,19 +1,20 @@
 // ═══════════════════════════════════════════════════════════════
 //  اسم الملف   : dashboard_news_ticker.dart
 //  آخر تحديث   : 15/11/2026
-//  الوصف       : شريط ملاحظات حيّ (تصميم جديد) مشترك بين الإدارة
-//                والمشرفين وضباط الأمن.
+//  الوصف       : شريط ملاحظات بأسلوب شاشات الأخبار (بلوك عاجل مائل) مشترك بين
+//                الإدارة والمشرفين وضباط الأمن.
 //  تعديلات هذا التحديث:
-//    • البطاقة أنحف بنحو الربع: مسافات أقل، وصف أصغر، وشريط التقدم ملاصق.
-//    • زر "إضافة ملاحظة" للإدارة صار زراً دائرياً (+) داخل رأس البطاقة؛
-//      وتبقى الحبّة الصغيرة فقط عند عدم وجود ملاحظات.
-//    • إضافة رابط "اقرأ المزيد" يفتح الملاحظة الحالية.
-//    • إصلاح اتجاه أسهم السابق/التالي لتناسب RTL.
-//    • إصلاح: TextPainter يُتلف بعد القياس (تجنّب تسرّب الذاكرة).
-//    • عند وجود ملاحظة واحدة تُخفى الأسهم والنقاط ويبقى "1 من 1".
+//    • ارتفاع البطاقة أقل بنحو 35%: رأس مضغوط + شريط نص أنحف.
+//    • حذف أسهم السابق/التالي وشريط التقدم والعدّاد السفلي.
+//    • عرض الملاحظات تباعاً تلقائياً: عند انتهاء مرور الملاحظة
+//      تنتقل البطاقة إلى التي تليها.
+//    • عند وجود أكثر من ملاحظة تظهر نقاط أسفل الشريط فقط؛
+//      النقطة الحالية تمتلئ تدريجياً كمؤشر تقدم، والنقر على نقطة
+//      ينتقل إلى ملاحظتها.
+//    • "اقرأ المزيد" صار رابطاً صغيراً بجانب وقت النشر في الرأس.
+//    • ظل ناعم وحدود رفيعة وزوايا أنعم لمظهر أكثر احترافية.
 //  ملاحظة      : ألوان الخلفية تأتي من TickerSettings.backgroundColors
-//                (قابلة للتغيير من الإعدادات)، وألوان التمييز ثوابت
-//                في قسم "ألوان التصميم" أدناه.
+//                (قابلة للتغيير من الإعدادات).
 // ═══════════════════════════════════════════════════════════════
 
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -34,8 +35,6 @@ class DashboardNewsTicker extends StatefulWidget {
 
 class _DashboardNewsTickerState extends State<DashboardNewsTicker>
     with SingleTickerProviderStateMixin {
-  // الألوان تُقرأ مركزياً من TickerSettings المحفوظة في Firestore.
-
   static const _priorityOrder = {
     'urgent': 0,
     'important': 1,
@@ -45,15 +44,7 @@ class _DashboardNewsTickerState extends State<DashboardNewsTicker>
   late final AnimationController _tickerController;
   int _activeTickerPointers = 0;
   int _activeEntryIndex = 0;
-
-  void _changeTickerEntry(int delta, int count) {
-    if (count <= 1 || !mounted) return;
-    setState(() {
-      _activeEntryIndex = (_activeEntryIndex + delta) % count;
-      if (_activeEntryIndex < 0) _activeEntryIndex += count;
-    });
-    _restartTickerForSelection();
-  }
+  int _entryCount = 0;
 
   void _selectTickerEntry(int index, int count) {
     if (count <= 0 || !mounted) return;
@@ -66,7 +57,7 @@ class _DashboardNewsTickerState extends State<DashboardNewsTicker>
     _tickerController
       ..stop(canceled: false)
       ..value = 0
-      ..repeat();
+      ..forward();
   }
 
   void _pauseTicker(PointerDownEvent event) {
@@ -82,18 +73,25 @@ class _DashboardNewsTickerState extends State<DashboardNewsTicker>
         mounted &&
         !_tickerController.isAnimating) {
       if (_tickerController.value >= 1) {
-        _tickerController.repeat();
-      } else {
-        _tickerController.forward();
+        _tickerController.value = 0;
       }
+      _tickerController.forward();
     }
   }
 
+  /// عند انتهاء مرور الملاحظة الحالية ننتقل تلقائياً إلى التالية.
   void _handleTickerStatus(AnimationStatus status) {
     if (status == AnimationStatus.completed &&
         mounted &&
         _activeTickerPointers == 0) {
-      _tickerController.repeat();
+      if (_entryCount > 1) {
+        setState(() {
+          _activeEntryIndex = (_activeEntryIndex + 1) % _entryCount;
+        });
+      }
+      _tickerController
+        ..value = 0
+        ..forward();
     }
   }
 
@@ -118,10 +116,9 @@ class _DashboardNewsTickerState extends State<DashboardNewsTicker>
 
       if (!wasPaused) {
         if (_tickerController.value >= 1) {
-          _tickerController.repeat();
-        } else {
-          _tickerController.forward();
+          _tickerController.value = 0;
         }
+        _tickerController.forward();
       }
     });
   }
@@ -159,7 +156,7 @@ class _DashboardNewsTickerState extends State<DashboardNewsTicker>
       duration: const Duration(seconds: 46),
     )
       ..addStatusListener(_handleTickerStatus)
-      ..repeat();
+      ..forward();
   }
 
   @override
@@ -638,9 +635,8 @@ class _DashboardNewsTickerState extends State<DashboardNewsTicker>
                   notificationSnapshot.data!,
                   messageSnapshot.data!,
                 );
+                _entryCount = entries.length;
 
-                // مع وجود ملاحظات: زر الإضافة دائري داخل البطاقة نفسها.
-                // بدون ملاحظات: تبقى الحبّة الصغيرة للإدارة فقط.
                 return Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -724,10 +720,9 @@ class _DashboardNewsTickerState extends State<DashboardNewsTicker>
   List<Color> _backgroundFor(
     List<_TickerEntry> entries,
     TickerSettings settings,
+    _TickerEntry active,
   ) {
-    if (settings.urgentRedMode &&
-        entries.isNotEmpty &&
-        entries.first.priority == 'urgent') {
+    if (settings.urgentRedMode && active.priority == 'urgent') {
       return settings.urgentBackgroundColors;
     }
 
@@ -780,14 +775,22 @@ class _DashboardNewsTickerState extends State<DashboardNewsTicker>
     painter.dispose();
     final contentWidth = textWidth + 60;
 
-    final stripHeight =
-        settings.fontSize + 16 > 40 ? settings.fontSize + 16 : 40.0;
+    final barHeight =
+        settings.fontSize + 18 > 46 ? settings.fontSize + 18 : 46.0;
 
-    final colors = _backgroundFor(entries, settings);
-    final top = activeEntry;
-    final isUrgent = top.priority == 'urgent';
+    final colors = _backgroundFor(entries, settings, activeEntry);
+    final isUrgent = activeEntry.priority == 'urgent';
     final accent = isUrgent ? settings.urgentAccent : settings.accent;
     final accentOn = isUrgent ? settings.urgentIcon : settings.icon;
+    final hasMany = entries.length > 1;
+
+    final label = isUrgent
+        ? 'عاجل'
+        : (activeEntry.priority == 'important' ? 'مهمة' : 'ملاحظة');
+
+    final t = activeEntry.createdAt;
+    final timeText =
+        '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
 
     return Listener(
       onPointerDown: _pauseTicker,
@@ -795,160 +798,79 @@ class _DashboardNewsTickerState extends State<DashboardNewsTicker>
       onPointerCancel: _resumeTicker,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16),
-        child: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.centerRight,
-              end: Alignment.centerLeft,
-              colors: colors,
-              stops: colors.length == 4
-                  ? const [0.0, 0.36, 0.72, 1.0]
-                  : null,
-            ),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: settings.border),
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(20),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                // ── الرأس: الأيقونة + العنوان + الأولوية + العدّاد ──
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(12, 10, 8, 8),
-                  child: Row(
-                    textDirection: TextDirection.rtl,
-                    children: [
-                      Container(
-                        width: 36,
-                        height: 36,
-                        decoration: BoxDecoration(
-                          color: accent,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Icon(
-                          isUrgent
-                              ? Icons.warning_amber_rounded
-                              : Icons.campaign_rounded,
-                          color: accentOn,
-                          size: 22,
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Row(
-                              textDirection: TextDirection.rtl,
-                              children: [
-                                Text(
-                                  isUrgent ? 'ملاحظة عاجلة' : 'ملاحظات',
-                                  style: TextStyle(
-                                    color: settings.text,
-                                    fontSize: 16,
-                                    fontFamily: settings.fontFamily,
-                                    fontWeight: FontWeight.w800,
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 8,
-                                    vertical: 2,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: _priorityChipBg(top.priority, settings),
-                                    borderRadius:
-                                        BorderRadius.circular(20),
-                                  ),
-                                  child: Text(
-                                    _priorityLabel(top.priority),
-                                    style: TextStyle(
-                                      color: _priorityChipFg(top.priority, settings),
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.w800,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              _timeAgo(top.createdAt),
-                              style: TextStyle(
-                                color: settings.secondaryText,
-                                fontSize: 12,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      if (_isAdmin)
-                        // زر (+) دائري للإدارة، بمساحة لمس 44×44.
-                        Semantics(
-                          button: true,
-                          label: 'إضافة ملاحظة',
-                          child: InkResponse(
-                            onTap: _composeAnnouncement,
-                            radius: 24,
-                            child: SizedBox(
-                              width: 44,
-                              height: 44,
-                              child: Center(
-                                child: Container(
-                                  width: 34,
-                                  height: 34,
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    border: Border.all(color: accent, width: 1.5),
-                                  ),
-                                  child: Icon(Icons.add_rounded, color: accent, size: 20),
-                                ),
-                              ),
-                            ),
-                          ),
-                        )
-                      else
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 4,
-                          ),
-                          decoration: BoxDecoration(
-                            color: settings.strip,
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Text(
-                            '${entries.length} ${entries.length == 1 ? 'ملاحظة' : 'ملاحظات'}',
-                            style: TextStyle(
-                              color: settings.secondaryText,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ),
-                    ],
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(10),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.18),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
                   ),
-                ),
-
-                // ── شريط النص المتحرك ──
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 14),
-                  child: Container(
-                    height: stripHeight,
-                    decoration: BoxDecoration(
-                      color: settings.strip,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(12),
+                ],
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(10),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Container(
+                      height: barHeight,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.centerRight,
+                          end: Alignment.centerLeft,
+                          colors: colors,
+                          stops: colors.length == 4
+                              ? const [0.0, 0.36, 0.72, 1.0]
+                              : null,
+                        ),
+                      ),
                       child: Row(
                         textDirection: TextDirection.rtl,
                         children: [
-                          Container(width: 3, color: accent),
+                          // ── بلوك العنوان (عاجل / مهمة / ملاحظة) بحافة مائلة ──
+                          ClipPath(
+                            clipper: const _SlantClipper(14),
+                            child: Container(
+                              height: barHeight,
+                              color: accent,
+                              padding: const EdgeInsets.fromLTRB(14, 0, 14, 0),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                textDirection: TextDirection.rtl,
+                                children: [
+                                  Icon(
+                                    isUrgent
+                                        ? Icons.warning_amber_rounded
+                                        : Icons.campaign_rounded,
+                                    color: accentOn,
+                                    size: 19,
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Padding(
+                                    padding:
+                                        const EdgeInsetsDirectional.only(
+                                            end: 8),
+                                    child: Text(
+                                      label,
+                                      style: TextStyle(
+                                        color: accentOn,
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.w900,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+
+                          // ── النص المتحرك ──
                           Expanded(
                             child: ClipRect(
                               child: LayoutBuilder(
@@ -1002,124 +924,106 @@ class _DashboardNewsTickerState extends State<DashboardNewsTicker>
                               ),
                             ),
                           ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
 
-                // ── مؤشر التقدم ──
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(14, 6, 14, 0),
-                  child: AnimatedBuilder(
-                    animation: _tickerController,
-                    builder: (context, _) => ClipRRect(
-                      borderRadius: BorderRadius.circular(2),
-                      child: LinearProgressIndicator(
-                        value: _tickerController.value,
-                        minHeight: 2.5,
-                        backgroundColor: settings.strip,
-                        valueColor: AlwaysStoppedAnimation<Color>(settings.progress),
-                      ),
-                    ),
-                  ),
-                ),
-                // ── التنقل: "اقرأ المزيد" يميناً، والسابق/النقاط/التالي يساراً ──
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(12, 0, 8, 2),
-                  child: Row(
-                    textDirection: TextDirection.rtl,
-                    children: [
-                      GestureDetector(
-                        behavior: HitTestBehavior.opaque,
-                        onTap: () => _openEntry(activeEntry),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 10),
-                          child: Text(
-                            'اقرأ المزيد',
-                            style: TextStyle(
-                              color: settings.navigation,
-                              fontSize: 12.5,
-                              fontWeight: FontWeight.w800,
-                              decoration: TextDecoration.underline,
-                              decorationColor: settings.navigation,
-                            ),
-                          ),
-                        ),
-                      ),
-                      const Spacer(),
-                      if (entries.length > 1)
-                        _navArrow(
-                          forward: false,
-                          settings: settings,
-                          onPressed: () => _changeTickerEntry(-1, entries.length),
-                        ),
-                      Text(
-                        '${_activeEntryIndex + 1} من ${entries.length}',
-                        style: TextStyle(
-                          color: settings.secondaryText,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                      if (entries.length > 1) ...[
-                        const SizedBox(width: 6),
-                        for (var i = 0; i < entries.length; i++)
-                          GestureDetector(
-                            behavior: HitTestBehavior.opaque,
-                            onTap: () => _selectTickerEntry(i, entries.length),
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 8),
-                              child: AnimatedContainer(
-                                duration: const Duration(milliseconds: 180),
-                                width: i == _activeEntryIndex ? 16 : 6,
-                                height: 6,
-                                decoration: BoxDecoration(
-                                  color: i == _activeEntryIndex
-                                      ? settings.progress
-                                      : settings.inactiveIndicator,
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
+                          // ── وقت النشر ──
+                          Container(
+                            height: barHeight,
+                            alignment: Alignment.center,
+                            padding:
+                                const EdgeInsets.symmetric(horizontal: 12),
+                            color: const Color(0xFFC9A15A),
+                            child: Text(
+                              timeText,
+                              style: const TextStyle(
+                                color: Color(0xFF0A1B33),
+                                fontSize: 14,
+                                fontWeight: FontWeight.w800,
                               ),
                             ),
                           ),
-                        _navArrow(
-                          forward: true,
-                          settings: settings,
-                          onPressed: () => _changeTickerEntry(1, entries.length),
-                        ),
-                      ],
-                    ],
-                  ),
+
+                          // ── زر (+) للإدارة ──
+                          if (_isAdmin)
+                            Semantics(
+                              button: true,
+                              label: 'إضافة ملاحظة',
+                              child: InkWell(
+                                onTap: _composeAnnouncement,
+                                child: Container(
+                                  width: 44,
+                                  height: barHeight,
+                                  color: Colors.black.withOpacity(0.28),
+                                  child: Icon(
+                                    Icons.add_rounded,
+                                    color: accent,
+                                    size: 22,
+                                  ),
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                    // خط سفلي بلون التمييز
+                    Container(height: 3, color: accent),
+                  ],
                 ),
-              ],
+              ),
             ),
-          ),
+
+            // ── النقاط (عند وجود أكثر من ملاحظة فقط) ──
+            if (hasMany)
+              _dots(entries.length, accent)
+            else
+              const SizedBox(height: 4),
+          ],
         ),
       ),
     );
   }
 
-  /// سهم التنقل بين الملاحظات. في RTL: "السابق" يمين يشير لليمين،
-  /// و"التالي" يسار يشير لليسار؛ لذلك نثبّت اتجاه الأيقونة LTR ونختار الأيقونة صراحةً.
-  Widget _navArrow({
-    required bool forward,
-    required TickerSettings settings,
-    required VoidCallback onPressed,
-  }) {
-    return IconButton(
-      tooltip: forward ? 'الملاحظة التالية' : 'الملاحظة السابقة',
-      padding: EdgeInsets.zero,
-      constraints: const BoxConstraints.tightFor(width: 36, height: 36),
-      visualDensity: VisualDensity.compact,
-      onPressed: onPressed,
-      color: settings.navigation,
-      icon: Directionality(
-        textDirection: TextDirection.ltr,
-        child: Icon(
-          forward ? Icons.chevron_left_rounded : Icons.chevron_right_rounded,
-        ),
-      ),
+  /// نقاط الملاحظات: النقطة الحالية تمتلئ تدريجياً كمؤشر تقدم،
+  /// والنقر على أي نقطة ينتقل إلى ملاحظتها.
+  Widget _dots(int count, Color accent) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      textDirection: TextDirection.rtl,
+      children: [
+        for (var i = 0; i < count; i++)
+          GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: () => _selectTickerEntry(i, count),
+            child: Padding(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 3, vertical: 8),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                width: i == _activeEntryIndex ? 22 : 6,
+                height: 6,
+                decoration: BoxDecoration(
+                  color: Colors.black.withOpacity(0.18),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: i == _activeEntryIndex
+                    ? ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: AnimatedBuilder(
+                          animation: _tickerController,
+                          builder: (context, _) => Align(
+                            alignment: Alignment.centerRight,
+                            child: FractionallySizedBox(
+                              widthFactor:
+                                  _tickerController.value.clamp(0.0, 1.0),
+                              child: Container(color: accent),
+                            ),
+                          ),
+                        ),
+                      )
+                    : null,
+              ),
+            ),
+          ),
+      ],
     );
   }
 
@@ -1176,4 +1080,22 @@ class _TickerEntry {
   final DateTime createdAt;
   final bool isMessage;
   final Map<String, dynamic> data;
+}
+
+/// يقصّ الحافة اليسرى للبلوك بشكل مائل (شكل شاشات الأخبار).
+class _SlantClipper extends CustomClipper<Path> {
+  const _SlantClipper(this.slant);
+  final double slant;
+
+  @override
+  Path getClip(Size size) => Path()
+    ..moveTo(slant, 0)
+    ..lineTo(size.width, 0)
+    ..lineTo(size.width, size.height)
+    ..lineTo(0, size.height)
+    ..close();
+
+  @override
+  bool shouldReclip(covariant _SlantClipper oldClipper) =>
+      oldClipper.slant != slant;
 }
