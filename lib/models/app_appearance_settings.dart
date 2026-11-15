@@ -27,8 +27,10 @@ class AppAppearanceSettings {
   factory AppAppearanceSettings.fromMap(Map<String, dynamic>? data) {
     if (data == null) return const AppAppearanceSettings();
     final presetValue = data['preset'];
-    final preset = presets.containsKey(presetValue) ? presetValue as String : 'navy';
-    final fallback = presets[preset]!;
+    final preset = presetValue == 'custom'
+        ? 'custom'
+        : (presets.containsKey(presetValue) ? presetValue as String : 'navy');
+    final fallback = presets[preset] ?? presets['navy']!;
     return AppAppearanceSettings(
       preset: preset,
       backgroundStart: data['backgroundStart'] is num
