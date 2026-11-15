@@ -4,14 +4,13 @@
 //  الوصف       : هيدر الشاشة الرئيسية (الشعار + الإشعارات) وبطاقة
 //                الحساب المتداخلة معه (الاسم + الحالة + الوقت والتاريخ).
 //  تعديلات هذا التحديث:
-//    • المسمى "المسؤول الإداري" صار "مدير الموقع".
-//    • صورة مدير الموقع المفرغة (PNG شفاف) بدل دائرة الحرف: أكبر حجماً،
-//      بظل ناعم وإحساس ثلاثي الأبعاد، وتخرج من حافة البطاقة بحركة دخول
-//      ثم طفو خفيف جداً. تحترم إعداد "تقليل الحركة" في الجهاز.
+//    • صورة مدير الموقع صارت دائرية ومقرّبة على الوجه والكتفين
+//      (قطر 92) بإطار ذهبي وخلفية فاتحة. القص بنسب (_cropLeft/_cropTop/_cropWidth)
+//      يُظهر الرأس والكتفين وجزءاً من الصدر كما في الصورة المعتمدة.
+//      ترتفع الدائرة قليلاً فوق حافة البطاقة العلوية.
 //    • إن لم تتوفر الصورة يعود الحرف داخل الدائرة تلقائياً.
-//    • الهيدر يزيد ارتفاعه 32 بكسل فقط عند عرض الصورة.
-//    • حذف الثواني من الساعة (HH:mm) وتحديث دوري كل 15 ثانية.
-//    • تباين أعلى لنص الدور والتاريخ.
+//    • حذف الحركة والظل (لم تعد لازمة) وتبسيط الكود.
+//    • المسمى "المسؤول الإداري" صار "مدير الموقع".
 //  مهم        : يلزم إضافة الصورة للأصول في pubspec.yaml:
 //                 flutter:
 //                   assets:
@@ -20,7 +19,7 @@
 //                الاسم يُقرأ من الحقل displayName في وثيقة المستخدم.
 // ═══════════════════════════════════════════════════════════════
 
-import 'dart:ui' show FontFeature, ImageFilter;
+import 'dart:ui' show FontFeature;
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -248,9 +247,15 @@ class DashboardAccountCard extends StatelessWidget {
   /// مسار الصورة المفرغة (PNG شفاف) — يجب تسجيله في pubspec.yaml.
   static const portraitAsset = 'assets/images/site_manager_cutout.png';
 
-  static const _portraitWidth = 128.0;
-  static const _portraitSlot = 112.0; // عرض الحيّز المحجوز داخل البطاقة
-  static const _portraitSink = 14.0; // الجزء المخفي أسفل حافة البطاقة
+  static const _avatarSize = 92.0; // قطر الصورة الدائرية
+  static const _avatarRise = 18.0; // مقدار ارتفاعها فوق حافة البطاقة
+
+  // نافذة العرض داخل الصورة (نسب من أبعادها، فلا تتأثر بتصغير الملف):
+  // رأس + كتفان + جزء من الصدر. نافذة أكبر = صورة أبعد.
+  static const _imgAspect = 2350 / 2560; // الارتفاع ÷ العرض
+  static const _cropLeft = 0.1242; // بداية النافذة من عرض الصورة
+  static const _cropTop = 0.0323; // بداية النافذة من ارتفاعها
+  static const _cropWidth = 0.7453; // عرض النافذة من عرض الصورة
 
   static const _weekdays = <String>['الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت', 'الأحد'];
   static const _ink = Color(0xFF0A1B33);
@@ -321,8 +326,8 @@ class DashboardAccountCard extends StatelessWidget {
                   textDirection: TextDirection.rtl,
                   children: [
                     if (showPortrait)
-                      // حيّز فارغ؛ الصورة نفسها ترسم فوق البطاقة (انظر Stack أدناه).
-                      const SizedBox(width: _portraitSlot, height: 56)
+                      // حيّز فارغ؛ الصورة الدائرية ترسم فوق البطاقة (انظر Stack أدناه).
+                      const SizedBox(width: _avatarSize, height: 56)
                     else
                       _initialAvatar(initial),
                     const SizedBox(width: 12),
@@ -381,23 +386,18 @@ class DashboardAccountCard extends StatelessWidget {
 
           if (!showPortrait) return card;
 
-          // الصورة تبرز فوق حافة البطاقة العلوية وتُقصّ عند حافتها السفلية،
-          // فتبدو خارجة من التطبيق نفسه.
+          // الصورة الدائرية ترتفع قليلاً فوق حافة البطاقة العلوية.
           return Stack(
             clipBehavior: Clip.none,
             children: [
               card,
               PositionedDirectional(
-                start: 0,
-                bottom: -_portraitSink,
-                width: _portraitWidth,
-                height: _portraitWidth,
+                start: 16,
+                top: -_avatarRise,
+                width: _avatarSize,
+                height: _avatarSize,
                 child: IgnorePointer(
-                  child: _EmergingPortrait(
-                    asset: portraitAsset,
-                    bottomInset: _portraitSink,
-                    fallback: _initialAvatar(initial),
-                  ),
+                  child: _portraitAvatar(initial),
                 ),
               ),
             ],
@@ -406,138 +406,55 @@ class DashboardAccountCard extends StatelessWidget {
       ),
     );
   }
-}
 
-/// صورة مفرغة بظل وعمق: حركة دخول لمرة واحدة ثم طفو خفيف جداً.
-/// عند تفعيل "تقليل الحركة" في الجهاز تظهر ثابتة بلا حركة.
-class _EmergingPortrait extends StatefulWidget {
-  const _EmergingPortrait({
-    required this.asset,
-    required this.fallback,
-    required this.bottomInset,
-  });
-
-  final String asset;
-  final Widget fallback;
-  final double bottomInset;
-
-  @override
-  State<_EmergingPortrait> createState() => _EmergingPortraitState();
-}
-
-class _EmergingPortraitState extends State<_EmergingPortrait>
-    with TickerProviderStateMixin {
-  late final AnimationController _enter = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 900),
-  );
-  late final AnimationController _float = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 3600),
-  );
-  bool _started = false;
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    if (_started) return;
-    _started = true;
-    if (MediaQuery.of(context).disableAnimations) {
-      _enter.value = 1;
-      return;
-    }
-    _enter.forward().whenComplete(() {
-      if (mounted) _float.repeat(reverse: true);
-    });
-  }
-
-  @override
-  void dispose() {
-    _enter.dispose();
-    _float.dispose();
-    super.dispose();
-  }
-
-  Widget _image() => Image.asset(
-        widget.asset,
-        fit: BoxFit.contain,
-        alignment: Alignment.bottomCenter,
-        filterQuality: FilterQuality.medium,
-        errorBuilder: (context, error, stack) => Align(
-          alignment: Alignment.bottomCenter,
-          child: Padding(
-            padding: EdgeInsets.only(bottom: widget.bottomInset + 19),
-            child: widget.fallback,
-          ),
+  /// صورة دائرية مقرّبة على الوجه، بإطار ذهبي وخلفية كحلية خلف الصورة المفرغة.
+  Widget _portraitAvatar(String initial) {
+    const size = _avatarSize;
+    const imgW = size / _cropWidth;
+    const imgH = imgW * _imgAspect;
+    return Container(
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        border: Border.all(color: const Color(0xFFE8CB84), width: 3),
+        boxShadow: const [
+          BoxShadow(color: Color(0x330A1B33), blurRadius: 14, offset: Offset(0, 6)),
+        ],
+        gradient: const LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [Colors.white, Color(0xFFE9EEF5)],
         ),
-      );
-
-  @override
-  Widget build(BuildContext context) {
-    // الظل = نسخة الصورة نفسها بلون أزرق داكن ومموّهة، مزاحة للأسفل.
-    final figure = RepaintBoundary(
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          Transform.translate(
-            offset: const Offset(0, 7),
-            child: Opacity(
-              opacity: 0.30,
-              child: ImageFiltered(
-                imageFilter: ImageFilter.blur(sigmaX: 5, sigmaY: 6),
-                child: ColorFiltered(
-                  colorFilter: const ColorFilter.mode(Color(0xFF0A1B33), BlendMode.srcIn),
-                  child: _image(),
+      ),
+      child: ClipOval(
+        child: Stack(
+          clipBehavior: Clip.hardEdge,
+          children: [
+            Positioned(
+              left: -imgW * _cropLeft,
+              top: -imgH * _cropTop,
+              width: imgW,
+              height: imgH,
+              child: Image.asset(
+                portraitAsset,
+                fit: BoxFit.fill,
+                filterQuality: FilterQuality.medium,
+                errorBuilder: (context, error, stack) => Center(
+                  child: Text(
+                    initial,
+                    style: const TextStyle(
+                      color: Color(0xFF0A1B33),
+                      fontSize: 34,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
                 ),
               ),
             ),
-          ),
-          _image(),
-        ],
-      ),
-    );
-
-    return ClipRect(
-      clipper: _BottomInsetClipper(widget.bottomInset),
-      child: AnimatedBuilder(
-        animation: Listenable.merge([_enter, _float]),
-        child: figure,
-        builder: (context, child) {
-          final e = _enter.value;
-          final f = Curves.easeInOut.transform(_float.value);
-          final dy = (1 - e) * 26 - 2.5 * f;
-          final tilt = (1 - e) * 0.10 + (f - 0.5) * 0.03;
-          return Opacity(
-            opacity: e.clamp(0.0, 1.0).toDouble(),
-            child: Transform.translate(
-              offset: Offset(0, dy),
-              child: Transform(
-                alignment: Alignment.bottomCenter,
-                transform: Matrix4.identity()
-                  ..setEntry(3, 2, 0.0012)
-                  ..rotateX(tilt),
-                child: child,
-              ),
-            ),
-          );
-        },
+          ],
+        ),
       ),
     );
   }
-}
-
-/// يقصّ الصورة عند حافة البطاقة السفلية فقط، ويترك الأعلى والجانبين مفتوحة.
-class _BottomInsetClipper extends CustomClipper<Rect> {
-  const _BottomInsetClipper(this.bottomInset);
-  final double bottomInset;
-
-  @override
-  Rect getClip(Size size) =>
-      Rect.fromLTRB(-80, -240, size.width + 80, size.height - bottomInset);
-
-  @override
-  bool shouldReclip(covariant _BottomInsetClipper oldClipper) =>
-      oldClipper.bottomInset != bottomInset;
 }
 
 /// Soft gold concentric rings drawn in the header's corner.
