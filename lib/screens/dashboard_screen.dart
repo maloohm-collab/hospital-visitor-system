@@ -646,15 +646,23 @@ class DashboardScreen extends StatelessWidget {
           .snapshots(),
       builder: (context, snapshot) {
         final settings = AppAppearanceSettings.fromMap(snapshot.data?.data());
-        return DecoratedBox(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topRight,
-              end: Alignment.bottomLeft,
-              colors: settings.gradientColors,
-            ),
+        return ScrollConfiguration(
+          // منع تأثير السحب المطاطي/التمدد عند تجاوز نهاية الصفحة على أندرويد.
+          // تبقى الخلفية ثابتة ويتوقف المحتوى عند آخر عنصر فعلي.
+          behavior: MaterialScrollBehavior().copyWith(
+            overscroll: false,
+            physics: const ClampingScrollPhysics(),
           ),
-          child: child,
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topRight,
+                end: Alignment.bottomLeft,
+                colors: settings.gradientColors,
+              ),
+            ),
+            child: child,
+          ),
         );
       },
     );
