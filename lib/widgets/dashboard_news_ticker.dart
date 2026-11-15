@@ -1,8 +1,16 @@
 // ═══════════════════════════════════════════════════════════════
 //  اسم الملف   : dashboard_news_ticker.dart
-//  آخر تحديث   : 14/11/2026
+//  آخر تحديث   : 15/11/2026
 //  الوصف       : شريط ملاحظات حيّ (تصميم جديد) مشترك بين الإدارة
 //                والمشرفين وضباط الأمن.
+//  تعديلات هذا التحديث:
+//    • البطاقة أنحف بنحو الربع: مسافات أقل، وصف أصغر، وشريط التقدم ملاصق.
+//    • زر "إضافة ملاحظة" للإدارة صار زراً دائرياً (+) داخل رأس البطاقة؛
+//      وتبقى الحبّة الصغيرة فقط عند عدم وجود ملاحظات.
+//    • إضافة رابط "اقرأ المزيد" يفتح الملاحظة الحالية.
+//    • إصلاح اتجاه أسهم السابق/التالي لتناسب RTL.
+//    • إصلاح: TextPainter يُتلف بعد القياس (تجنّب تسرّب الذاكرة).
+//    • عند وجود ملاحظة واحدة تُخفى الأسهم والنقاط ويبقى "1 من 1".
 //  ملاحظة      : ألوان الخلفية تأتي من TickerSettings.backgroundColors
 //                (قابلة للتغيير من الإعدادات)، وألوان التمييز ثوابت
 //                في قسم "ألوان التصميم" أدناه.
@@ -631,15 +639,15 @@ class _DashboardNewsTickerState extends State<DashboardNewsTicker>
                   messageSnapshot.data!,
                 );
 
+                // مع وجود ملاحظات: زر الإضافة دائري داخل البطاقة نفسها.
+                // بدون ملاحظات: تبقى الحبّة الصغيرة للإدارة فقط.
                 return Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     if (entries.isNotEmpty)
-                      _tickerBar(entries, settings),
-                    if (_isAdmin) ...[
-                      const SizedBox(height: 10),
+                      _tickerBar(entries, settings)
+                    else if (_isAdmin)
                       _addNoteButton(),
-                    ],
                   ],
                 );
               },
@@ -768,10 +776,12 @@ class _DashboardNewsTickerState extends State<DashboardNewsTicker>
       textDirection: TextDirection.rtl,
       maxLines: 1,
     )..layout();
-    final contentWidth = painter.width + 60;
+    final textWidth = painter.width;
+    painter.dispose();
+    final contentWidth = textWidth + 60;
 
     final stripHeight =
-        settings.fontSize + 24 > 46 ? settings.fontSize + 24 : 46.0;
+        settings.fontSize + 16 > 40 ? settings.fontSize + 16 : 40.0;
 
     final colors = _backgroundFor(entries, settings);
     final top = activeEntry;
@@ -806,13 +816,13 @@ class _DashboardNewsTickerState extends State<DashboardNewsTicker>
               children: [
                 // ── الرأس: الأيقونة + العنوان + الأولوية + العدّاد ──
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(14, 12, 14, 10),
+                  padding: const EdgeInsets.fromLTRB(12, 10, 8, 8),
                   child: Row(
                     textDirection: TextDirection.rtl,
                     children: [
                       Container(
-                        width: 38,
-                        height: 38,
+                        width: 36,
+                        height: 36,
                         decoration: BoxDecoration(
                           color: accent,
                           borderRadius: BorderRadius.circular(12),
@@ -876,24 +886,50 @@ class _DashboardNewsTickerState extends State<DashboardNewsTicker>
                           ],
                         ),
                       ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: settings.strip,
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Text(
-                          '${entries.length} ${entries.length == 1 ? 'ملاحظة' : 'ملاحظات'}',
-                          style: TextStyle(
-                            color: settings.secondaryText,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
+                      if (_isAdmin)
+                        // زر (+) دائري للإدارة، بمساحة لمس 44×44.
+                        Semantics(
+                          button: true,
+                          label: 'إضافة ملاحظة',
+                          child: InkResponse(
+                            onTap: _composeAnnouncement,
+                            radius: 24,
+                            child: SizedBox(
+                              width: 44,
+                              height: 44,
+                              child: Center(
+                                child: Container(
+                                  width: 34,
+                                  height: 34,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    border: Border.all(color: accent, width: 1.5),
+                                  ),
+                                  child: Icon(Icons.add_rounded, color: accent, size: 20),
+                                ),
+                              ),
+                            ),
+                          ),
+                        )
+                      else
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: settings.strip,
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Text(
+                            '${entries.length} ${entries.length == 1 ? 'ملاحظة' : 'ملاحظات'}',
+                            style: TextStyle(
+                              color: settings.secondaryText,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                            ),
                           ),
                         ),
-                      ),
                     ],
                   ),
                 ),
@@ -974,35 +1010,50 @@ class _DashboardNewsTickerState extends State<DashboardNewsTicker>
 
                 // ── مؤشر التقدم ──
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(14, 10, 14, 4),
+                  padding: const EdgeInsets.fromLTRB(14, 6, 14, 0),
                   child: AnimatedBuilder(
                     animation: _tickerController,
                     builder: (context, _) => ClipRRect(
                       borderRadius: BorderRadius.circular(2),
                       child: LinearProgressIndicator(
                         value: _tickerController.value,
-                        minHeight: 3,
+                        minHeight: 2.5,
                         backgroundColor: settings.strip,
                         valueColor: AlwaysStoppedAnimation<Color>(settings.progress),
                       ),
                     ),
                   ),
                 ),
+                // ── التنقل: "اقرأ المزيد" يميناً، والسابق/النقاط/التالي يساراً ──
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(8, 0, 8, 5),
+                  padding: const EdgeInsets.fromLTRB(12, 0, 8, 2),
                   child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
+                    textDirection: TextDirection.rtl,
                     children: [
-                      IconButton(
-                        tooltip: 'الملاحظة السابقة',
-                        visualDensity: VisualDensity.compact,
-                        onPressed: entries.length > 1
-                            ? () => _changeTickerEntry(-1, entries.length)
-                            : null,
-                        icon: const Icon(Icons.chevron_right_rounded),
-                        color: settings.navigation,
-                        disabledColor: settings.secondaryText.withValues(alpha: .45),
+                      GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onTap: () => _openEntry(activeEntry),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                          child: Text(
+                            'اقرأ المزيد',
+                            style: TextStyle(
+                              color: settings.navigation,
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w800,
+                              decoration: TextDecoration.underline,
+                              decorationColor: settings.navigation,
+                            ),
+                          ),
+                        ),
                       ),
+                      const Spacer(),
+                      if (entries.length > 1)
+                        _navArrow(
+                          forward: false,
+                          settings: settings,
+                          onPressed: () => _changeTickerEntry(-1, entries.length),
+                        ),
                       Text(
                         '${_activeEntryIndex + 1} من ${entries.length}',
                         style: TextStyle(
@@ -1011,42 +1062,62 @@ class _DashboardNewsTickerState extends State<DashboardNewsTicker>
                           fontWeight: FontWeight.w800,
                         ),
                       ),
-                      const SizedBox(width: 9),
-                      for (var i = 0; i < entries.length; i++)
-                        GestureDetector(
-                          behavior: HitTestBehavior.opaque,
-                          onTap: () => _selectTickerEntry(i, entries.length),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 8),
-                            child: AnimatedContainer(
-                              duration: const Duration(milliseconds: 180),
-                              width: i == _activeEntryIndex ? 16 : 6,
-                              height: 6,
-                              decoration: BoxDecoration(
-                                color: i == _activeEntryIndex
-                                    ? settings.progress
-                                    : settings.inactiveIndicator,
-                                borderRadius: BorderRadius.circular(8),
+                      if (entries.length > 1) ...[
+                        const SizedBox(width: 6),
+                        for (var i = 0; i < entries.length; i++)
+                          GestureDetector(
+                            behavior: HitTestBehavior.opaque,
+                            onTap: () => _selectTickerEntry(i, entries.length),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 8),
+                              child: AnimatedContainer(
+                                duration: const Duration(milliseconds: 180),
+                                width: i == _activeEntryIndex ? 16 : 6,
+                                height: 6,
+                                decoration: BoxDecoration(
+                                  color: i == _activeEntryIndex
+                                      ? settings.progress
+                                      : settings.inactiveIndicator,
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
                               ),
                             ),
                           ),
+                        _navArrow(
+                          forward: true,
+                          settings: settings,
+                          onPressed: () => _changeTickerEntry(1, entries.length),
                         ),
-                      IconButton(
-                        tooltip: 'الملاحظة التالية',
-                        visualDensity: VisualDensity.compact,
-                        onPressed: entries.length > 1
-                            ? () => _changeTickerEntry(1, entries.length)
-                            : null,
-                        icon: const Icon(Icons.chevron_left_rounded),
-                        color: settings.navigation,
-                        disabledColor: settings.secondaryText.withValues(alpha: .45),
-                      ),
+                      ],
                     ],
                   ),
                 ),
               ],
             ),
           ),
+        ),
+      ),
+    );
+  }
+
+  /// سهم التنقل بين الملاحظات. في RTL: "السابق" يمين يشير لليمين،
+  /// و"التالي" يسار يشير لليسار؛ لذلك نثبّت اتجاه الأيقونة LTR ونختار الأيقونة صراحةً.
+  Widget _navArrow({
+    required bool forward,
+    required TickerSettings settings,
+    required VoidCallback onPressed,
+  }) {
+    return IconButton(
+      tooltip: forward ? 'الملاحظة التالية' : 'الملاحظة السابقة',
+      padding: EdgeInsets.zero,
+      constraints: const BoxConstraints.tightFor(width: 36, height: 36),
+      visualDensity: VisualDensity.compact,
+      onPressed: onPressed,
+      color: settings.navigation,
+      icon: Directionality(
+        textDirection: TextDirection.ltr,
+        child: Icon(
+          forward ? Icons.chevron_left_rounded : Icons.chevron_right_rounded,
         ),
       ),
     );
