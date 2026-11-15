@@ -729,33 +729,6 @@ class _DashboardNewsTickerState extends State<DashboardNewsTicker>
     return settings.backgroundColors;
   }
 
-  String _priorityLabel(String priority) {
-    switch (priority) {
-      case 'urgent':
-        return 'أولوية مرتفعة';
-      case 'important':
-        return 'مهمة';
-      default:
-        return 'تنبيه إداري';
-    }
-  }
-
-  Color _priorityChipBg(String priority, TickerSettings settings) {
-    switch (priority) {
-      case 'urgent': return settings.urgentChipBg;
-      case 'important': return settings.importantChipBg;
-      default: return settings.normalChipBg;
-    }
-  }
-
-  Color _priorityChipFg(String priority, TickerSettings settings) {
-    switch (priority) {
-      case 'urgent': return settings.urgentChipFg;
-      case 'important': return settings.importantChipFg;
-      default: return settings.normalChipFg;
-    }
-  }
-
   Widget _tickerBar(
     List<_TickerEntry> entries,
     TickerSettings settings,
@@ -1025,17 +998,6 @@ class _DashboardNewsTickerState extends State<DashboardNewsTicker>
           ),
       ],
     );
-  }
-
-  /// نص زمني نسبي مختصر لوقت النشر.
-  String _timeAgo(DateTime date) {
-    final diff = DateTime.now().difference(date);
-
-    if (diff.inMinutes < 1) return 'الآن';
-    if (diff.inMinutes < 60) return 'منذ ${diff.inMinutes} دقيقة';
-    if (diff.inHours < 24) return 'منذ ${diff.inHours} ساعة';
-
-    return 'منذ ${diff.inDays} يوم';
   }
 
   Widget _tickerItems(
