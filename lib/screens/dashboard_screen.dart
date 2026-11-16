@@ -381,6 +381,13 @@ class DashboardScreen extends StatelessWidget {
         actionTitles: const ['طلبات الحسابات', 'الموظفون'],
       ),
       _ActionCategory(
+        icon: Icons.palette_outlined,
+        title: 'إدارة مظهر التطبيق',
+        subtitle: 'اختيار الخلفية وتخصيص ألوانها لجميع المستخدمين',
+        color: const Color(0xFF9A7436),
+        actionTitles: const ['إدارة مظهر التطبيق'],
+      ),
+      _ActionCategory(
         icon: Icons.calendar_month_outlined,
         title: 'جدول المناوبات',
         subtitle: 'إعداد كشوف المناوبات وتعديلها واعتمادها ونشرها — مسؤولية الإدارة',
@@ -414,13 +421,6 @@ class DashboardScreen extends StatelessWidget {
         subtitle: 'إضافة ملاحظات الشريط الإخباري وتعديلها وإدارتها',
         color: const Color(0xFF6B2632),
         actionTitles: const ['إدارة ملاحظات الشريط الإخباري'],
-      ),
-      _ActionCategory(
-        icon: Icons.palette_outlined,
-        title: 'إدارة مظهر التطبيق',
-        subtitle: 'اختيار الخلفية وتخصيص ألوانها لجميع المستخدمين',
-        color: const Color(0xFF9A7436),
-        actionTitles: const ['إدارة مظهر التطبيق'],
       ),
     ];
     return _buildGroupedCategories(context, actions, categories);
