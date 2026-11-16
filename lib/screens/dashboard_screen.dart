@@ -302,6 +302,7 @@ class DashboardScreen extends StatelessWidget {
 
     return _withAppearanceBackground(
       child: ListView(
+        physics: const ClampingScrollPhysics(),
         padding: EdgeInsets.zero,
         children: [
           _buildHero(currentUid),
@@ -513,7 +514,18 @@ class DashboardScreen extends StatelessWidget {
           ],
           if (visible.length > 5) ...[
             const SizedBox(height: 12),
-            buildTile(visible[5], featured: false),
+            IntrinsicHeight(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Expanded(child: buildTile(visible[5], featured: false)),
+                  if (visible.length > 6) ...[
+                    const SizedBox(width: 12),
+                    Expanded(child: buildTile(visible[6], featured: false)),
+                  ],
+                ],
+              ),
+            ),
           ],
         ],
       ),
@@ -550,6 +562,7 @@ class DashboardScreen extends StatelessWidget {
   Widget _buildAdminDashboard(BuildContext context, String? currentUid) {
     return _withAppearanceBackground(
       child: ListView(
+        physics: const ClampingScrollPhysics(),
         padding: EdgeInsets.zero,
         children: [
         _buildHero(currentUid),
@@ -653,7 +666,8 @@ class DashboardScreen extends StatelessWidget {
             overscroll: false,
             physics: const ClampingScrollPhysics(),
           ),
-          child: DecoratedBox(
+          child: Container(
+            constraints: const BoxConstraints.expand(),
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topRight,
