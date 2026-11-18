@@ -59,7 +59,7 @@ class _NotificationSoundListenerState extends State<NotificationSoundListener>
         for (final change in snapshot.docChanges) {
           if (change.type != DocumentChangeType.added) continue;
           final notification = change.doc.data();
-          if (notification['recipientUid'] != uid) continue;
+          if (notification == null || notification['recipientUid'] != uid) continue;
           _playMessageSound();
         }
       },
