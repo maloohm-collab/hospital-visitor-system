@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'screens/auth_screen.dart';
 import 'screens/dashboard_screen.dart';
+import 'services/notification_sound_listener.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -226,7 +227,9 @@ class AuthGate extends StatelessWidget {
                     ),
                   );
                 }
-                return DashboardScreen(userRole: role);
+                return NotificationSoundListener(
+                  child: DashboardScreen(userRole: role),
+                );
               },
             );
           },
