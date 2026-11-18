@@ -659,24 +659,29 @@ class DashboardScreen extends StatelessWidget {
           .snapshots(),
       builder: (context, snapshot) {
         final settings = AppAppearanceSettings.fromMap(snapshot.data?.data());
-        return ScrollConfiguration(
-          // منع تأثير السحب المطاطي/التمدد عند تجاوز نهاية الصفحة على أندرويد.
-          // تبقى الخلفية ثابتة ويتوقف المحتوى عند آخر عنصر فعلي.
-          behavior: MaterialScrollBehavior().copyWith(
-            overscroll: false,
-            physics: const ClampingScrollPhysics(),
-          ),
-          child: Container(
-            constraints: const BoxConstraints.expand(),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topRight,
-                end: Alignment.bottomLeft,
-                colors: settings.gradientColors,
+        return Stack(
+          // تثبيت طبقة الخلفية على مساحة الشاشة نفسها، لا على طول المحتوى
+          // القابل للتمرير؛ يمنع انكشاف لون Scaffold عند سحب القائمة للنهاية.
+          fit: StackFit.expand,
+          children: [
+            DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topRight,
+                  end: Alignment.bottomLeft,
+                  colors: settings.gradientColors,
+                ),
               ),
             ),
-            child: child,
-          ),
+            ScrollConfiguration(
+              // إلغاء التمدد المطاطي ومنع أي تجاوز مرئي عند نهاية القائمة.
+              behavior: MaterialScrollBehavior().copyWith(
+                overscroll: false,
+                physics: const ClampingScrollPhysics(),
+              ),
+              child: child,
+            ),
+          ],
         );
       },
     );
