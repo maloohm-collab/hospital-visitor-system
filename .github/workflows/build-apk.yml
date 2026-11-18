@@ -9,6 +9,7 @@ on:
       - work/next-development
       - work/next-release-development-2026-11-09
       - integration/news-ticker-polish-2026-11-15
+      - feature/unified-notification-sound-2026-11-18
 
 permissions:
   contents: read
