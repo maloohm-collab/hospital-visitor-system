@@ -768,51 +768,46 @@ class _ActionCategoryTileState extends State<_ActionCategoryTile> {
                       vertical: compact ? 9 : (featured ? 12 : 14),
                     ),
                     child: compact
-                        ? Row(
+                        ? Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Container(
-                                width: 40,
-                                height: 40,
-                                decoration: BoxDecoration(
-                                  color: category.color.withValues(alpha: 0.12),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Icon(category.icon, color: category.color, size: 22),
+                              Row(
+                                children: [
+                                  Container(
+                                    width: 44,
+                                    height: 44,
+                                    decoration: BoxDecoration(
+                                      color: category.color.withValues(alpha: 0.12),
+                                      borderRadius: BorderRadius.circular(14),
+                                    ),
+                                    child: Icon(category.icon, color: category.color, size: 24),
+                                  ),
+                                  const Spacer(),
+                                  _CategoryCount(count: widget.count, alertCount: widget.alertCount, featured: false, color: category.color),
+                                ],
                               ),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Text(
-                                      category.title,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: const TextStyle(
-                                        color: Color(0xFF0A1B33),
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w900,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 2),
-                                    Text(
-                                      category.subtitle,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: const TextStyle(
-                                        color: Color(0xFF4A586B),
-                                        fontSize: 11.5,
-                                      ),
-                                    ),
-                                  ],
+                              const SizedBox(height: 12),
+                              Text(
+                                category.title,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  color: Color(0xFF0A1B33),
+                                  fontSize: 15,
+                                  height: 1.3,
+                                  fontWeight: FontWeight.w900,
                                 ),
                               ),
-                              const SizedBox(width: 6),
-                              _CategoryCount(count: widget.count, alertCount: widget.alertCount, featured: false, color: category.color),
-                              const Directionality(
-                                textDirection: TextDirection.ltr,
-                                child: Icon(Icons.chevron_left_rounded, color: Color(0xFF5B6B82), size: 22),
+                              const SizedBox(height: 4),
+                              Text(
+                                category.subtitle,
+                                maxLines: 3,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  color: Color(0xFF4A586B),
+                                  fontSize: 12,
+                                  height: 1.5,
+                                ),
                               ),
                             ],
                           )
