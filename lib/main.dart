@@ -175,64 +175,66 @@ class AuthGate extends StatelessWidget {
         final user = authSnapshot.data;
         if (user == null) return const WelcomeScreen();
 
-        return FutureBuilder<bool>(
-          future: _storage.read(key: '$_lockKey${user.uid}').then((value) => value == 'locked'),
-          builder: (context, lockSnapshot) {
-            if (lockSnapshot.connectionState == ConnectionState.waiting) {
-              return const Scaffold(body: Center(child: CircularProgressIndicator()));
-            }
-            if (lockSnapshot.data == true) return const AuthScreen();
+        // Keep the notification listener alive for every authenticated session,
+        // including the local-lock screen. A local lock is not a Firebase sign-out.
+        return NotificationSoundListener(
+          child: FutureBuilder<bool>(
+            future: _storage.read(key: '$_lockKey${user.uid}').then((value) => value == 'locked'),
+            builder: (context, lockSnapshot) {
+              if (lockSnapshot.connectionState == ConnectionState.waiting) {
+                return const Scaffold(body: Center(child: CircularProgressIndicator()));
+              }
+              if (lockSnapshot.data == true) return const AuthScreen();
 
-            return FutureBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-              future: FirebaseFirestore.instance.collection('users').doc(user.uid).get(),
-              builder: (context, profileSnapshot) {
-                if (profileSnapshot.connectionState == ConnectionState.waiting) {
-                  return const Scaffold(body: Center(child: CircularProgressIndicator()));
-                }
-                if (profileSnapshot.hasError || !profileSnapshot.hasData) {
-                  return const Scaffold(
-                    body: Center(
-                      child: Padding(
-                        padding: EdgeInsets.all(24),
-                        child: Text(
-                          'تعذر الاتصال للتحقق من الحساب. تحقق من الإنترنت ثم أعد المحاولة؛ ستبقى جلستك محفوظة.',
-                          textAlign: TextAlign.center,
+              return FutureBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+                future: FirebaseFirestore.instance.collection('users').doc(user.uid).get(),
+                builder: (context, profileSnapshot) {
+                  if (profileSnapshot.connectionState == ConnectionState.waiting) {
+                    return const Scaffold(body: Center(child: CircularProgressIndicator()));
+                  }
+                  if (profileSnapshot.hasError || !profileSnapshot.hasData) {
+                    return const Scaffold(
+                      body: Center(
+                        child: Padding(
+                          padding: EdgeInsets.all(24),
+                          child: Text(
+                            'تعذر الاتصال للتحقق من الحساب. تحقق من الإنترنت ثم أعد المحاولة؛ ستبقى جلستك محفوظة.',
+                            textAlign: TextAlign.center,
+                          ),
                         ),
                       ),
-                    ),
-                  );
-                }
-                final data = profileSnapshot.data?.data();
-                final role = data?['role'] as String?;
-                final status = data?['status'] as String?;
-                const allowedRoles = {'security_officer', 'supervisor', 'admin'};
-                if (!profileSnapshot.data!.exists ||
-                    status != 'active' ||
-                    role == null ||
-                    !allowedRoles.contains(role)) {
-                  WidgetsBinding.instance.addPostFrameCallback((_) {
-                    if (FirebaseAuth.instance.currentUser?.uid == user.uid) {
-                      FirebaseAuth.instance.signOut();
-                    }
-                  });
-                  return const Scaffold(
-                    body: Center(
-                      child: Padding(
-                        padding: EdgeInsets.all(24),
-                        child: Text(
-                          'الحساب غير معتمد أو لم تعد صلاحيته فعالة. يرجى مراجعة الإدارة.',
-                          textAlign: TextAlign.center,
+                    );
+                  }
+                  final data = profileSnapshot.data?.data();
+                  final role = data?['role'] as String?;
+                  final status = data?['status'] as String?;
+                  const allowedRoles = {'security_officer', 'supervisor', 'admin'};
+                  if (!profileSnapshot.data!.exists ||
+                      status != 'active' ||
+                      role == null ||
+                      !allowedRoles.contains(role)) {
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      if (FirebaseAuth.instance.currentUser?.uid == user.uid) {
+                        FirebaseAuth.instance.signOut();
+                      }
+                    });
+                    return const Scaffold(
+                      body: Center(
+                        child: Padding(
+                          padding: EdgeInsets.all(24),
+                          child: Text(
+                            'الحساب غير معتمد أو لم تعد صلاحيته فعالة. يرجى مراجعة الإدارة.',
+                            textAlign: TextAlign.center,
+                          ),
                         ),
                       ),
-                    ),
-                  );
-                }
-                return NotificationSoundListener(
-                  child: DashboardScreen(userRole: role),
-                );
-              },
-            );
-          },
+                    );
+                  }
+                  return DashboardScreen(userRole: role);
+                },
+              );
+            },
+          ),
         );
       },
     );
