@@ -3,7 +3,8 @@ import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter_foreground_task/flutter_foreground_task.dart';
+import 'package:flutter_foreground_task/flutter_foreground_task.dart'
+    hide NotificationVisibility;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 /// Rings the phone (sound + heads-up banner) for every new in-app notification
