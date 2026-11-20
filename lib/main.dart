@@ -8,6 +8,7 @@ import 'screens/dashboard_screen.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'services/notification_sound_listener.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -22,6 +23,9 @@ Future<void> main() async {
     debugPrintStack(stackTrace: stackTrace);
   }
   await initializeDateFormatting('en');
+  // Rings for every new notification while the app process is alive, including
+  // the local-lock screen. Not active after the app is force-closed.
+  await NotificationSoundListener.instance.init();
   runApp(const HospitalVisitorApp());
 }
 
