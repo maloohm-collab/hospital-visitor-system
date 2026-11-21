@@ -1106,7 +1106,7 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
           }).toList()
         : <QueryDocumentSnapshot<Map<String, dynamic>>>[];
     final validIds = deletableNotes.map((doc) => doc.id).toSet();
-    selectedMessageIds.removeWhere((id) => !validIds.contains(id));
+    final selectedCount = selectedMessageIds.where(validIds.contains).length;
     return Column(
       children: [
         if (canManageNotes)
@@ -1121,7 +1121,7 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
                   onPressed: deletableNotes.isEmpty
                       ? null
                       : () => setState(() {
-                            if (selectedMessageIds.length == deletableNotes.length) {
+                            if (selectedCount == deletableNotes.length) {
                               selectedMessageIds.clear();
                             } else {
                               selectedMessageIds
@@ -1130,7 +1130,7 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
                             }
                           }),
                   icon: const Icon(Icons.select_all, size: 18),
-                  label: Text(selectedMessageIds.length == deletableNotes.length && deletableNotes.isNotEmpty
+                  label: Text(selectedCount == deletableNotes.length && deletableNotes.isNotEmpty
                       ? 'إلغاء تحديد الكل'
                       : 'تحديد الكل'),
                 ),
@@ -1141,12 +1141,12 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
                   icon: const Icon(Icons.delete_sweep_outlined, size: 18),
                   label: const Text('حذف الكل'),
                 ),
-                if (selectedMessageIds.isNotEmpty)
+                if (selectedCount > 0)
                   FilledButton.icon(
                     style: FilledButton.styleFrom(backgroundColor: Colors.red),
                     onPressed: () => _deleteManagedNotes(deletableNotes, deleteAll: false),
                     icon: const Icon(Icons.delete_outline, size: 18),
-                    label: Text('حذف المحدد (${selectedMessageIds.length})'),
+                    label: Text('حذف المحدد (${selectedCount})'),
                   ),
               ],
             ),
