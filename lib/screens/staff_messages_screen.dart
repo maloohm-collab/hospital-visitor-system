@@ -481,7 +481,7 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
                           for (var index = 0; index < pickedImages.length; index++) {
                             final image = pickedImages[index];
                             final safeName = image.name.replaceAll(RegExp(r'[^A-Za-z0-9._-]'), '_');
-                            final fileName = '${DateTime.now().microsecondsSinceEpoch}_$index_$safeName';
+                            final fileName = '${DateTime.now().microsecondsSinceEpoch}_${index}_$safeName';
                             final contentType = image.mimeType ?? 'image/jpeg';
                             if (!contentType.startsWith('image/')) {
                               throw StateError('المرفقات المسموح بها صور فقط.');
