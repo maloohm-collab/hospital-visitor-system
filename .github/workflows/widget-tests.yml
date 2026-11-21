@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - feature/staff-messaging-attachments-2026-11-21
+      - feature/staff-message-gallery-delete-2026-11-21
   workflow_dispatch:
 
 jobs:
