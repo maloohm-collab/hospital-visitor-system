@@ -133,7 +133,9 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
       final profileData = profile.data() ?? <String, dynamic>{};
       final senderUid = (message['senderUid'] ?? '').toString();
       if (senderUid.isEmpty) throw StateError('تعذر تحديد مرسل الملاحظة.');
-      await doc.reference.update({
+      final notificationRef = db.collection('notifications').doc();
+      final batch = db.batch();
+      batch.update(doc.reference, {
         'read': true,
         'readAt': FieldValue.serverTimestamp(),
         'liked': true,
@@ -141,8 +143,7 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
         'likedByUid': uid,
         'likedByName': personName(profileData),
       });
-      final notificationRef = db.collection('notifications').doc();
-      await notificationRef.set({
+      batch.set(notificationRef, {
         'notificationId': notificationRef.id,
         'recipientUid': senderUid,
         'recipientRole': (message['senderRole'] ?? '').toString(),
@@ -157,6 +158,7 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
         'relatedId': doc.id,
         'createdAt': FieldValue.serverTimestamp(),
       });
+      await batch.commit();
       if (mounted) toast('تم تسجيل الإعجاب وإشعار صاحب الملاحظة.');
     } on FirebaseException catch (e) {
       toast('تعذر تسجيل الإعجاب (${e.code}).');
@@ -864,7 +866,11 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
         final doc = docs[i], d = doc.data();
         final sent = d['senderUid'] == uid;
         final read = d['read'] == true, created = d['createdAt'];
-        return Card(child: ListTile(
+        return Card(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
           onTap: () => openMessage(doc),
           leading: CircleAvatar(
             backgroundColor: d['priority'] == 'urgent' ? const Color(0xFFFFE5E5) : const Color(0xFFE4F5F2),
@@ -900,7 +906,41 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
           trailing: archive
               ? IconButton(icon: const Icon(Icons.delete_outline, color: Colors.red), onPressed: () => hideFromArchive(doc))
               : (!read && !sent ? const Icon(Icons.circle, size: 9, color: teal) : null),
-        ));
+              ),
+              if (!archive && !sent)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 0, 12, 10),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: () => _contactMessageSender((d['senderUid'] ?? '').toString()),
+                          icon: const Icon(Icons.call_outlined, size: 18),
+                          label: const Text('اتصال مباشر'),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: FilledButton.icon(
+                          onPressed: d['replyStatus'] == 'replied'
+                              ? null
+                              : () => reply(doc),
+                          icon: const Icon(Icons.reply_rounded, size: 18),
+                          label: const Text('رد'),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      IconButton.filledTonal(
+                        tooltip: d['liked'] == true ? 'تم تسجيل الإعجاب' : 'إعجاب',
+                        onPressed: d['liked'] == true ? null : () => _likeMessage(doc),
+                        icon: const Icon(Icons.thumb_up_alt_outlined),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+        );
       },
     );
   }
