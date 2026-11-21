@@ -11,6 +11,7 @@ on:
       - integration/news-ticker-polish-2026-11-15
       - feature/app-background-settings-2026-11-16
       - feature/employee-directory-profile
+      - feature/staff-messaging-attachments-2026-11-21
 
 permissions:
   contents: read
