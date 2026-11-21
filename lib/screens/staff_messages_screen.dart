@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class StaffMessagesScreen extends StatefulWidget {
   const StaffMessagesScreen({super.key, required this.userRole, this.initialMessageId, this.openComposerOnStart = false, this.embedded = false});
@@ -77,6 +78,26 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
     if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(value)));
   }
 
+  Future<void> _contactEmployee(String phone, {required bool whatsapp}) async {
+    final digits = phone.replaceAll(RegExp(r'[^0-9]'), '');
+    if (digits.length < 9) { toast('رقم الهاتف غير مكتمل.'); return; }
+    var international = digits;
+    if (international.startsWith('0')) {
+      international = '962' + international.substring(1);
+    } else if (international.startsWith('7') && international.length == 9) {
+      international = '962' + international;
+    }
+    final uri = whatsapp
+        ? Uri.parse('https://wa.me/' + international)
+        : Uri(scheme: 'tel', path: phone.trim());
+    try {
+      final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
+      if (!opened) toast(whatsapp ? 'تعذر فتح واتساب على هذا الجهاز.' : 'تعذر فتح تطبيق الاتصال.');
+    } catch (_) {
+      toast(whatsapp ? 'تعذر فتح واتساب.' : 'تعذر بدء الاتصال.');
+    }
+  }
+
   Future<void> compose() async {
     final snapshot = await db.collection('users').where('status', isEqualTo: 'active').get();
     if (!mounted) return;
@@ -99,6 +120,8 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
     String tickerFontFamily = 'sans-serif';
     bool tickerBold = true;
     bool busy = false;
+    String employeeSearch = '';
+    String shiftFilter = 'all';
 
     await showModalBottomSheet<void>(
       context: context,
@@ -130,6 +153,24 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
                 Text(supervisor
                     ? 'اختر ضباط الأمن — نسخة الإدارة تُرسل تلقائياً مع التعليمات فقط: ${selected.length}'
                     : 'اختر المستلمين — المختار: ${selected.length}'),
+                TextField(
+                  decoration: const InputDecoration(
+                    labelText: 'ابحث بالاسم الرباعي أو رقم الهاتف',
+                    prefixIcon: Icon(Icons.search_rounded), isDense: true),
+                  onChanged: (value) => refresh(() => employeeSearch = value.trim().toLowerCase()),
+                ),
+                const SizedBox(height: 8),
+                DropdownButtonFormField<String>(
+                  value: shiftFilter,
+                  decoration: const InputDecoration(labelText: 'فلترة إضافية حسب الشفت'),
+                  items: const [
+                    DropdownMenuItem(value: 'all', child: Text('جميع الشفتات')),
+                    DropdownMenuItem(value: 'A', child: Text('الشفت A')),
+                    DropdownMenuItem(value: 'B', child: Text('الشفت B')),
+                    DropdownMenuItem(value: 'C', child: Text('الشفت C')),
+                  ],
+                  onChanged: (value) => refresh(() => shiftFilter = value ?? 'all'),
+                ),
                 Wrap(spacing: 6, children: [
                   TextButton(
                     onPressed: () => refresh(() => selected.addAll(
@@ -146,21 +187,59 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
                     child: const Text('جميع المشرفين')),
                   TextButton(onPressed: () => refresh(selected.clear), child: const Text('إلغاء التحديد')),
                 ]),
-                Expanded(child: ListView(children: users.map((d) {
-                  final data = d.data();
-                  final role = data['role'] == 'admin' ? 'الإدارة' :
-                    data['role'] == 'supervisor' ? 'مشرف' : 'ضابط أمن';
-                  return CheckboxListTile(
-                    dense: true,
-                    value: selected.contains(d.id),
-                    title: Text((data['displayName'] ?? 'مستخدم').toString()),
-                    subtitle: Text(role),
-                    onChanged: (v) => refresh(() {
-                      if (v == true) selected.add(d.id);
-                      if (v == false) selected.remove(d.id);
-                    }),
-                  );
-                }).toList())),
+                Expanded(child: Builder(builder: (listContext) {
+                  final filteredUsers = users.where((d) {
+                    final data = d.data();
+                    final name = (data['displayName'] ?? data['fullName'] ?? '').toString().toLowerCase();
+                    final phone = (data['phone'] ?? '').toString().toLowerCase();
+                    final matchesText = employeeSearch.isEmpty || name.contains(employeeSearch) || phone.contains(employeeSearch);
+                    final shift = (data['currentShift'] ?? '').toString();
+                    return matchesText && (shiftFilter == 'all' || shift == shiftFilter);
+                  }).toList();
+                  if (filteredUsers.isEmpty) {
+                    return const Center(child: Text('لا توجد نتائج مطابقة لخيارات البحث.'));
+                  }
+                  return ListView(children: filteredUsers.map((d) {
+                    final data = d.data();
+                    final role = data['role'] == 'admin' ? 'الإدارة' :
+                      data['role'] == 'supervisor' ? 'مشرف' : 'ضابط أمن';
+                    final phone = (data['phone'] ?? '').toString().trim();
+                    final shift = (data['currentShift'] ?? 'غير محدد').toString();
+                    return Card(
+                      margin: const EdgeInsets.symmetric(vertical: 4),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 4),
+                        child: Column(children: [
+                          CheckboxListTile(
+                            dense: true,
+                            value: selected.contains(d.id),
+                            title: Text(personName(data), style: const TextStyle(fontWeight: FontWeight.w700)),
+                            subtitle: Text('$role • الشفت $shift • ${phone.isEmpty ? 'لا يوجد رقم هاتف' : phone}'),
+                            onChanged: (v) => refresh(() {
+                              if (v == true) selected.add(d.id);
+                              if (v == false) selected.remove(d.id);
+                            }),
+                          ),
+                          if (phone.isNotEmpty)
+                            Padding(
+                              padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+                              child: Row(children: [
+                                Expanded(child: OutlinedButton.icon(
+                                  onPressed: () => _contactEmployee(phone, whatsapp: false),
+                                  icon: const Icon(Icons.call_outlined, size: 18),
+                                  label: const Text('اتصال مباشر'))),
+                                const SizedBox(width: 8),
+                                Expanded(child: OutlinedButton.icon(
+                                  onPressed: () => _contactEmployee(phone, whatsapp: true),
+                                  icon: const Icon(Icons.chat_outlined, size: 18),
+                                  label: const Text('واتساب'))),
+                              ]),
+                            ),
+                        ]),
+                      ),
+                    );
+                  }).toList());
+                })),
                 TextField(controller: title,
                   decoration: const InputDecoration(labelText: 'عنوان الملاحظة')),
                 const SizedBox(height: 8),
