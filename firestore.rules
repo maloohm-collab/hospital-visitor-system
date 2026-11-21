@@ -1109,6 +1109,38 @@ service cloud.firestore {
     // Unified staff messages: each recipient has an isolated document so
     // recipients can only read their own copy; replies remain under that copy.
     match /staff_messages/{messageId} {
+      function validStaffMessageAttachment(attachment, threadId, senderUid) {
+        return attachment is map
+          && attachment.keys().hasOnly(['storagePath', 'downloadUrl', 'fileName', 'contentType', 'sizeBytes'])
+          && attachment.keys().hasAll(['storagePath', 'downloadUrl', 'fileName', 'contentType', 'sizeBytes'])
+          && attachment.fileName is string
+          && attachment.fileName.size() >= 1
+          && attachment.fileName.size() <= 160
+          && attachment.storagePath == 'staff_message_media/' + threadId + '/' + senderUid + '/' + attachment.fileName
+          && attachment.downloadUrl is string
+          && attachment.downloadUrl.matches('https://.*')
+          && attachment.contentType is string
+          && attachment.contentType.matches('image/(jpeg|png|webp|heic|gif)')
+          && attachment.sizeBytes is int
+          && attachment.sizeBytes > 0
+          && attachment.sizeBytes <= 10485760;
+      }
+
+      function validStaffMessageAttachments(attachments, threadId, senderUid) {
+        return attachments is list
+          && attachments.size() <= 5
+          && (attachments.size() == 0
+            || (attachments.size() > 0 && validStaffMessageAttachment(attachments[0], threadId, senderUid)))
+          && (attachments.size() <= 1
+            || (attachments.size() > 1 && validStaffMessageAttachment(attachments[1], threadId, senderUid)))
+          && (attachments.size() <= 2
+            || (attachments.size() > 2 && validStaffMessageAttachment(attachments[2], threadId, senderUid)))
+          && (attachments.size() <= 3
+            || (attachments.size() > 3 && validStaffMessageAttachment(attachments[3], threadId, senderUid)))
+          && (attachments.size() <= 4
+            || (attachments.size() > 4 && validStaffMessageAttachment(attachments[4], threadId, senderUid)));
+      }
+
       function isMessageParticipant() {
         return isActiveUser()
           && (resource.data.senderUid == request.auth.uid
@@ -1151,8 +1183,11 @@ service cloud.firestore {
         && request.resource.data.priority in ['normal', 'important', 'urgent']
         && request.resource.data.requestReply is bool
         && request.resource.data.replyStatus in ['pending', 'not_required']
-        && request.resource.data.attachments is list
-        && request.resource.data.attachments.size() == 0
+        && validStaffMessageAttachments(
+          request.resource.data.attachments,
+          request.resource.data.threadId,
+          request.resource.data.senderUid
+        )
         && request.resource.data.read == false
         && request.resource.data.hiddenFor is list
         && (!request.resource.data.keys().hasAny(['showOnTicker'])
@@ -1247,7 +1282,10 @@ service cloud.firestore {
         )
       ));
 
-      allow delete: if false;
+      allow delete: if isActiveUser()
+        && resource.data.recipientUid == request.auth.uid
+        && resource.data.messageType == 'note'
+        && (isActiveAdmin() || isActiveSupervisor());
 
       match /replies/{replyId} {
         function parentMessage() {
