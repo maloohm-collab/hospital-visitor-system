@@ -98,6 +98,73 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
     }
   }
 
+  Future<void> _contactMessageSender(String senderUid) async {
+    if (senderUid.isEmpty) {
+      toast('تعذر تحديد صاحب الملاحظة.');
+      return;
+    }
+    try {
+      final profile = await db.collection('users').doc(senderUid).get();
+      final phone = (profile.data()?['phone'] ?? '').toString().trim();
+      if (phone.isEmpty) {
+        toast('لا يوجد رقم هاتف مسجل لصاحب الملاحظة.');
+        return;
+      }
+      await _contactEmployee(phone, whatsapp: false);
+    } on FirebaseException catch (e) {
+      toast('تعذر تحميل رقم الهاتف (${e.code}).');
+    } catch (_) {
+      toast('تعذر تحميل بيانات صاحب الملاحظة.');
+    }
+  }
+
+  Future<void> _likeMessage(DocumentSnapshot<Map<String, dynamic>> doc) async {
+    final message = doc.data() ?? <String, dynamic>{};
+    if (message['recipientUid'] != uid) {
+      toast('الإعجاب متاح لمستلم الملاحظة فقط.');
+      return;
+    }
+    if (message['liked'] == true) {
+      toast('سبق تسجيل إعجابك بهذه الملاحظة.');
+      return;
+    }
+    try {
+      final profile = await db.collection('users').doc(uid).get();
+      final profileData = profile.data() ?? <String, dynamic>{};
+      final senderUid = (message['senderUid'] ?? '').toString();
+      if (senderUid.isEmpty) throw StateError('تعذر تحديد مرسل الملاحظة.');
+      await doc.reference.update({
+        'read': true,
+        'readAt': FieldValue.serverTimestamp(),
+        'liked': true,
+        'likedAt': FieldValue.serverTimestamp(),
+        'likedByUid': uid,
+        'likedByName': personName(profileData),
+      });
+      final notificationRef = db.collection('notifications').doc();
+      await notificationRef.set({
+        'notificationId': notificationRef.id,
+        'recipientUid': senderUid,
+        'recipientRole': (message['senderRole'] ?? '').toString(),
+        'senderUid': uid,
+        'senderEmail': auth.currentUser?.email ?? '',
+        'senderName': personName(profileData),
+        'title': 'تم الاطلاع على ملاحظتك',
+        'body': 'اطّلع ' + personName(profileData) + ' على ملاحظتك وأعجب بها 👍',
+        'priority': 'normal',
+        'read': false,
+        'kind': 'staff_message_liked',
+        'relatedId': doc.id,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+      if (mounted) toast('تم تسجيل الإعجاب وإشعار صاحب الملاحظة.');
+    } on FirebaseException catch (e) {
+      toast('تعذر تسجيل الإعجاب (${e.code}).');
+    } catch (e) {
+      toast(e.toString().replaceFirst('Bad state: ', ''));
+    }
+  }
+
   Future<void> compose() async {
     final snapshot = await db.collection('users').where('status', isEqualTo: 'active').get();
     if (!mounted) return;
@@ -245,6 +312,12 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
                 const SizedBox(height: 8),
                 TextField(controller: body, minLines: 3, maxLines: 5,
                   decoration: const InputDecoration(labelText: 'التفاصيل النصية')),
+                const SizedBox(height: 6),
+                OutlinedButton.icon(
+                  onPressed: () => toast('إرفاق الصور سيُفعّل عند تجهيز التخزين السحابي. إرسال الملاحظة لا يتطلب صوراً.'),
+                  icon: const Icon(Icons.add_photo_alternate_outlined),
+                  label: const Text('إرفاق صور (اختياري) — قريباً'),
+                ),
                 const SizedBox(height: 8),
                 DropdownButtonFormField<String>(
                   value: priority,
@@ -469,10 +542,9 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
 
   Future<void> reply(DocumentSnapshot<Map<String, dynamic>> doc) async {
     final message = doc.data() ?? {};
-    if (message['requestReply'] != true ||
-        message['replyStatus'] == 'replied' ||
+    if (message['replyStatus'] == 'replied' ||
         message['recipientUid'] != uid) {
-      toast('لا يوجد طلب رد متاح على هذه الملاحظة.');
+      toast('لا يمكن الرد على هذه الملاحظة من هذا الحساب.');
       return;
     }
 
@@ -580,6 +652,8 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
     await markRead(doc);
     if (!mounted) return;
     final d = doc.data() ?? {};
+    final senderUid = (d['senderUid'] ?? '').toString();
+    final attachments = (d['attachments'] as List<dynamic>?) ?? const [];
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -603,6 +677,46 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
                 child: ListView(children: [
                   SelectableText((d['body'] ?? '').toString(),
                     style: const TextStyle(fontSize: 17, height: 1.8, fontWeight: FontWeight.w700, color: Color(0xFF172B45))),
+                  if (attachments.isNotEmpty) ...[
+                    const SizedBox(height: 14),
+                    Text('الصور المرفقة (${attachments.length})',
+                      style: const TextStyle(fontWeight: FontWeight.w900, color: navy)),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: attachments.map<Widget>((item) {
+                        final attachment = item is Map
+                            ? Map<String, dynamic>.from(item)
+                            : <String, dynamic>{};
+                        final url = (attachment['url'] ?? attachment['downloadUrl'] ?? '').toString();
+                        if (url.isEmpty) return const SizedBox.shrink();
+                        return InkWell(
+                          onTap: () => showDialog<void>(
+                            context: ctx,
+                            builder: (imageContext) => Dialog(
+                              child: InteractiveViewer(
+                                child: Image.network(url, fit: BoxFit.contain,
+                                  errorBuilder: (_, __, ___) => const Padding(
+                                    padding: EdgeInsets.all(24),
+                                    child: Text('تعذر تحميل الصورة.')),
+                                ),
+                              ),
+                            ),
+                          ),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(12),
+                            child: Image.network(url, width: 120, height: 100, fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) => Container(
+                                width: 120, height: 100, color: const Color(0xFFE8EEF5),
+                                alignment: Alignment.center,
+                                child: const Icon(Icons.broken_image_outlined)),
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ],
                   const Divider(),
                   const Text('الردود', style: TextStyle(fontWeight: FontWeight.w900)),
                   StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
@@ -627,14 +741,37 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
                   ),
                 ]),
               ),
-              if (d['requestReply'] == true &&
-                  d['recipientUid'] == uid &&
-                  d['replyStatus'] != 'replied')
-                FilledButton.icon(
-                  onPressed: () { Navigator.pop(ctx); reply(doc); },
-                  icon: const Icon(Icons.reply),
-                  label: const Text('الرد على الملاحظة'),
+              if (d['recipientUid'] == uid) ...[
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: () => _contactMessageSender(senderUid),
+                        icon: const Icon(Icons.call_outlined),
+                        label: const Text('اتصال مباشر'),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: FilledButton.icon(
+                        onPressed: d['replyStatus'] == 'replied'
+                            ? null
+                            : () { Navigator.pop(ctx); reply(doc); },
+                        icon: const Icon(Icons.reply_rounded),
+                        label: const Text('رد'),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    IconButton.filledTonal(
+                      tooltip: d['liked'] == true ? 'تم تسجيل الإعجاب' : 'إعجاب وإشعار المرسل',
+                      onPressed: d['liked'] == true ? null : () => _likeMessage(doc),
+                      icon: const Icon(Icons.thumb_up_alt_outlined),
+                    ),
+                  ],
                 ),
+              ] else if (d['liked'] == true)
+                const Text('اطّلع المستلم على الملاحظة وأعجب بها 👍',
+                  style: TextStyle(color: teal, fontWeight: FontWeight.w800)),
             ],
           ),
         ),
@@ -756,6 +893,9 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
             if (created is Timestamp) Text(DateFormat('yyyy/MM/dd HH:mm').format(created.toDate())),
             if (d['requestReply'] == true) Text(d['replyStatus'] == 'replied' ? 'تم الرد' : 'بانتظار الرد',
               style: TextStyle(color: d['replyStatus'] == 'replied' ? Colors.green : Colors.deepOrange)),
+            if (sent && d['liked'] == true)
+              const Text('اطّلع المستلم على الملاحظة وأعجب بها 👍',
+                style: TextStyle(color: teal, fontWeight: FontWeight.w800)),
           ]),
           trailing: archive
               ? IconButton(icon: const Icon(Icons.delete_outline, color: Colors.red), onPressed: () => hideFromArchive(doc))
