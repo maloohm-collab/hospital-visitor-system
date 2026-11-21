@@ -18,17 +18,17 @@ service firebase.storage {
           && firestore.get(/databases/(default)/documents/staff_messages/$(threadId + '_' + senderUid)).data.senderUid == request.auth.uid
           && firestore.get(/databases/(default)/documents/staff_messages/$(threadId + '_' + senderUid)).data.recipientUid == senderUid;
       }
-      allow write: if isActiveUser()
+      allow create, update: if isActiveUser()
         && request.auth.uid == senderUid
-        && request.resource.size <= 20 * 1024 * 1024
-        && request.resource.contentType.matches('(image/.*|video/.*|audio/.*|application/pdf|application/msword|application/vnd\\..*|text/plain|application/zip|application/octet-stream)');
+        && request.resource.size <= 10 * 1024 * 1024
+        && request.resource.contentType.matches('image/(jpeg|png|webp|heic|gif)');
+      allow delete: if isActiveUser() && request.auth.uid == senderUid;
       allow read: if isActiveUser() && (
         request.auth.uid == senderUid
         || (recipientMessage()
           && firestore.get(/databases/(default)/documents/staff_messages/$(threadId + '_' + request.auth.uid)).data.senderUid == senderUid)
         || replyMessage()
       );
-      allow delete: if isActiveUser() && request.auth.uid == senderUid;
     }
   }
 }
