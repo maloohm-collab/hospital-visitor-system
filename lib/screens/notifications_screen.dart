@@ -168,7 +168,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       }
       return;
     }
-    if (kind == 'staff_message' || kind == 'staff_message_reply') {
+    if (kind == 'staff_message' || kind == 'staff_message_reply' || kind == 'staff_message_liked') {
       await Navigator.push(context, MaterialPageRoute(
         builder: (_) => StaffMessagesScreen(
           userRole: widget.userRole,
@@ -235,7 +235,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         final docs = (snap.data?.docs ?? []).where((doc) {
           final d = doc.data();
           final kind = (d['kind'] ?? '').toString();
-          if (kind == 'staff_message' || kind == 'staff_message_reply') {
+          if (kind == 'staff_message' || kind == 'staff_message_reply' || kind == 'staff_message_liked') {
             final created = d['createdAt'];
             if (created is! Timestamp || DateTime.now().isAfter(created.toDate().add(const Duration(hours: 24)))) return false;
           }
