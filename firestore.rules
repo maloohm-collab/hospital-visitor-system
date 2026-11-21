@@ -776,8 +776,8 @@ service cloud.firestore {
             && exists(/databases/$(database)/documents/staff_messages/$(request.resource.data.relatedId))
             && get(/databases/$(database)/documents/staff_messages/$(request.resource.data.relatedId)).data.senderUid == request.resource.data.recipientUid
             && get(/databases/$(database)/documents/staff_messages/$(request.resource.data.relatedId)).data.recipientUid == request.auth.uid
-            && get(/databases/$(database)/documents/staff_messages/$(request.resource.data.relatedId)).data.liked == true
-            && get(/databases/$(database)/documents/staff_messages/$(request.resource.data.relatedId)).data.likedByUid == request.auth.uid
+            && getAfter(/databases/$(database)/documents/staff_messages/$(request.resource.data.relatedId)).data.liked == true
+            && getAfter(/databases/$(database)/documents/staff_messages/$(request.resource.data.relatedId)).data.likedByUid == request.auth.uid
           )
           || (
             request.resource.data.kind == 'staff_message_reply'
