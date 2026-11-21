@@ -1233,7 +1233,7 @@ service cloud.firestore {
         )
         || (
           resource.data.recipientUid == request.auth.uid
-          && resource.data.liked != true
+          && (!resource.data.keys().hasAny(['liked']) || resource.data.liked == false)
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
             'read', 'readAt', 'liked', 'likedAt', 'likedByUid', 'likedByName'
           ])
