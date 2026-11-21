@@ -48,7 +48,9 @@ class DashboardScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final currentUid = FirebaseAuth.instance.currentUser?.uid;
     return Scaffold(
-      backgroundColor: const Color(0xFFF2F4F8),
+      // Keep the Scaffold transparent so the configured page background remains visible
+      // in the system-safe area and during any platform scroll-boundary exposure.
+      backgroundColor: Colors.transparent,
       bottomNavigationBar: DecoratedBox(
         decoration: const BoxDecoration(
           color: Colors.white,
