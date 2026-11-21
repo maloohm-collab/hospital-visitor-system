@@ -164,12 +164,20 @@ service cloud.firestore {
         (
           request.auth.uid == uid
           && request.resource.data.diff(resource.data).affectedKeys()
-            .hasOnly(['displayName', 'phone', 'photoURL'])
+            .hasOnly(['displayName', 'phone', 'photoURL', 'currentShift', 'profileCompleted'])
           && request.resource.data.displayName is string
           && request.resource.data.displayName.size() >= 3
           && request.resource.data.phone is string
           && request.resource.data.phone.size() >= 9
           && request.resource.data.photoURL is string
+          && (
+            !request.resource.data.diff(resource.data).affectedKeys().hasAny(['currentShift', 'profileCompleted'])
+            || (
+              resource.data.role in ['security_officer', 'supervisor']
+              && request.resource.data.currentShift in ['A', 'B', 'C']
+              && request.resource.data.profileCompleted == true
+            )
+          )
           && request.resource.data.role == resource.data.role
           && request.resource.data.status == resource.data.status
           && request.resource.data.email == resource.data.email
