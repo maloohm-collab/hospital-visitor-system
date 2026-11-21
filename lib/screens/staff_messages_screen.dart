@@ -481,8 +481,12 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
                           for (var index = 0; index < pickedImages.length; index++) {
                             final image = pickedImages[index];
                             final safeName = image.name.replaceAll(RegExp(r'[^A-Za-z0-9._-]'), '_');
-                            final fileName = '${DateTime.now().microsecondsSinceEpoch}_${index}_$safeName';
-                            final contentType = image.mimeType ?? 'image/jpeg';
+                            final shortName = safeName.length > 120
+                                ? safeName.substring(safeName.length - 120)
+                                : safeName;
+                            final fileName = '${DateTime.now().microsecondsSinceEpoch}_${index}_$shortName';
+                            final detectedType = image.mimeType ?? 'image/jpeg';
+                            final contentType = detectedType == 'image/jpg' ? 'image/jpeg' : detectedType;
                             if (!contentType.startsWith('image/')) {
                               throw StateError('المرفقات المسموح بها صور فقط.');
                             }
@@ -883,7 +887,10 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
                                       child: Column(
                                         mainAxisSize: MainAxisSize.min,
                                         children: [
-                                          Flexible(
+                                          ConstrainedBox(
+                                            constraints: BoxConstraints(
+                                              maxHeight: MediaQuery.of(ctx).size.height * .72,
+                                            ),
                                             child: InteractiveViewer(
                                               child: Image.network(url, fit: BoxFit.contain,
                                                 errorBuilder: (_, __, ___) => const Padding(
