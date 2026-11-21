@@ -771,6 +771,15 @@ service cloud.firestore {
             && get(/databases/$(database)/documents/staff_messages/$(request.resource.data.relatedId)).data.priority == request.resource.data.priority
           )
           || (
+            request.resource.data.kind == 'staff_message_liked'
+            && request.resource.data.relatedId is string
+            && exists(/databases/$(database)/documents/staff_messages/$(request.resource.data.relatedId))
+            && get(/databases/$(database)/documents/staff_messages/$(request.resource.data.relatedId)).data.senderUid == request.resource.data.recipientUid
+            && get(/databases/$(database)/documents/staff_messages/$(request.resource.data.relatedId)).data.recipientUid == request.auth.uid
+            && get(/databases/$(database)/documents/staff_messages/$(request.resource.data.relatedId)).data.liked == true
+            && get(/databases/$(database)/documents/staff_messages/$(request.resource.data.relatedId)).data.likedByUid == request.auth.uid
+          )
+          || (
             request.resource.data.kind == 'staff_message_reply'
             && request.resource.data.relatedId is string
             && request.resource.data.replyId is string
@@ -1217,11 +1226,24 @@ service cloud.firestore {
         )
         || (
           resource.data.recipientUid == request.auth.uid
-          && resource.data.requestReply == true
-          && resource.data.replyStatus == 'pending'
+          && resource.data.replyStatus in ['pending', 'not_required']
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['replyStatus', 'lastReplyAt'])
           && request.resource.data.replyStatus == 'replied'
           && request.resource.data.lastReplyAt == request.time
+        )
+        || (
+          resource.data.recipientUid == request.auth.uid
+          && resource.data.liked != true
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'read', 'readAt', 'liked', 'likedAt', 'likedByUid', 'likedByName'
+          ])
+          && request.resource.data.read == true
+          && request.resource.data.readAt == request.time
+          && request.resource.data.liked == true
+          && request.resource.data.likedAt == request.time
+          && request.resource.data.likedByUid == request.auth.uid
+          && request.resource.data.likedByName is string
+          && request.resource.data.likedByName.size() >= 2
         )
       ));
 
@@ -1236,8 +1258,7 @@ service cloud.firestore {
             || parentMessage().recipientUid == request.auth.uid);
         allow create: if isActiveUser()
           && parentMessage().recipientUid == request.auth.uid
-          && parentMessage().requestReply == true
-          && parentMessage().replyStatus == 'pending'
+          && parentMessage().replyStatus in ['pending', 'not_required']
           && request.resource.data.keys().hasOnly([
             'replyId', 'senderUid', 'senderName', 'senderRole', 'senderLabel', 'body', 'attachments', 'createdAt'
           ])
