@@ -110,8 +110,18 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
       return;
     }
     try {
-      final profile = await db.collection('users').doc(senderUid).get();
-      final phone = (profile.data()?['phone'] ?? '').toString().trim();
+      // Query active profiles so Firestore's active-user list rule applies;
+      // direct get() of another employee's document is intentionally restricted.
+      final profiles = await db.collection('users')
+          .where(FieldPath.documentId, isEqualTo: senderUid)
+          .where('status', isEqualTo: 'active')
+          .limit(1)
+          .get();
+      if (profiles.docs.isEmpty) {
+        toast('تعذر العثور على ملف صاحب الملاحظة أو أن حسابه غير نشط.');
+        return;
+      }
+      final phone = (profiles.docs.first.data()['phone'] ?? '').toString().trim();
       if (phone.isEmpty) {
         toast('لا يوجد رقم هاتف مسجل لصاحب الملاحظة.');
         return;
