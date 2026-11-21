@@ -199,19 +199,28 @@ class _AccountProfileScreenState extends State<AccountProfileScreen> {
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
     final user = FirebaseAuth.instance.currentUser;
-    if (user == null || (_name.text.trim() == _savedName && _currentShift == _savedShift)) return;
+    final isStaff = _role == 'security_officer' || _role == 'supervisor';
+    final name = _name.text.trim();
+    final phone = _phone.text.trim();
+    if (user == null ||
+        (name == _savedName &&
+            (!isStaff || (phone == _savedPhone && _currentShift == _savedShift)))) {
+      return;
+    }
     setState(() => _saving = true);
     try {
       await FirebaseFirestore.instance.collection('users').doc(user.uid).update({
-        'displayName': _name.text.trim(),
-        if (_role == 'security_officer' || _role == 'supervisor') 'currentShift': _currentShift,
-        if (_role == 'security_officer' || _role == 'supervisor') 'profileCompleted': true,
+        'displayName': name,
+        if (isStaff) 'phone': phone,
+        if (isStaff) 'currentShift': _currentShift,
+        if (isStaff) 'profileCompleted': true,
       });
-      await user.updateDisplayName(_name.text.trim());
-      _savedName = _name.text.trim();
+      await user.updateDisplayName(name);
+      _savedName = name;
+      if (isStaff) _savedPhone = phone;
       _savedShift = _currentShift;
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('تم حفظ الاسم بنجاح.')),
+        const SnackBar(content: Text('تم حفظ بيانات الحساب بنجاح.')),
       );
     } on FirebaseException catch (error) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(
