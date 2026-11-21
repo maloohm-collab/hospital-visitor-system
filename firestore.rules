@@ -164,12 +164,20 @@ service cloud.firestore {
         (
           request.auth.uid == uid
           && request.resource.data.diff(resource.data).affectedKeys()
-            .hasOnly(['displayName', 'phone', 'photoURL'])
+            .hasOnly(['displayName', 'phone', 'photoURL', 'currentShift', 'profileCompleted'])
           && request.resource.data.displayName is string
           && request.resource.data.displayName.size() >= 3
           && request.resource.data.phone is string
           && request.resource.data.phone.size() >= 9
           && request.resource.data.photoURL is string
+          && (
+            !request.resource.data.diff(resource.data).affectedKeys().hasAny(['currentShift', 'profileCompleted'])
+            || (
+              resource.data.role in ['security_officer', 'supervisor']
+              && request.resource.data.currentShift in ['A', 'B', 'C']
+              && request.resource.data.profileCompleted == true
+            )
+          )
           && request.resource.data.role == resource.data.role
           && request.resource.data.status == resource.data.status
           && request.resource.data.email == resource.data.email
@@ -763,6 +771,15 @@ service cloud.firestore {
             && get(/databases/$(database)/documents/staff_messages/$(request.resource.data.relatedId)).data.priority == request.resource.data.priority
           )
           || (
+            request.resource.data.kind == 'staff_message_liked'
+            && request.resource.data.relatedId is string
+            && exists(/databases/$(database)/documents/staff_messages/$(request.resource.data.relatedId))
+            && get(/databases/$(database)/documents/staff_messages/$(request.resource.data.relatedId)).data.senderUid == request.resource.data.recipientUid
+            && get(/databases/$(database)/documents/staff_messages/$(request.resource.data.relatedId)).data.recipientUid == request.auth.uid
+            && getAfter(/databases/$(database)/documents/staff_messages/$(request.resource.data.relatedId)).data.liked == true
+            && getAfter(/databases/$(database)/documents/staff_messages/$(request.resource.data.relatedId)).data.likedByUid == request.auth.uid
+          )
+          || (
             request.resource.data.kind == 'staff_message_reply'
             && request.resource.data.relatedId is string
             && request.resource.data.replyId is string
@@ -1092,6 +1109,38 @@ service cloud.firestore {
     // Unified staff messages: each recipient has an isolated document so
     // recipients can only read their own copy; replies remain under that copy.
     match /staff_messages/{messageId} {
+      function validStaffMessageAttachment(attachment, threadId, senderUid) {
+        return attachment is map
+          && attachment.keys().hasOnly(['storagePath', 'downloadUrl', 'fileName', 'contentType', 'sizeBytes'])
+          && attachment.keys().hasAll(['storagePath', 'downloadUrl', 'fileName', 'contentType', 'sizeBytes'])
+          && attachment.fileName is string
+          && attachment.fileName.size() >= 1
+          && attachment.fileName.size() <= 160
+          && attachment.storagePath == 'staff_message_media/' + threadId + '/' + senderUid + '/' + attachment.fileName
+          && attachment.downloadUrl is string
+          && attachment.downloadUrl.matches('https://.*')
+          && attachment.contentType is string
+          && attachment.contentType.matches('image/(jpeg|png|webp|heic|gif)')
+          && attachment.sizeBytes is int
+          && attachment.sizeBytes > 0
+          && attachment.sizeBytes <= 10485760;
+      }
+
+      function validStaffMessageAttachments(attachments, threadId, senderUid) {
+        return attachments is list
+          && attachments.size() <= 5
+          && (attachments.size() == 0
+            || (attachments.size() > 0 && validStaffMessageAttachment(attachments[0], threadId, senderUid)))
+          && (attachments.size() <= 1
+            || (attachments.size() > 1 && validStaffMessageAttachment(attachments[1], threadId, senderUid)))
+          && (attachments.size() <= 2
+            || (attachments.size() > 2 && validStaffMessageAttachment(attachments[2], threadId, senderUid)))
+          && (attachments.size() <= 3
+            || (attachments.size() > 3 && validStaffMessageAttachment(attachments[3], threadId, senderUid)))
+          && (attachments.size() <= 4
+            || (attachments.size() > 4 && validStaffMessageAttachment(attachments[4], threadId, senderUid)));
+      }
+
       function isMessageParticipant() {
         return isActiveUser()
           && (resource.data.senderUid == request.auth.uid
@@ -1134,8 +1183,11 @@ service cloud.firestore {
         && request.resource.data.priority in ['normal', 'important', 'urgent']
         && request.resource.data.requestReply is bool
         && request.resource.data.replyStatus in ['pending', 'not_required']
-        && request.resource.data.attachments is list
-        && request.resource.data.attachments.size() == 0
+        && validStaffMessageAttachments(
+          request.resource.data.attachments,
+          request.resource.data.threadId,
+          request.resource.data.senderUid
+        )
         && request.resource.data.read == false
         && request.resource.data.hiddenFor is list
         && (!request.resource.data.keys().hasAny(['showOnTicker'])
@@ -1209,15 +1261,31 @@ service cloud.firestore {
         )
         || (
           resource.data.recipientUid == request.auth.uid
-          && resource.data.requestReply == true
-          && resource.data.replyStatus == 'pending'
+          && resource.data.replyStatus in ['pending', 'not_required']
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['replyStatus', 'lastReplyAt'])
           && request.resource.data.replyStatus == 'replied'
           && request.resource.data.lastReplyAt == request.time
         )
+        || (
+          resource.data.recipientUid == request.auth.uid
+          && (!resource.data.keys().hasAny(['liked']) || resource.data.liked == false)
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'read', 'readAt', 'liked', 'likedAt', 'likedByUid', 'likedByName'
+          ])
+          && request.resource.data.read == true
+          && request.resource.data.readAt == request.time
+          && request.resource.data.liked == true
+          && request.resource.data.likedAt == request.time
+          && request.resource.data.likedByUid == request.auth.uid
+          && request.resource.data.likedByName is string
+          && request.resource.data.likedByName.size() >= 2
+        )
       ));
 
-      allow delete: if false;
+      allow delete: if isActiveUser()
+        && resource.data.recipientUid == request.auth.uid
+        && resource.data.messageType == 'note'
+        && (isActiveAdmin() || isActiveSupervisor());
 
       match /replies/{replyId} {
         function parentMessage() {
@@ -1228,8 +1296,7 @@ service cloud.firestore {
             || parentMessage().recipientUid == request.auth.uid);
         allow create: if isActiveUser()
           && parentMessage().recipientUid == request.auth.uid
-          && parentMessage().requestReply == true
-          && parentMessage().replyStatus == 'pending'
+          && parentMessage().replyStatus in ['pending', 'not_required']
           && request.resource.data.keys().hasOnly([
             'replyId', 'senderUid', 'senderName', 'senderRole', 'senderLabel', 'body', 'attachments', 'createdAt'
           ])
@@ -1244,7 +1311,11 @@ service cloud.firestore {
           && request.resource.data.body is string
           && request.resource.data.body.size() >= 1
           && request.resource.data.createdAt == request.time;
-        allow update, delete: if false;
+        allow update: if false;
+        allow delete: if isActiveUser()
+          && parentMessage().recipientUid == request.auth.uid
+          && parentMessage().messageType == 'note'
+          && (isActiveAdmin() || isActiveSupervisor());
       }
     }
 

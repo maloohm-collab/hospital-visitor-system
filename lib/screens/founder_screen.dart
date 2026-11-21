@@ -126,28 +126,38 @@ class FounderScreen extends StatelessWidget {
           const SizedBox(height: 13),
           _section(
             icon: Icons.new_releases_rounded,
-            title: 'آخر تحديث — 12 نوفمبر 2026',
+            title: 'آخر التحديثات — 21 نوفمبر 2026',
             child: const Column(
               children: [
                 _FeatureRow(
-                  icon: Icons.dashboard_customize_outlined,
-                  title: 'تبسيط لوحة الإدارة',
-                  description: 'إعادة تنظيم وظائف الإدارة التسع في ستة أقسام رئيسية: إدارة الحسابات والموظفين، جدول المناوبات، المتابعة الميدانية، التقارير والسجلات، التعليمات والمراسلات، وإدارة الشريط الإخباري. تم التجميع دون حذف الوظائف أو البيانات، وبقي إعداد المناوبات من اختصاص الإدارة.',
-                ),
-                _FeatureRow(
-                  icon: Icons.supervisor_account_outlined,
-                  title: 'تبسيط لوحة المشرف',
-                  description: 'تقتصر الصفحة الرئيسية للمشرف على التعليمات والمراسلات وكشوف المناوبة، مع شريط تنقل يضم الرئيسية وحسابي وتواصل مباشر وعن التطبيق.',
-                ),
-                _FeatureRow(
                   icon: Icons.forum_outlined,
-                  title: 'تنظيم المراسلات',
-                  description: 'تصل نسخة من مراسلات المشرف إلى الإدارة تلقائياً، ويمكن تبادل التعليمات والملاحظات بين الأطراف المعنية دون إضافة إثبات اطلاع أو تنفيذ.',
+                  title: 'تطوير مراسلات الموظفين',
+                  description: 'تحسين تبادل الملاحظات والبلاغات بين ضباط الأمن والمشرفين ومدير الموقع، مع استمرار إرسال الرسائل النصية دون اشتراط إرفاق صور.',
                 ),
                 _FeatureRow(
-                  icon: Icons.cloud_done_outlined,
+                  icon: Icons.image_outlined,
+                  title: 'إرفاق الصور — تجهيز مسبق',
+                  description: 'أُضيف دعم اختيار حتى خمس صور للملاحظة، مع عرض الصور المصغرة ومعاينتها بالحجم الأكبر وتجهيز حفظها في معرض الهاتف. هذه الخاصية جاهزة برمجياً لكنها لا تعمل فعلياً قبل تفعيل Firebase Storage في المشروع.',
+                ),
+                _FeatureRow(
+                  icon: Icons.delete_sweep_outlined,
+                  title: 'إدارة الملاحظات الواردة',
+                  description: 'يمكن للمشرف ومدير الموقع تحديد عدة ملاحظات واردة وحذفها أو حذف جميع الملاحظات الواردة. لا يشمل الحذف الرسائل الصادرة أو التعليمات أو نسخة المرسل.',
+                ),
+                _FeatureRow(
+                  icon: Icons.notifications_active_outlined,
+                  title: 'التفاعل والإشعارات',
+                  description: 'دعم تسجيل الإعجاب بالملاحظة مرة واحدة، وإشعار المرسل عند الإعجاب، مع فتح المراسلة المرتبطة مباشرة من الإشعار.',
+                ),
+                _FeatureRow(
+                  icon: Icons.verified_user_outlined,
                   title: 'قواعد Firestore',
-                  description: 'اكتمل نشر قواعد Firestore بنجاح من فرع التطوير بتاريخ 12 نوفمبر 2026. اقتصر النشر على قواعد Firestore، ولم يشمل Storage أو Cloud Functions.',
+                  description: 'أُعدّت قواعد Firestore لتدعم بيانات المرفقات وحذف الملاحظات الواردة وفق الصلاحيات، وأكد مالك المشروع نشر القواعد بتاريخ 21 نوفمبر 2026. لم يتم تفعيل Firebase Storage أو نشر قواعده.',
+                ),
+                _FeatureRow(
+                  icon: Icons.build_circle_outlined,
+                  title: 'التحقق من الإصدار',
+                  description: 'اجتازت النسخة اختبارات التحليل واختبارات Widget وبناء APK على GitHub Actions. يبقى اختبار وظائف الصور الفعلية مؤجلاً إلى حين تفعيل Storage وتجربتها على الجهاز.',
                 ),
               ],
             ),

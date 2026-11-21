@@ -43,6 +43,8 @@ class _AccountProfileScreenState extends State<AccountProfileScreen> {
   String _savedPhoto = '';
   String _savedName = '';
   String _role = '';
+  String _currentShift = 'A';
+  String _savedShift = 'A';
 
   @override
   void initState() {
@@ -76,6 +78,9 @@ class _AccountProfileScreenState extends State<AccountProfileScreen> {
       final data = snapshot.data() ?? <String, dynamic>{};
       _name.text = (data['displayName'] as String? ?? user.displayName ?? '').trim();
       _savedName = _name.text;
+      _currentShift = (data['currentShift'] ?? 'A').toString();
+      if (!['A', 'B', 'C'].contains(_currentShift)) _currentShift = 'A';
+      _savedShift = _currentShift;
       _phone.text = (data['phone'] as String? ?? '').trim();
       _savedPhone = _phone.text;
       final localPhoto = await _secureStorage.read(
@@ -194,16 +199,28 @@ class _AccountProfileScreenState extends State<AccountProfileScreen> {
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
     final user = FirebaseAuth.instance.currentUser;
-    if (user == null || _name.text.trim() == _savedName) return;
+    final isStaff = _role == 'security_officer' || _role == 'supervisor';
+    final name = _name.text.trim();
+    final phone = _phone.text.trim();
+    if (user == null ||
+        (name == _savedName &&
+            (!isStaff || (phone == _savedPhone && _currentShift == _savedShift)))) {
+      return;
+    }
     setState(() => _saving = true);
     try {
       await FirebaseFirestore.instance.collection('users').doc(user.uid).update({
-        'displayName': _name.text.trim(),
+        'displayName': name,
+        if (isStaff) 'phone': phone,
+        if (isStaff) 'currentShift': _currentShift,
+        if (isStaff) 'profileCompleted': true,
       });
-      await user.updateDisplayName(_name.text.trim());
-      _savedName = _name.text.trim();
+      await user.updateDisplayName(name);
+      _savedName = name;
+      if (isStaff) _savedPhone = phone;
+      _savedShift = _currentShift;
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('تم حفظ الاسم بنجاح.')),
+        const SnackBar(content: Text('تم حفظ بيانات الحساب بنجاح.')),
       );
     } on FirebaseException catch (error) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(
@@ -597,9 +614,14 @@ class _AccountProfileScreenState extends State<AccountProfileScreen> {
                             labelText: 'الاسم الكامل',
                             prefixIcon: Icon(Icons.person_outline),
                           ),
-                          validator: (value) => value == null || value.trim().length < 3
-                              ? 'أدخل الاسم الكامل'
-                              : null,
+                          validator: (value) {
+                            final parts = (value ?? '').trim().split(RegExp(r'\s+'))
+                                .where((part) => part.isNotEmpty).length;
+                            final requiresFour = _role == 'security_officer' || _role == 'supervisor';
+                            return parts < (requiresFour ? 4 : 3)
+                                ? (requiresFour ? 'أدخل الاسم الرباعي كاملاً' : 'أدخل الاسم الكامل')
+                                : null;
+                          },
                         ),
                         const SizedBox(height: 14),
                         TextFormField(
@@ -612,8 +634,29 @@ class _AccountProfileScreenState extends State<AccountProfileScreen> {
                             hintText: '07XXXXXXXX',
                             prefixIcon: Icon(Icons.phone_outlined),
                           ),
-                          validator: (_) => null,
+                          validator: (value) {
+                            if (_role != 'security_officer' && _role != 'supervisor') return null;
+                            final digits = (value ?? '').replaceAll(RegExp(r'[^0-9]'), '');
+                            return digits.length < 9 ? 'أدخل رقم هاتف صحيحاً' : null;
+                          },
                         ),
+                        if (_role == 'security_officer' || _role == 'supervisor') ...[
+                          const SizedBox(height: 14),
+                          DropdownButtonFormField<String>(
+                            value: _currentShift,
+                            decoration: const InputDecoration(
+                              labelText: 'الشفت الحالي',
+                              prefixIcon: Icon(Icons.schedule_rounded)),
+                            items: const [
+                              DropdownMenuItem(value: 'A', child: Text('الشفت A')),
+                              DropdownMenuItem(value: 'B', child: Text('الشفت B')),
+                              DropdownMenuItem(value: 'C', child: Text('الشفت C')),
+                            ],
+                            onChanged: _saving ? null : (value) {
+                              if (value != null) setState(() => _currentShift = value);
+                            },
+                          ),
+                        ],
                         const SizedBox(height: 14),
                         if (_role == 'admin') ...[
                           TextFormField(
@@ -803,13 +846,13 @@ class _AccountProfileScreenState extends State<AccountProfileScreen> {
                     ),
                   ),
                   const SizedBox(height: 22),
-                  if (_name.text.trim() != _savedName)
+                  if (_name.text.trim() != _savedName || _currentShift != _savedShift)
                     FilledButton.icon(
                       onPressed: _saving ? null : _save,
                       icon: _saving
                           ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                           : const Icon(Icons.save_rounded),
-                      label: Text(_saving ? 'جارٍ الحفظ...' : 'حفظ الاسم'),
+                      label: Text(_saving ? 'جارٍ الحفظ...' : 'حفظ بيانات الملف'),
                       style: FilledButton.styleFrom(backgroundColor: _teal),
                     ),
                   const SizedBox(height: 12),

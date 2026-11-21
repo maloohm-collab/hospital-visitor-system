@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'dashboard_screen.dart';
+import 'employee_profile_completion_screen.dart';
 
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key});
@@ -137,6 +138,20 @@ class _AuthScreenState extends State<AuthScreen> {
 
         await _clearLocalLock(user.uid);
         if (!mounted) return;
+        final requiresEmployeeProfile = role == 'security_officer' || role == 'supervisor';
+        final fullName = (data?['displayName'] ?? '').toString().trim();
+        final nameParts = fullName.split(RegExp(r'\s+')).where((part) => part.isNotEmpty).length;
+        final phone = (data?['phone'] ?? '').toString().replaceAll(RegExp(r'[^0-9]'), '');
+        final shift = (data?['currentShift'] ?? '').toString();
+        final profileComplete = data?['profileCompleted'] == true &&
+            nameParts >= 4 && phone.length >= 9 && ['A', 'B', 'C'].contains(shift);
+        if (requiresEmployeeProfile && !profileComplete) {
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(builder: (_) => EmployeeProfileCompletionScreen(userRole: role)),
+            (_) => false,
+          );
+          return;
+        }
         Navigator.of(context).pushAndRemoveUntil(
           MaterialPageRoute(builder: (_) => DashboardScreen(userRole: role)),
           (_) => false,
@@ -245,6 +260,20 @@ class _AuthScreenState extends State<AuthScreen> {
       }
       await _clearLocalLock(user.uid);
       if (!mounted) return;
+      final requiresEmployeeProfile = role == 'security_officer' || role == 'supervisor';
+      final fullName = (data?['displayName'] ?? '').toString().trim();
+      final nameParts = fullName.split(RegExp(r'\s+')).where((part) => part.isNotEmpty).length;
+      final phone = (data?['phone'] ?? '').toString().replaceAll(RegExp(r'[^0-9]'), '');
+      final shift = (data?['currentShift'] ?? '').toString();
+      final profileComplete = data?['profileCompleted'] == true &&
+          nameParts >= 4 && phone.length >= 9 && ['A', 'B', 'C'].contains(shift);
+      if (requiresEmployeeProfile && !profileComplete) {
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => EmployeeProfileCompletionScreen(userRole: role)),
+          (_) => false,
+        );
+        return;
+      }
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(builder: (_) => DashboardScreen(userRole: role)),
         (_) => false,
@@ -400,7 +429,7 @@ class _AuthScreenState extends State<AuthScreen> {
                               if (_register) ...[
                                 TextFormField(controller: _name, textInputAction: TextInputAction.next,
                                   decoration: const InputDecoration(labelText: 'الاسم الكامل', prefixIcon: Icon(Icons.person_outline)),
-                                  validator: (v) => _register && (v == null || v.trim().length < 3) ? 'أدخل الاسم الكامل' : null),
+                                  validator: (v) => _register && (v == null || v.trim().split(RegExp(r'\s+')).where((part) => part.isNotEmpty).length < 4) ? 'أدخل الاسم الرباعي كاملاً' : null),
                                 const SizedBox(height: 14),
                                 TextFormField(controller: _phone, keyboardType: TextInputType.phone,
                                   textInputAction: TextInputAction.next,
