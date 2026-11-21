@@ -168,7 +168,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       }
       return;
     }
-    if (kind == 'staff_message' || kind == 'staff_message_reply') {
+    if (kind == 'staff_message' || kind == 'staff_message_reply' || kind == 'staff_message_liked') {
       await Navigator.push(context, MaterialPageRoute(
         builder: (_) => StaffMessagesScreen(
           userRole: widget.userRole,
@@ -235,7 +235,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         final docs = (snap.data?.docs ?? []).where((doc) {
           final d = doc.data();
           final kind = (d['kind'] ?? '').toString();
-          if (kind == 'staff_message' || kind == 'staff_message_reply') {
+          if (kind == 'staff_message' || kind == 'staff_message_reply' || kind == 'staff_message_liked') {
             final created = d['createdAt'];
             if (created is! Timestamp || DateTime.now().isAfter(created.toDate().add(const Duration(hours: 24)))) return false;
           }
@@ -262,7 +262,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                   if (!read) const CircleAvatar(radius: 4, backgroundColor: teal)]),
                 const SizedBox(height: 8), Text(d['body'] as String? ?? '', style: const TextStyle(fontSize: 14, height: 1.6, color: Color(0xFF33485C))),
                 const SizedBox(height: 8), Row(children: [
-                  Expanded(child: Text('من: ${d['senderEmail'] ?? 'الإدارة'}', style: const TextStyle(fontSize: 11, color: Color(0xFF526579)))),
+                  Expanded(child: Text('من: ${d['senderName'] ?? d['senderEmail'] ?? 'الإدارة'}', style: const TextStyle(fontSize: 11, color: Color(0xFF526579)))),
                   if (created != null) Text(DateFormat('yyyy/MM/dd HH:mm').format(created), style: const TextStyle(fontSize: 11, color: Color(0xFF526579)))]),
                 if (!read) Align(alignment: Alignment.centerLeft, child: TextButton.icon(onPressed: () => markRead(doc), icon: const Icon(Icons.done_rounded), label: const Text('تحديد كمقروء'))),
               ]))));

@@ -1,8 +1,14 @@
 import 'dart:async';
+import 'dart:io';
+import 'dart:typed_data';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'package:gal/gal.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class StaffMessagesScreen extends StatefulWidget {
   const StaffMessagesScreen({super.key, required this.userRole, this.initialMessageId, this.openComposerOnStart = false, this.embedded = false});
@@ -20,6 +26,7 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
   final auth = FirebaseAuth.instance;
   late final TabController tabs;
   String search = '';
+  final Set<String> selectedMessageIds = <String>{};
   Timer? archiveRefreshTimer;
   String get uid => auth.currentUser?.uid ?? '';
   bool get admin => widget.userRole == 'admin';
@@ -77,6 +84,95 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
     if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(value)));
   }
 
+  Future<void> _contactEmployee(String phone, {required bool whatsapp}) async {
+    final digits = phone.replaceAll(RegExp(r'[^0-9]'), '');
+    if (digits.length < 9) { toast('رقم الهاتف غير مكتمل.'); return; }
+    var international = digits;
+    if (international.startsWith('0')) {
+      international = '962' + international.substring(1);
+    } else if (international.startsWith('7') && international.length == 9) {
+      international = '962' + international;
+    }
+    final uri = whatsapp
+        ? Uri.parse('https://wa.me/' + international)
+        : Uri(scheme: 'tel', path: phone.trim());
+    try {
+      final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
+      if (!opened) toast(whatsapp ? 'تعذر فتح واتساب على هذا الجهاز.' : 'تعذر فتح تطبيق الاتصال.');
+    } catch (_) {
+      toast(whatsapp ? 'تعذر فتح واتساب.' : 'تعذر بدء الاتصال.');
+    }
+  }
+
+  Future<void> _contactMessageSender(String senderUid) async {
+    if (senderUid.isEmpty) {
+      toast('تعذر تحديد صاحب الملاحظة.');
+      return;
+    }
+    try {
+      final profile = await db.collection('users').doc(senderUid).get();
+      final phone = (profile.data()?['phone'] ?? '').toString().trim();
+      if (phone.isEmpty) {
+        toast('لا يوجد رقم هاتف مسجل لصاحب الملاحظة.');
+        return;
+      }
+      await _contactEmployee(phone, whatsapp: false);
+    } on FirebaseException catch (e) {
+      toast('تعذر تحميل رقم الهاتف (${e.code}).');
+    } catch (_) {
+      toast('تعذر تحميل بيانات صاحب الملاحظة.');
+    }
+  }
+
+  Future<void> _likeMessage(DocumentSnapshot<Map<String, dynamic>> doc) async {
+    final message = doc.data() ?? <String, dynamic>{};
+    if (message['recipientUid'] != uid) {
+      toast('الإعجاب متاح لمستلم الملاحظة فقط.');
+      return;
+    }
+    if (message['liked'] == true) {
+      toast('سبق تسجيل إعجابك بهذه الملاحظة.');
+      return;
+    }
+    try {
+      final profile = await db.collection('users').doc(uid).get();
+      final profileData = profile.data() ?? <String, dynamic>{};
+      final senderUid = (message['senderUid'] ?? '').toString();
+      if (senderUid.isEmpty) throw StateError('تعذر تحديد مرسل الملاحظة.');
+      final notificationRef = db.collection('notifications').doc();
+      final batch = db.batch();
+      batch.update(doc.reference, {
+        'read': true,
+        'readAt': FieldValue.serverTimestamp(),
+        'liked': true,
+        'likedAt': FieldValue.serverTimestamp(),
+        'likedByUid': uid,
+        'likedByName': personName(profileData),
+      });
+      batch.set(notificationRef, {
+        'notificationId': notificationRef.id,
+        'recipientUid': senderUid,
+        'recipientRole': (message['senderRole'] ?? '').toString(),
+        'senderUid': uid,
+        'senderEmail': auth.currentUser?.email ?? '',
+        'senderName': personName(profileData),
+        'title': 'تم الاطلاع على ملاحظتك',
+        'body': 'اطّلع ' + personName(profileData) + ' على ملاحظتك وأعجب بها 👍',
+        'priority': 'normal',
+        'read': false,
+        'kind': 'staff_message_liked',
+        'relatedId': doc.id,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+      await batch.commit();
+      if (mounted) toast('تم تسجيل الإعجاب وإشعار صاحب الملاحظة.');
+    } on FirebaseException catch (e) {
+      toast('تعذر تسجيل الإعجاب (${e.code}).');
+    } catch (e) {
+      toast(e.toString().replaceFirst('Bad state: ', ''));
+    }
+  }
+
   Future<void> compose() async {
     final snapshot = await db.collection('users').where('status', isEqualTo: 'active').get();
     if (!mounted) return;
@@ -91,6 +187,7 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
     final title = TextEditingController();
     final body = TextEditingController();
     final selected = <String>{};
+    final pickedImages = <XFile>[];
     String messageType = widget.userRole == 'security_officer' ? 'note' : 'instruction';
     String priority = 'normal';
     bool requestReply = false;
@@ -99,6 +196,8 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
     String tickerFontFamily = 'sans-serif';
     bool tickerBold = true;
     bool busy = false;
+    String employeeSearch = '';
+    String shiftFilter = 'all';
 
     await showModalBottomSheet<void>(
       context: context,
@@ -130,6 +229,24 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
                 Text(supervisor
                     ? 'اختر ضباط الأمن — نسخة الإدارة تُرسل تلقائياً مع التعليمات فقط: ${selected.length}'
                     : 'اختر المستلمين — المختار: ${selected.length}'),
+                TextField(
+                  decoration: const InputDecoration(
+                    labelText: 'ابحث بالاسم الرباعي أو رقم الهاتف',
+                    prefixIcon: Icon(Icons.search_rounded), isDense: true),
+                  onChanged: (value) => refresh(() => employeeSearch = value.trim().toLowerCase()),
+                ),
+                const SizedBox(height: 8),
+                DropdownButtonFormField<String>(
+                  value: shiftFilter,
+                  decoration: const InputDecoration(labelText: 'فلترة إضافية حسب الشفت'),
+                  items: const [
+                    DropdownMenuItem(value: 'all', child: Text('جميع الشفتات')),
+                    DropdownMenuItem(value: 'A', child: Text('الشفت A')),
+                    DropdownMenuItem(value: 'B', child: Text('الشفت B')),
+                    DropdownMenuItem(value: 'C', child: Text('الشفت C')),
+                  ],
+                  onChanged: (value) => refresh(() => shiftFilter = value ?? 'all'),
+                ),
                 Wrap(spacing: 6, children: [
                   TextButton(
                     onPressed: () => refresh(() => selected.addAll(
@@ -146,26 +263,113 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
                     child: const Text('جميع المشرفين')),
                   TextButton(onPressed: () => refresh(selected.clear), child: const Text('إلغاء التحديد')),
                 ]),
-                Expanded(child: ListView(children: users.map((d) {
-                  final data = d.data();
-                  final role = data['role'] == 'admin' ? 'الإدارة' :
-                    data['role'] == 'supervisor' ? 'مشرف' : 'ضابط أمن';
-                  return CheckboxListTile(
-                    dense: true,
-                    value: selected.contains(d.id),
-                    title: Text((data['displayName'] ?? 'مستخدم').toString()),
-                    subtitle: Text(role),
-                    onChanged: (v) => refresh(() {
-                      if (v == true) selected.add(d.id);
-                      if (v == false) selected.remove(d.id);
-                    }),
-                  );
-                }).toList())),
+                Expanded(child: Builder(builder: (listContext) {
+                  final filteredUsers = users.where((d) {
+                    final data = d.data();
+                    final name = (data['displayName'] ?? data['fullName'] ?? '').toString().toLowerCase();
+                    final phone = (data['phone'] ?? '').toString().toLowerCase();
+                    final matchesText = employeeSearch.isEmpty || name.contains(employeeSearch) || phone.contains(employeeSearch);
+                    final shift = (data['currentShift'] ?? '').toString();
+                    return matchesText && (shiftFilter == 'all' || shift == shiftFilter);
+                  }).toList();
+                  if (filteredUsers.isEmpty) {
+                    return const Center(child: Text('لا توجد نتائج مطابقة لخيارات البحث.'));
+                  }
+                  return ListView(children: filteredUsers.map((d) {
+                    final data = d.data();
+                    final role = data['role'] == 'admin' ? 'الإدارة' :
+                      data['role'] == 'supervisor' ? 'مشرف' : 'ضابط أمن';
+                    final phone = (data['phone'] ?? '').toString().trim();
+                    final shift = (data['currentShift'] ?? 'غير محدد').toString();
+                    return Card(
+                      margin: const EdgeInsets.symmetric(vertical: 4),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 4),
+                        child: Column(children: [
+                          CheckboxListTile(
+                            dense: true,
+                            value: selected.contains(d.id),
+                            title: Text(personName(data), style: const TextStyle(fontWeight: FontWeight.w700)),
+                            subtitle: Text('$role • الشفت $shift • ${phone.isEmpty ? 'لا يوجد رقم هاتف' : phone}'),
+                            onChanged: (v) => refresh(() {
+                              if (v == true) selected.add(d.id);
+                              if (v == false) selected.remove(d.id);
+                            }),
+                          ),
+                          if (phone.isNotEmpty)
+                            Padding(
+                              padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+                              child: Row(children: [
+                                Expanded(child: OutlinedButton.icon(
+                                  onPressed: () => _contactEmployee(phone, whatsapp: false),
+                                  icon: const Icon(Icons.call_outlined, size: 18),
+                                  label: const Text('اتصال مباشر'))),
+                                const SizedBox(width: 8),
+                                Expanded(child: OutlinedButton.icon(
+                                  onPressed: () => _contactEmployee(phone, whatsapp: true),
+                                  icon: const Icon(Icons.chat_outlined, size: 18),
+                                  label: const Text('واتساب'))),
+                              ]),
+                            ),
+                        ]),
+                      ),
+                    );
+                  }).toList());
+                })),
                 TextField(controller: title,
                   decoration: const InputDecoration(labelText: 'عنوان الملاحظة')),
                 const SizedBox(height: 8),
                 TextField(controller: body, minLines: 3, maxLines: 5,
                   decoration: const InputDecoration(labelText: 'التفاصيل النصية')),
+                const SizedBox(height: 6),
+                OutlinedButton.icon(
+                  onPressed: () async {
+                    try {
+                      final remaining = 5 - pickedImages.length;
+                      if (remaining <= 0) {
+                        toast('الحد الأقصى خمس صور للملاحظة الواحدة.');
+                        return;
+                      }
+                      final images = await ImagePicker().pickMultiImage(
+                        imageQuality: 85,
+                        maxWidth: 1800,
+                      );
+                      if (images.isEmpty) return;
+                      var added = 0;
+                      for (final image in images) {
+                        if (pickedImages.length >= 5) break;
+                        final size = await image.length();
+                        if (size > 10 * 1024 * 1024) {
+                          toast('تم تجاوز صورة أكبر من 10 ميغابايت؛ لم تتم إضافتها.');
+                          continue;
+                        }
+                        pickedImages.add(image);
+                        added++;
+                      }
+                      refresh(() {});
+                      if (images.length > remaining) {
+                        toast('تمت إضافة $added صور فقط؛ الحد الأقصى خمس صور.');
+                      }
+                    } catch (_) {
+                      toast('تعذر فتح معرض الصور.');
+                    }
+                  },
+                  icon: const Icon(Icons.add_photo_alternate_outlined),
+                  label: Text('إرفاق صور اختياري (${pickedImages.length}/5)'),
+                ),
+                if (pickedImages.isNotEmpty)
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 4,
+                    children: pickedImages.asMap().entries.map((entry) => InputChip(
+                      avatar: const Icon(Icons.image_outlined, size: 18),
+                      label: SizedBox(
+                        width: 125,
+                        child: Text(entry.value.name, overflow: TextOverflow.ellipsis),
+                      ),
+                      onDeleted: () => refresh(() => pickedImages.removeAt(entry.key)),
+                    )).toList(),
+                  ),
                 const SizedBox(height: 8),
                 DropdownButtonFormField<String>(
                   value: priority,
@@ -232,6 +436,7 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
                       return;
                     }
                     refresh(() => busy = true);
+                    final uploadedRefs = <Reference>[];
                     try {
                       final senderSnap = await db.collection('users').doc(uid).get();
                       final sender = senderSnap.data() ?? <String, dynamic>{};
@@ -270,6 +475,70 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
                       }
                       final messageRecipients = recipientsByUid.values.toList();
                       final threadId = db.collection('staff_messages').doc().id;
+                      final uploadedAttachments = <Map<String, dynamic>>[];
+                      if (pickedImages.isNotEmpty) {
+                        try {
+                          for (var index = 0; index < pickedImages.length; index++) {
+                            final image = pickedImages[index];
+                            final safeName = image.name.replaceAll(RegExp(r'[^A-Za-z0-9._-]'), '_');
+                            final shortName = safeName.length > 120
+                                ? safeName.substring(safeName.length - 120)
+                                : safeName;
+                            final fileName = '${DateTime.now().microsecondsSinceEpoch}_${index}_$shortName';
+                            final detectedType = image.mimeType ?? 'image/jpeg';
+                            final contentType = detectedType == 'image/jpg' ? 'image/jpeg' : detectedType;
+                            if (!contentType.startsWith('image/')) {
+                              throw StateError('المرفقات المسموح بها صور فقط.');
+                            }
+                            final storageRef = FirebaseStorage.instance
+                                .ref()
+                                .child('staff_message_media/$threadId/$uid/$fileName');
+                            uploadedRefs.add(storageRef);
+                            await storageRef.putData(
+                              await image.readAsBytes(),
+                              SettableMetadata(contentType: contentType),
+                            );
+                            uploadedAttachments.add({
+                              'storagePath': storageRef.fullPath,
+                              'downloadUrl': await storageRef.getDownloadURL(),
+                              'fileName': fileName,
+                              'contentType': contentType,
+                              'sizeBytes': await image.length(),
+                            });
+                          }
+                        } catch (_) {
+                          for (final uploaded in uploadedRefs) {
+                            try { await uploaded.delete(); } catch (_) {}
+                          }
+                          final sendWithoutImages = await showDialog<bool>(
+                            context: ctx,
+                            builder: (dialogContext) => AlertDialog(
+                              title: const Text('تعذر إرفاق الصور'),
+                              content: const Text(
+                                'خدمة تخزين الصور غير متاحة حالياً أو تعذر رفع إحدى الصور. '
+                                'يمكنك إرسال الملاحظة نصياً الآن دون صور، أو إلغاء الإرسال والمحاولة لاحقاً.',
+                              ),
+                              actions: [
+                                TextButton(
+                                  onPressed: () => Navigator.pop(dialogContext, false),
+                                  child: const Text('إلغاء الإرسال'),
+                                ),
+                                FilledButton(
+                                  onPressed: () => Navigator.pop(dialogContext, true),
+                                  child: const Text('إرسال دون صور'),
+                                ),
+                              ],
+                            ),
+                          );
+                          if (sendWithoutImages != true) {
+                            throw StateError('تم إلغاء الإرسال؛ لم يتم إرسال الملاحظة.');
+                          }
+                          uploadedRefs.clear();
+                          uploadedAttachments.clear();
+                          pickedImages.clear();
+                          refresh(() {});
+                        }
+                      }
                       final activeOfficerIds = users
                           .where((d) => d.data()['role'] == 'security_officer')
                           .map((d) => d.id)
@@ -306,7 +575,7 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
                           'priority': priority,
                           'requestReply': recipientRequestsReply,
                           'replyStatus': recipientRequestsReply ? 'pending' : 'not_required',
-                          'attachments': <Map<String, dynamic>>[],
+                          'attachments': uploadedAttachments,
                           'read': false,
                           'hiddenFor': <String>[],
                           'showOnTicker': isSupervisorBroadcastToAllOfficers &&
@@ -357,9 +626,15 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
                         : 'تم إرسال الرسالة إلى ' + refs.length.toString() +
                           ' مستلم، لكن تعذر إنشاء ' + notificationFailures.toString() + ' إشعار.');
                     } on FirebaseException catch (e) {
+                      for (final uploaded in uploadedRefs) {
+                        try { await uploaded.delete(); } catch (_) {}
+                      }
                       refresh(() => busy = false);
-                      toast('تعذر الإرسال (${e.code}). تحقق من قواعد Firestore.');
+                      toast('تعذر الإرسال (${e.code}). تحقق من قواعد Firestore أو إعداد التخزين.');
                     } catch (e) {
+                      for (final uploaded in uploadedRefs) {
+                        try { await uploaded.delete(); } catch (_) {}
+                      }
                       refresh(() => busy = false);
                       toast(e.toString().replaceFirst('Bad state: ', ''));
                     }
@@ -390,10 +665,9 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
 
   Future<void> reply(DocumentSnapshot<Map<String, dynamic>> doc) async {
     final message = doc.data() ?? {};
-    if (message['requestReply'] != true ||
-        message['replyStatus'] == 'replied' ||
+    if (message['replyStatus'] == 'replied' ||
         message['recipientUid'] != uid) {
-      toast('لا يوجد طلب رد متاح على هذه الملاحظة.');
+      toast('لا يمكن الرد على هذه الملاحظة من هذا الحساب.');
       return;
     }
 
@@ -497,10 +771,52 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
     body.dispose();
   }
 
+  Future<void> _saveImageToGallery(String url, String fileName) async {
+    if (url.isEmpty) {
+      toast('رابط الصورة غير متاح.');
+      return;
+    }
+    HttpClient? client;
+    try {
+      final hasAccess = await Gal.hasAccess();
+      if (!hasAccess) {
+        await Gal.requestAccess();
+        if (!await Gal.hasAccess()) {
+          toast('لم يتم منح الإذن لحفظ الصور في الاستوديو.');
+          return;
+        }
+      }
+      client = HttpClient();
+      final request = await client.getUrl(Uri.parse(url));
+      final response = await request.close();
+      if (response.statusCode != HttpStatus.ok) {
+        throw HttpException('HTTP ${response.statusCode}');
+      }
+      final bytes = await response.fold<BytesBuilder>(
+        BytesBuilder(copy: false),
+        (builder, chunk) { builder.add(chunk); return builder; },
+      );
+      final safeName = fileName.replaceAll(RegExp(r'[^A-Za-z0-9._-]'), '_');
+      await Gal.putImageBytes(
+        Uint8List.fromList(bytes.takeBytes()),
+        name: safeName.isEmpty ? 'staff_note_image' : safeName,
+      );
+      toast('تم حفظ الصورة في استوديو الهاتف.');
+    } on GalException catch (e) {
+      toast('تعذر الحفظ في الاستوديو: ${e.type.message}');
+    } catch (_) {
+      toast('تعذر تنزيل الصورة أو حفظها. تحقق من الاتصال بالإنترنت.');
+    } finally {
+      client?.close(force: true);
+    }
+  }
+
   Future<void> openMessage(DocumentSnapshot<Map<String, dynamic>> doc) async {
     await markRead(doc);
     if (!mounted) return;
     final d = doc.data() ?? {};
+    final senderUid = (d['senderUid'] ?? '').toString();
+    final attachments = (d['attachments'] as List<dynamic>?) ?? const [];
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -524,6 +840,87 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
                 child: ListView(children: [
                   SelectableText((d['body'] ?? '').toString(),
                     style: const TextStyle(fontSize: 17, height: 1.8, fontWeight: FontWeight.w700, color: Color(0xFF172B45))),
+                  if (attachments.isNotEmpty) ...[
+                    const SizedBox(height: 14),
+                    Text('الصور المرفقة (${attachments.length})',
+                      style: const TextStyle(fontWeight: FontWeight.w900, color: navy)),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: attachments.map<Widget>((item) {
+                        final attachment = item is Map
+                            ? Map<String, dynamic>.from(item)
+                            : <String, dynamic>{};
+                        final url = (attachment['url'] ?? attachment['downloadUrl'] ?? '').toString();
+                        if (url.isEmpty) return const SizedBox.shrink();
+                        final fileName = (attachment['fileName'] ?? 'staff_note_image.jpg').toString();
+                        return Stack(
+                          children: [
+                            InkWell(
+                              onTap: () => _saveImageToGallery(url, fileName),
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(12),
+                                child: Image.network(url, width: 120, height: 100, fit: BoxFit.cover,
+                                  errorBuilder: (_, __, ___) => Container(
+                                    width: 120, height: 100, color: const Color(0xFFE8EEF5),
+                                    alignment: Alignment.center,
+                                    child: const Icon(Icons.broken_image_outlined)),
+                                ),
+                              ),
+                            ),
+                            Positioned(
+                              right: 4,
+                              top: 4,
+                              child: Material(
+                                color: Colors.black54,
+                                borderRadius: BorderRadius.circular(20),
+                                child: IconButton(
+                                  visualDensity: VisualDensity.compact,
+                                  constraints: const BoxConstraints.tightFor(width: 32, height: 32),
+                                  padding: EdgeInsets.zero,
+                                  tooltip: 'عرض الصورة بالحجم الكامل',
+                                  icon: const Icon(Icons.zoom_in, color: Colors.white, size: 20),
+                                  onPressed: () => showDialog<void>(
+                                    context: ctx,
+                                    builder: (imageContext) => Dialog(
+                                      child: Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          ConstrainedBox(
+                                            constraints: BoxConstraints(
+                                              maxHeight: MediaQuery.of(ctx).size.height * .72,
+                                            ),
+                                            child: InteractiveViewer(
+                                              child: Image.network(url, fit: BoxFit.contain,
+                                                errorBuilder: (_, __, ___) => const Padding(
+                                                  padding: EdgeInsets.all(24),
+                                                  child: Text('تعذر تحميل الصورة.')),
+                                              ),
+                                            ),
+                                          ),
+                                          TextButton.icon(
+                                            onPressed: () => _saveImageToGallery(url, fileName),
+                                            icon: const Icon(Icons.download_for_offline_outlined),
+                                            label: const Text('حفظ في الاستوديو'),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const Positioned(
+                              left: 4,
+                              bottom: 4,
+                              child: Icon(Icons.download_for_offline, color: Colors.white, size: 20),
+                            ),
+                          ],
+                        );
+                      }).toList(),
+                    ),
+                  ],
                   const Divider(),
                   const Text('الردود', style: TextStyle(fontWeight: FontWeight.w900)),
                   StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
@@ -548,14 +945,37 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
                   ),
                 ]),
               ),
-              if (d['requestReply'] == true &&
-                  d['recipientUid'] == uid &&
-                  d['replyStatus'] != 'replied')
-                FilledButton.icon(
-                  onPressed: () { Navigator.pop(ctx); reply(doc); },
-                  icon: const Icon(Icons.reply),
-                  label: const Text('الرد على الملاحظة'),
+              if (d['recipientUid'] == uid) ...[
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: () => _contactMessageSender(senderUid),
+                        icon: const Icon(Icons.call_outlined),
+                        label: const Text('اتصال مباشر'),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: FilledButton.icon(
+                        onPressed: d['replyStatus'] == 'replied'
+                            ? null
+                            : () { Navigator.pop(ctx); reply(doc); },
+                        icon: const Icon(Icons.reply_rounded),
+                        label: const Text('رد'),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    IconButton.filledTonal(
+                      tooltip: d['liked'] == true ? 'تم تسجيل الإعجاب' : 'إعجاب وإشعار المرسل',
+                      onPressed: d['liked'] == true ? null : () => _likeMessage(doc),
+                      icon: const Icon(Icons.thumb_up_alt_outlined),
+                    ),
+                  ],
                 ),
+              ] else if (d['liked'] == true)
+                const Text('اطّلع المستلم على الملاحظة وأعجب بها 👍',
+                  style: TextStyle(color: teal, fontWeight: FontWeight.w800)),
             ],
           ),
         ),
@@ -630,6 +1050,71 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
     on FirebaseException catch (e) { toast('تعذر الإخفاء (' + e.code + ').'); }
   }
 
+  Future<void> _deleteManagedNotes(
+    List<QueryDocumentSnapshot<Map<String, dynamic>>> candidates, {
+    required bool deleteAll,
+  }) async {
+    if (!admin && !supervisor) {
+      toast('صلاحية حذف الملاحظات متاحة للمشرف ومدير الموقع فقط.');
+      return;
+    }
+    final eligible = candidates.where((doc) {
+      final data = doc.data();
+      return data['recipientUid'] == uid && data['messageType'] == 'note';
+    }).toList();
+    final targets = deleteAll
+        ? eligible
+        : eligible.where((doc) => selectedMessageIds.contains(doc.id)).toList();
+    if (targets.isEmpty) {
+      toast('لا توجد ملاحظات محددة للحذف.');
+      return;
+    }
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(deleteAll ? 'حذف جميع الملاحظات؟' : 'حذف الملاحظات المحددة؟'),
+        content: Text('سيتم حذف ${targets.length} ملاحظة من صندوق الوارد الخاص بك. لا يمكن التراجع عن هذه العملية.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('إلغاء')),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('تأكيد الحذف'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    try {
+      // Firestore does not cascade-delete subcollections; remove replies explicitly first.
+      for (final message in targets) {
+        final replies = await message.reference.collection('replies').get();
+        for (var start = 0; start < replies.docs.length; start += 400) {
+          final batch = db.batch();
+          for (final replyDoc in replies.docs.skip(start).take(400)) {
+            batch.delete(replyDoc.reference);
+          }
+          await batch.commit();
+        }
+      }
+      for (var start = 0; start < targets.length; start += 400) {
+        final batch = db.batch();
+        for (final message in targets.skip(start).take(400)) {
+          batch.delete(message.reference);
+        }
+        await batch.commit();
+      }
+      setState(() {
+        selectedMessageIds.removeAll(targets.map((doc) => doc.id));
+      });
+      toast('تم حذف ${targets.length} ملاحظة بنجاح.');
+    } on FirebaseException catch (e) {
+      toast('تعذر حذف الملاحظات (${e.code}). تحقق من نشر قواعد Firestore الجديدة.');
+    } catch (_) {
+      toast('تعذر إكمال حذف الملاحظات.');
+    }
+  }
+
   Widget messageCards(List<QueryDocumentSnapshot<Map<String, dynamic>>> source, {required bool archive}) {
     final docs = source.where((doc) {
       final d = doc.data();
@@ -641,20 +1126,102 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
       final x = a.data()['createdAt'], y = b.data()['createdAt'];
       return x is Timestamp && y is Timestamp ? y.compareTo(x) : 0;
     });
-    if (docs.isEmpty) return Center(child: Text(archive ? 'الأرشيف فارغ.' : 'لا توجد مراسلات حديثة.'));
-    return ListView.builder(
+    final canManageNotes = (admin || supervisor) && !archive;
+    final deletableNotes = canManageNotes
+        ? source.where((doc) {
+            final data = doc.data();
+            return data['recipientUid'] == uid &&
+                data['messageType'] == 'note' &&
+                !archived(data) &&
+                !((data['hiddenFor'] as List<dynamic>? ?? []).contains(uid));
+          }).toList()
+        : <QueryDocumentSnapshot<Map<String, dynamic>>>[];
+    final validIds = deletableNotes.map((doc) => doc.id).toSet();
+    final selectedCount = selectedMessageIds.where(validIds.contains).length;
+    return Column(
+      children: [
+        if (canManageNotes)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 4, 12, 4),
+            child: Wrap(
+              spacing: 8,
+              runSpacing: 4,
+              alignment: WrapAlignment.center,
+              children: [
+                OutlinedButton.icon(
+                  onPressed: deletableNotes.isEmpty
+                      ? null
+                      : () => setState(() {
+                            if (selectedCount == deletableNotes.length) {
+                              selectedMessageIds.clear();
+                            } else {
+                              selectedMessageIds
+                                ..clear()
+                                ..addAll(deletableNotes.map((doc) => doc.id));
+                            }
+                          }),
+                  icon: const Icon(Icons.select_all, size: 18),
+                  label: Text(selectedCount == deletableNotes.length && deletableNotes.isNotEmpty
+                      ? 'إلغاء تحديد الكل'
+                      : 'تحديد الكل'),
+                ),
+                OutlinedButton.icon(
+                  onPressed: deletableNotes.isEmpty
+                      ? null
+                      : () => _deleteManagedNotes(deletableNotes, deleteAll: true),
+                  icon: const Icon(Icons.delete_sweep_outlined, size: 18),
+                  label: const Text('حذف الكل'),
+                ),
+                if (selectedCount > 0)
+                  FilledButton.icon(
+                    style: FilledButton.styleFrom(backgroundColor: Colors.red),
+                    onPressed: () => _deleteManagedNotes(deletableNotes, deleteAll: false),
+                    icon: const Icon(Icons.delete_outline, size: 18),
+                    label: Text('حذف المحدد (${selectedCount})'),
+                  ),
+              ],
+            ),
+          ),
+        Expanded(
+          child: docs.isEmpty
+              ? Center(child: Text(archive ? 'الأرشيف فارغ.' : 'لا توجد مراسلات حديثة.'))
+              : ListView.builder(
       padding: const EdgeInsets.all(12), itemCount: docs.length,
       itemBuilder: (_, i) {
         final doc = docs[i], d = doc.data();
         final sent = d['senderUid'] == uid;
+        final canDeleteThis = canManageNotes && !sent && d['messageType'] == 'note';
         final read = d['read'] == true, created = d['createdAt'];
-        return Card(child: ListTile(
-          onTap: () => openMessage(doc),
-          leading: CircleAvatar(
-            backgroundColor: d['priority'] == 'urgent' ? const Color(0xFFFFE5E5) : const Color(0xFFE4F5F2),
-            child: Icon(d['priority'] == 'urgent' ? Icons.priority_high : Icons.mark_email_unread,
-              color: d['priority'] == 'urgent' ? Colors.red : teal),
-          ),
+        return Card(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+          onTap: () {
+            if (canDeleteThis && selectedMessageIds.isNotEmpty) {
+              setState(() {
+                if (!selectedMessageIds.add(doc.id)) selectedMessageIds.remove(doc.id);
+              });
+            } else {
+              openMessage(doc);
+            }
+          },
+          leading: canDeleteThis
+              ? Checkbox(
+                  value: selectedMessageIds.contains(doc.id),
+                  onChanged: (value) => setState(() {
+                    if (value == true) {
+                      selectedMessageIds.add(doc.id);
+                    } else {
+                      selectedMessageIds.remove(doc.id);
+                    }
+                  }),
+                )
+              : CircleAvatar(
+                  backgroundColor: d['priority'] == 'urgent' ? const Color(0xFFFFE5E5) : const Color(0xFFE4F5F2),
+                  child: Icon(d['priority'] == 'urgent' ? Icons.priority_high : Icons.mark_email_unread,
+                    color: d['priority'] == 'urgent' ? Colors.red : teal),
+                ),
           title: Text((d['title'] ?? 'ملاحظة').toString(),
             style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900, color: navy)),
           subtitle: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -677,12 +1244,52 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
             if (created is Timestamp) Text(DateFormat('yyyy/MM/dd HH:mm').format(created.toDate())),
             if (d['requestReply'] == true) Text(d['replyStatus'] == 'replied' ? 'تم الرد' : 'بانتظار الرد',
               style: TextStyle(color: d['replyStatus'] == 'replied' ? Colors.green : Colors.deepOrange)),
+            if (sent && d['liked'] == true)
+              const Text('اطّلع المستلم على الملاحظة وأعجب بها 👍',
+                style: TextStyle(color: teal, fontWeight: FontWeight.w800)),
           ]),
           trailing: archive
               ? IconButton(icon: const Icon(Icons.delete_outline, color: Colors.red), onPressed: () => hideFromArchive(doc))
               : (!read && !sent ? const Icon(Icons.circle, size: 9, color: teal) : null),
-        ));
+              ),
+              if (!archive && !sent)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 0, 12, 10),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: () => _contactMessageSender((d['senderUid'] ?? '').toString()),
+                          icon: const Icon(Icons.call_outlined, size: 18),
+                          label: const Text('اتصال مباشر'),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: FilledButton.icon(
+                          onPressed: d['replyStatus'] == 'replied'
+                              ? null
+                              : () => reply(doc),
+                          icon: const Icon(Icons.reply_rounded, size: 18),
+                          label: const Text('رد'),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      IconButton.filledTonal(
+                        tooltip: d['liked'] == true ? 'تم تسجيل الإعجاب' : 'إعجاب',
+                        onPressed: d['liked'] == true ? null : () => _likeMessage(doc),
+                        icon: const Icon(Icons.thumb_up_alt_outlined),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+        );
       },
+    ),
+        ),
+      ],
     );
   }
 
