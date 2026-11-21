@@ -436,6 +436,7 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
                       return;
                     }
                     refresh(() => busy = true);
+                    final uploadedRefs = <Reference>[];
                     try {
                       final senderSnap = await db.collection('users').doc(uid).get();
                       final sender = senderSnap.data() ?? <String, dynamic>{};
@@ -475,7 +476,6 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
                       final messageRecipients = recipientsByUid.values.toList();
                       final threadId = db.collection('staff_messages').doc().id;
                       final uploadedAttachments = <Map<String, dynamic>>[];
-                      final uploadedRefs = <Reference>[];
                       if (pickedImages.isNotEmpty) {
                         try {
                           for (var index = 0; index < pickedImages.length; index++) {
@@ -502,19 +502,37 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
                               'sizeBytes': await image.length(),
                             });
                           }
-                        } on FirebaseException catch (e) {
-                          for (final uploaded in uploadedRefs) {
-                            try { await uploaded.delete(); } catch (_) {}
-                          }
-                          if (e.code == 'bucket-not-found' || e.code == 'unknown') {
-                            throw StateError('خدمة تخزين الصور غير مفعّلة في Firebase حالياً. يمكنك إرسال الملاحظة النصية دون صور.');
-                          }
-                          rethrow;
                         } catch (_) {
                           for (final uploaded in uploadedRefs) {
                             try { await uploaded.delete(); } catch (_) {}
                           }
-                          rethrow;
+                          final sendWithoutImages = await showDialog<bool>(
+                            context: ctx,
+                            builder: (dialogContext) => AlertDialog(
+                              title: const Text('تعذر إرفاق الصور'),
+                              content: const Text(
+                                'خدمة تخزين الصور غير متاحة حالياً أو تعذر رفع إحدى الصور. '
+                                'يمكنك إرسال الملاحظة نصياً الآن دون صور، أو إلغاء الإرسال والمحاولة لاحقاً.',
+                              ),
+                              actions: [
+                                TextButton(
+                                  onPressed: () => Navigator.pop(dialogContext, false),
+                                  child: const Text('إلغاء الإرسال'),
+                                ),
+                                FilledButton(
+                                  onPressed: () => Navigator.pop(dialogContext, true),
+                                  child: const Text('إرسال دون صور'),
+                                ),
+                              ],
+                            ),
+                          );
+                          if (sendWithoutImages != true) {
+                            throw StateError('تم إلغاء الإرسال؛ لم يتم إرسال الملاحظة.');
+                          }
+                          uploadedRefs.clear();
+                          uploadedAttachments.clear();
+                          pickedImages.clear();
+                          refresh(() {});
                         }
                       }
                       final activeOfficerIds = users
@@ -604,9 +622,15 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
                         : 'تم إرسال الرسالة إلى ' + refs.length.toString() +
                           ' مستلم، لكن تعذر إنشاء ' + notificationFailures.toString() + ' إشعار.');
                     } on FirebaseException catch (e) {
+                      for (final uploaded in uploadedRefs) {
+                        try { await uploaded.delete(); } catch (_) {}
+                      }
                       refresh(() => busy = false);
                       toast('تعذر الإرسال (${e.code}). تحقق من قواعد Firestore أو إعداد التخزين.');
                     } catch (e) {
+                      for (final uploaded in uploadedRefs) {
+                        try { await uploaded.delete(); } catch (_) {}
+                      }
                       refresh(() => busy = false);
                       toast(e.toString().replaceFirst('Bad state: ', ''));
                     }
