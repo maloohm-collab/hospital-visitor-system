@@ -18,7 +18,8 @@ service firebase.storage {
           && firestore.get(/databases/(default)/documents/staff_messages/$(threadId + '_' + senderUid)).data.senderUid == request.auth.uid
           && firestore.get(/databases/(default)/documents/staff_messages/$(threadId + '_' + senderUid)).data.recipientUid == senderUid;
       }
-      allow create, update: if isActiveUser()
+      allow write: if isActiveUser()
+        && request.resource != null
         && request.auth.uid == senderUid
         && request.resource.size <= 10 * 1024 * 1024
         && request.resource.contentType.matches('image/(jpeg|png|webp|heic|gif)');
