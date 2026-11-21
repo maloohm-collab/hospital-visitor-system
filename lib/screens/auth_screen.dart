@@ -283,105 +283,75 @@ class _AuthScreenState extends State<AuthScreen> {
     const gold = Color(0xFFD9AC55);
     const ink = Color(0xFF082B55);
     const muted = Color(0xFF526579);
+
     return Scaffold(
-      body: SafeArea(
-        child: LayoutBuilder(
-          builder: (context, constraints) => SingleChildScrollView(
-            padding: EdgeInsets.zero,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Container(
-                  padding: const EdgeInsets.fromLTRB(22, 18, 22, 30),
-                  decoration: const BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topRight,
-                      end: Alignment.bottomLeft,
-                      colors: [Color(0xFF14558A), Color(0xFF082B55), Color(0xFF061A33)],
-                    ),
-                    borderRadius: BorderRadius.only(
-                      bottomLeft: Radius.circular(30),
-                      bottomRight: Radius.circular(30),
-                    ),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Row(
-                        children: [
-                          Container(
-                            width: 58,
-                            height: 58,
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.07),
-                              borderRadius: BorderRadius.circular(18),
-                              border: Border.all(color: gold, width: 1.4),
-                            ),
-                            child: const Icon(Icons.shield_rounded, color: gold, size: 35),
-                          ),
-                          const SizedBox(width: 14),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text(
-                                  'الصخرة للخدمات والاستشارات الأمنية',
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(color: Colors.white, fontSize: 15, height: 1.35, fontWeight: FontWeight.w900),
-                                ),
-                                const SizedBox(height: 2),
-                                const Text(
-                                  'Rock',
-                                  style: TextStyle(color: gold, fontSize: 12, letterSpacing: 1.1, fontWeight: FontWeight.w900),
-                                ),
-                                const SizedBox(height: 5),
-                                Text(
-                                  'نظام زوار مستشفى الزرقاء الحكومي',
-                                  style: TextStyle(color: Colors.white.withValues(alpha: 0.78), fontSize: 13, fontWeight: FontWeight.w600),
-                                ),
-                              ],
-                            ),
-                          ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-                            decoration: BoxDecoration(
-                              border: Border.all(color: gold.withValues(alpha: 0.7)),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: const Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(Icons.verified_user_outlined, size: 15, color: gold),
-                                SizedBox(width: 5),
-                                Text('دخول آمن', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w800)),
-                              ],
-                            ),
-                          ),
+      backgroundColor: const Color(0xFF061A33),
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          Image.asset(
+            'assets/images/login_background.jpg',
+            fit: BoxFit.cover,
+            alignment: Alignment.center,
+          ),
+          const DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Color(0x1603152B),
+                  Color(0x0803152B),
+                  Color(0x2603152B),
+                ],
+                stops: [0.0, 0.48, 1.0],
+              ),
+            ),
+          ),
+          SafeArea(
+            child: LayoutBuilder(
+              builder: (context, constraints) => SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(18, 96, 18, 28),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text(
+                      _register
+                          ? 'طلب الانضمام إلى الفريق'
+                          : _usePinLogin
+                              ? 'الوصول السريع للنظام'
+                              : 'مرحبًا بك من جديد',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 23,
+                        fontWeight: FontWeight.w900,
+                        shadows: [
+                          Shadow(color: Color(0x9903152B), blurRadius: 12, offset: Offset(0, 2)),
                         ],
                       ),
-                      const SizedBox(height: 23),
-                      Container(height: 2, width: 76, alignment: Alignment.centerRight,
-                        decoration: BoxDecoration(color: gold, borderRadius: BorderRadius.circular(4))),
-                      const SizedBox(height: 14),
-                      Text(
-                        _register ? 'طلب الانضمام إلى الفريق' : _usePinLogin ? 'الوصول السريع للنظام' : 'مرحبًا بك من جديد',
-                        style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w900),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      _register
+                          ? 'قدّم طلب حسابك ليتم مراجعته واعتماده من الإدارة.'
+                          : _usePinLogin
+                              ? 'أدخل رمزك السريع للوصول إلى حسابك المعتمد.'
+                              : 'بوابة دخول مخصصة للكوادر المخوّلة في منظومة زوار المستشفى.',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        color: Color(0xFFF1F5FA),
+                        fontSize: 12.5,
+                        height: 1.5,
+                        fontWeight: FontWeight.w600,
+                        shadows: [
+                          Shadow(color: Color(0xAA03152B), blurRadius: 8, offset: Offset(0, 1)),
+                        ],
                       ),
-                      const SizedBox(height: 7),
-                      Text(
-                        _register
-                            ? 'قدّم طلب حسابك ليتم مراجعته واعتماده من الإدارة.'
-                            : _usePinLogin
-                                ? 'أدخل رمزك السريع للوصول إلى حسابك المعتمد.'
-                                : 'بوابة دخول مخصصة للكوادر المخوّلة في منظومة زوار المستشفى.',
-                        style: TextStyle(color: Colors.white.withValues(alpha: 0.76), fontSize: 13, height: 1.6),
-                      ),
-                      const SizedBox(height: 19),
-                      const _LiveDateTimeCard(),
-                    ],
-                  ),
-                ),
+                    ),
+                    const SizedBox(height: 14),
+                    const _LiveDateTimeCard(),
+                    const SizedBox(height: 16),
                 Padding(
                   padding: const EdgeInsets.fromLTRB(18, 20, 18, 28),
                   child: Center(
@@ -573,10 +543,12 @@ class _AuthScreenState extends State<AuthScreen> {
                     ),
                   ),
                 ),
-              ],
+                  ],
+                ),
+              ),
             ),
           ),
-        ),
+        ],
       ),
     );
   }
