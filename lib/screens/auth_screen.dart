@@ -280,7 +280,6 @@ class _AuthScreenState extends State<AuthScreen> {
 
   @override
   Widget build(BuildContext context) {
-    const gold = Color(0xFFD9AC55);
     const ink = Color(0xFF082B55);
     const muted = Color(0xFF526579);
 
@@ -310,7 +309,7 @@ class _AuthScreenState extends State<AuthScreen> {
           ),
           SafeArea(
             child: LayoutBuilder(
-              builder: (context, constraints) => SingleChildScrollView(
+              builder: (context, _) => SingleChildScrollView(
                 padding: const EdgeInsets.fromLTRB(18, 96, 18, 28),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -353,7 +352,7 @@ class _AuthScreenState extends State<AuthScreen> {
                     const _LiveDateTimeCard(),
                     const SizedBox(height: 16),
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(18, 20, 18, 28),
+                  padding: const EdgeInsets.fromLTRB(0, 20, 0, 28),
                   child: Center(
                     child: ConstrainedBox(
                       constraints: const BoxConstraints(maxWidth: 520),
