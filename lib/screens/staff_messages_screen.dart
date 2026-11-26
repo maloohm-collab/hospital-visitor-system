@@ -11,9 +11,10 @@ import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class StaffMessagesScreen extends StatefulWidget {
-  const StaffMessagesScreen({super.key, required this.userRole, this.initialMessageId, this.openComposerOnStart = false, this.embedded = false});
+  const StaffMessagesScreen({super.key, required this.userRole, this.initialMessageId, this.initialRecipientUid, this.openComposerOnStart = false, this.embedded = false});
   final String userRole;
   final String? initialMessageId;
+  final String? initialRecipientUid;
   final bool openComposerOnStart;
   final bool embedded;
   @override
@@ -65,7 +66,7 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
     tabs = TabController(length: 3, vsync: this);
     archiveRefreshTimer = Timer.periodic(const Duration(minutes: 1), (_) { if (mounted) setState(() {}); });
     final messageId = widget.initialMessageId;
-    if (widget.openComposerOnStart && (supervisor || widget.userRole == 'security_officer')) {
+    if (widget.openComposerOnStart) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) compose();
       });
@@ -82,6 +83,19 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
   void dispose() { archiveRefreshTimer?.cancel(); tabs.dispose(); super.dispose(); }
   void toast(String value) {
     if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(value)));
+  }
+
+  Future<void> _showComingSoonFeature(String feature) async {
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('ستتوفر هذه الخدمة قريباً'),
+        content: Text('ميزة ' + feature + ' قيد التجهيز. ستصبح متاحة بعد تفعيل خدمة التخزين المطلوبة.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('حسناً')),
+        ],
+      ),
+    );
   }
 
   Future<void> _contactEmployee(String phone, {required bool whatsapp}) async {
@@ -197,6 +211,10 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
     final title = TextEditingController();
     final body = TextEditingController();
     final selected = <String>{};
+    final initialRecipient = widget.initialRecipientUid;
+    if (initialRecipient != null && users.any((d) => d.id == initialRecipient)) {
+      selected.add(initialRecipient);
+    }
     final pickedImages = <XFile>[];
     String messageType = widget.userRole == 'security_officer' ? 'note' : 'instruction';
     String priority = 'normal';
@@ -332,6 +350,22 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
                 TextField(controller: body, minLines: 3, maxLines: 5,
                   decoration: const InputDecoration(labelText: 'التفاصيل النصية')),
                 const SizedBox(height: 6),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 6,
+                  children: [
+                    OutlinedButton.icon(
+                      onPressed: () => _showComingSoonFeature('إرفاق أي ملف من الهاتف'),
+                      icon: const Icon(Icons.folder_open_outlined),
+                      label: const Text('إرفاق ملف من الهاتف'),
+                    ),
+                    OutlinedButton.icon(
+                      onPressed: () => _showComingSoonFeature('فتح كاميرا الهاتف مباشرة'),
+                      icon: const Icon(Icons.photo_camera_outlined),
+                      label: const Text('فتح الكاميرا مباشرة'),
+                    ),
+                  ],
+                ),
                 OutlinedButton.icon(
                   onPressed: () async {
                     try {
@@ -1254,6 +1288,18 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
             if (created is Timestamp) Text(DateFormat('yyyy/MM/dd HH:mm').format(created.toDate())),
             if (d['requestReply'] == true) Text(d['replyStatus'] == 'replied' ? 'تم الرد' : 'بانتظار الرد',
               style: TextStyle(color: d['replyStatus'] == 'replied' ? Colors.green : Colors.deepOrange)),
+            if (sent) ...[
+              Text(
+                read ? 'تمت القراءة ✓✓' : 'تم الإرسال ✓',
+                style: TextStyle(
+                  color: read ? const Color(0xFF16845B) : const Color(0xFF64748B),
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              if (read && d['readAt'] is Timestamp)
+                Text('وقت القراءة: ' + DateFormat('yyyy/MM/dd HH:mm').format((d['readAt'] as Timestamp).toDate()),
+                  style: const TextStyle(fontSize: 11, color: Color(0xFF526579))),
+            ],
             if (sent && d['liked'] == true)
               const Text('اطّلع المستلم على الملاحظة وأعجب بها 👍',
                 style: TextStyle(color: teal, fontWeight: FontWeight.w800)),
