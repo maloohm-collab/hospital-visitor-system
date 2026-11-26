@@ -18,12 +18,20 @@ service firebase.storage {
           && firestore.get(/databases/(default)/documents/staff_messages/$(threadId + '_' + senderUid)).data.senderUid == request.auth.uid
           && firestore.get(/databases/(default)/documents/staff_messages/$(threadId + '_' + senderUid)).data.recipientUid == senderUid;
       }
+      function adminRecipient() {
+        return firestore.exists(/databases/(default)/documents/users/$(request.auth.uid))
+          && firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == 'admin'
+          && firestore.exists(/databases/(default)/documents/staff_messages/$(threadId + '_' + request.auth.uid))
+          && firestore.get(/databases/(default)/documents/staff_messages/$(threadId + '_' + request.auth.uid)).data.senderUid == senderUid
+          && firestore.get(/databases/(default)/documents/staff_messages/$(threadId + '_' + request.auth.uid)).data.recipientUid == request.auth.uid;
+      }
       allow write: if isActiveUser()
         && request.resource != null
         && request.auth.uid == senderUid
-        && request.resource.size <= 10 * 1024 * 1024
-        && request.resource.contentType.matches('image/(jpeg|png|webp|heic|gif)');
-      allow delete: if isActiveUser() && request.auth.uid == senderUid;
+        && request.resource.size <= 25 * 1024 * 1024
+        && request.resource.contentType.matches('(image/(jpeg|png|webp|heic|gif)|application/pdf|application/msword|application/vnd\\..*|text/(plain|csv)|audio/(mpeg|wav|mp4)|video/(mp4|quicktime)|application/(zip|octet-stream))');
+      allow delete: if isActiveUser()
+        && (request.auth.uid == senderUid || adminRecipient());
       allow read: if isActiveUser() && (
         request.auth.uid == senderUid
         || (recipientMessage()
