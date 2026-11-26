@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:gal/gal.dart';
 import 'package:image_picker/image_picker.dart';
@@ -23,6 +24,7 @@ class StaffMessagesScreen extends StatefulWidget {
 
 class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTickerProviderStateMixin {
   static const navy = Color(0xFF082B55), teal = Color(0xFF087E78);
+  static const bool _storageFeaturesEnabled = false;
   final db = FirebaseFirestore.instance;
   final auth = FirebaseAuth.instance;
   late final TabController tabs;
@@ -83,6 +85,41 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
   void dispose() { archiveRefreshTimer?.cancel(); tabs.dispose(); super.dispose(); }
   void toast(String value) {
     if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(value)));
+  }
+
+  String _attachmentContentType(XFile file) {
+    final supplied = (file.mimeType ?? '').toLowerCase().trim();
+    if (supplied.isNotEmpty) return supplied;
+    final extension = file.name.split('.').last.toLowerCase();
+    const types = <String, String>{
+      'jpg': 'image/jpeg', 'jpeg': 'image/jpeg', 'png': 'image/png',
+      'webp': 'image/webp', 'heic': 'image/heic', 'gif': 'image/gif',
+      'pdf': 'application/pdf', 'doc': 'application/msword',
+      'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'xls': 'application/vnd.ms-excel',
+      'xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'ppt': 'application/vnd.ms-powerpoint',
+      'pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+      'txt': 'text/plain', 'csv': 'text/csv', 'mp3': 'audio/mpeg',
+      'wav': 'audio/wav', 'm4a': 'audio/mp4', 'mp4': 'video/mp4',
+      'mov': 'video/quicktime', 'zip': 'application/zip',
+    };
+    return types[extension] ?? 'application/octet-stream';
+  }
+
+  bool _isAllowedAttachmentType(String type) {
+    return type.startsWith('image/') ||
+        const {
+          'application/pdf', 'application/msword',
+          'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+          'application/vnd.ms-excel',
+          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          'application/vnd.ms-powerpoint',
+          'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+          'text/plain', 'text/csv', 'audio/mpeg', 'audio/wav', 'audio/mp4',
+          'video/mp4', 'video/quicktime', 'application/zip',
+          'application/octet-stream',
+        }.contains(type);
   }
 
   Future<void> _showComingSoonFeature(String feature) async {
@@ -355,12 +392,81 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
                   runSpacing: 6,
                   children: [
                     OutlinedButton.icon(
-                      onPressed: () => _showComingSoonFeature('إرفاق أي ملف من الهاتف'),
+                      onPressed: () async {
+                        if (!_storageFeaturesEnabled) {
+                          await _showComingSoonFeature('إرفاق أي ملف من الهاتف');
+                          return;
+                        }
+                        try {
+                          final result = await FilePicker.platform.pickFiles(
+                            allowMultiple: true,
+                            withData: true,
+                            type: FileType.any,
+                          );
+                          if (result == null) return;
+                          var added = 0;
+                          for (final file in result.files) {
+                            if (pickedImages.length >= 5) break;
+                            if (file.size > 25 * 1024 * 1024) {
+                              toast('الملف ${file.name} أكبر من 25 ميغابايت ولم تتم إضافته.');
+                              continue;
+                            }
+                            final bytes = file.bytes;
+                            final XFile selectedFile;
+                            if (bytes != null) {
+                              selectedFile = XFile.fromData(
+                                bytes,
+                                name: file.name,
+                                mimeType: file.mimeType,
+                              );
+                            } else if (file.path != null) {
+                              selectedFile = XFile(file.path!, mimeType: file.mimeType);
+                            } else {
+                              continue;
+                            }
+                            if (!_isAllowedAttachmentType(_attachmentContentType(selectedFile))) {
+                              toast('نوع الملف ${file.name} غير مدعوم حالياً.');
+                              continue;
+                            }
+                            pickedImages.add(selectedFile);
+                            added++;
+                          }
+                          refresh(() {});
+                          if (added > 0) toast('تمت إضافة $added مرفق.');
+                        } catch (_) {
+                          toast('تعذر اختيار الملفات من الهاتف.');
+                        }
+                      },
                       icon: const Icon(Icons.folder_open_outlined),
                       label: const Text('إرفاق ملف من الهاتف'),
                     ),
                     OutlinedButton.icon(
-                      onPressed: () => _showComingSoonFeature('فتح كاميرا الهاتف مباشرة'),
+                      onPressed: () async {
+                        if (!_storageFeaturesEnabled) {
+                          await _showComingSoonFeature('فتح كاميرا الهاتف مباشرة');
+                          return;
+                        }
+                        try {
+                          final photo = await ImagePicker().pickImage(
+                            source: ImageSource.camera,
+                            imageQuality: 85,
+                            maxWidth: 1800,
+                          );
+                          if (photo == null) return;
+                          if (await photo.length() > 25 * 1024 * 1024) {
+                            toast('الصورة أكبر من 25 ميغابايت.');
+                            return;
+                          }
+                          if (pickedImages.length >= 5) {
+                            toast('الحد الأقصى خمسة مرفقات للرسالة الواحدة.');
+                            return;
+                          }
+                          pickedImages.add(photo);
+                          refresh(() {});
+                        } catch (_) {
+                          toast('تعذر فتح كاميرا الهاتف. تحقق من صلاحية الكاميرا.');
+                        }
+                      },
                       icon: const Icon(Icons.photo_camera_outlined),
                       label: const Text('فتح الكاميرا مباشرة'),
                     ),
@@ -368,6 +474,10 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
                 ),
                 OutlinedButton.icon(
                   onPressed: () async {
+                    if (!_storageFeaturesEnabled) {
+                      await _showComingSoonFeature('إرفاق الصور من المعرض');
+                      return;
+                    }
                     try {
                       final remaining = 5 - pickedImages.length;
                       if (remaining <= 0) {
@@ -383,8 +493,8 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
                       for (final image in images) {
                         if (pickedImages.length >= 5) break;
                         final size = await image.length();
-                        if (size > 10 * 1024 * 1024) {
-                          toast('تم تجاوز صورة أكبر من 10 ميغابايت؛ لم تتم إضافتها.');
+                        if (size > 25 * 1024 * 1024) {
+                          toast('تم تجاوز مرفق أكبر من 25 ميغابايت؛ لم تتم إضافته.');
                           continue;
                         }
                         pickedImages.add(image);
@@ -529,10 +639,12 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
                                 ? safeName.substring(safeName.length - 120)
                                 : safeName;
                             final fileName = '${DateTime.now().microsecondsSinceEpoch}_${index}_$shortName';
-                            final detectedType = image.mimeType ?? 'image/jpeg';
-                            final contentType = detectedType == 'image/jpg' ? 'image/jpeg' : detectedType;
-                            if (!contentType.startsWith('image/')) {
-                              throw StateError('المرفقات المسموح بها صور فقط.');
+                            final contentType = _attachmentContentType(image);
+                            if (!_isAllowedAttachmentType(contentType)) {
+                              throw StateError('نوع الملف غير مدعوم: ' + image.name);
+                            }
+                            if (await image.length() > 25 * 1024 * 1024) {
+                              throw StateError('حجم المرفق يتجاوز 25 ميغابايت.');
                             }
                             final storageRef = FirebaseStorage.instance
                                 .ref()
@@ -886,7 +998,7 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
                     style: const TextStyle(fontSize: 17, height: 1.8, fontWeight: FontWeight.w700, color: Color(0xFF172B45))),
                   if (attachments.isNotEmpty) ...[
                     const SizedBox(height: 14),
-                    Text('الصور المرفقة (${attachments.length})',
+                    Text('المرفقات (${attachments.length})',
                       style: const TextStyle(fontWeight: FontWeight.w900, color: navy)),
                     const SizedBox(height: 8),
                     Wrap(
@@ -898,7 +1010,34 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
                             : <String, dynamic>{};
                         final url = (attachment['url'] ?? attachment['downloadUrl'] ?? '').toString();
                         if (url.isEmpty) return const SizedBox.shrink();
-                        final fileName = (attachment['fileName'] ?? 'staff_note_image.jpg').toString();
+                        final fileName = (attachment['fileName'] ?? 'مرفق').toString();
+                        final contentType = (attachment['contentType'] ?? '').toString();
+                        if (!contentType.startsWith('image/')) {
+                          return SizedBox(
+                            width: 150,
+                            child: Card(
+                              child: Padding(
+                                padding: const EdgeInsets.all(10),
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Icon(Icons.insert_drive_file_outlined, size: 34, color: navy),
+                                    Text(fileName, maxLines: 2, overflow: TextOverflow.ellipsis,
+                                      textAlign: TextAlign.center),
+                                    TextButton.icon(
+                                      onPressed: () async {
+                                        final opened = await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+                                        if (!opened) toast('تعذر فتح المرفق.');
+                                      },
+                                      icon: const Icon(Icons.open_in_new, size: 16),
+                                      label: const Text('فتح الملف'),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          );
+                        }
                         return Stack(
                           children: [
                             InkWell(
