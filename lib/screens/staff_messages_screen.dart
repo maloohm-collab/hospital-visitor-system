@@ -509,14 +509,14 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
                     }
                   },
                   icon: const Icon(Icons.add_photo_alternate_outlined),
-                  label: Text('إرفاق صور اختياري (${pickedImages.length}/5)'),
+                  label: Text('إرفاق صور أو ملفات (${pickedImages.length}/5)'),
                 ),
                 if (pickedImages.isNotEmpty)
                   Wrap(
                     spacing: 6,
                     runSpacing: 4,
                     children: pickedImages.asMap().entries.map((entry) => InputChip(
-                      avatar: const Icon(Icons.image_outlined, size: 18),
+                      avatar: const Icon(Icons.attach_file_rounded, size: 18),
                       label: SizedBox(
                         width: 125,
                         child: Text(entry.value.name, overflow: TextOverflow.ellipsis),
@@ -669,10 +669,10 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
                           final sendWithoutImages = await showDialog<bool>(
                             context: ctx,
                             builder: (dialogContext) => AlertDialog(
-                              title: const Text('تعذر إرفاق الصور'),
+                              title: const Text('تعذر إرفاق الملفات'),
                               content: const Text(
                                 'خدمة تخزين الصور غير متاحة حالياً أو تعذر رفع إحدى الصور. '
-                                'يمكنك إرسال الملاحظة نصياً الآن دون صور، أو إلغاء الإرسال والمحاولة لاحقاً.',
+                                'يمكنك إرسال الرسالة نصياً الآن دون مرفقات، أو إلغاء الإرسال والمحاولة لاحقاً.',
                               ),
                               actions: [
                                 TextButton(
@@ -681,7 +681,7 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
                                 ),
                                 FilledButton(
                                   onPressed: () => Navigator.pop(dialogContext, true),
-                                  child: const Text('إرسال دون صور'),
+                                  child: const Text('إرسال دون مرفقات'),
                                 ),
                               ],
                             ),
