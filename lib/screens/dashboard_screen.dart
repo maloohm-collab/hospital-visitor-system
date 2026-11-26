@@ -95,12 +95,12 @@ class DashboardScreen extends StatelessWidget {
               ));
             } else if (index == 4) {
               Navigator.push(context, MaterialPageRoute(
-                builder: (_) => const DirectContactScreen(),
+                builder: (_) => DirectContactScreen(userRole: userRole),
               ));
             }
             return;
           }
-          if (index == 1) { Navigator.push(context, MaterialPageRoute(builder: (_) => const AccountProfileScreen())); } else if (index == 2) { Navigator.push(context, MaterialPageRoute(builder: (_) => const DirectContactScreen())); } else if (index == 3) {
+          if (index == 1) { Navigator.push(context, MaterialPageRoute(builder: (_) => const AccountProfileScreen())); } else if (index == 2) { Navigator.push(context, MaterialPageRoute(builder: (_) => DirectContactScreen(userRole: userRole))); } else if (index == 3) {
             Navigator.push(context, MaterialPageRoute(
               builder: (_) => const FounderScreen(),
             ));
