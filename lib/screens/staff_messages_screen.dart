@@ -235,16 +235,6 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
     }
   }
 
-  Future<void> compose() async {
-    final snapshot = await db.collection('users').where('status', isEqualTo: 'active').get();
-    if (!mounted) return;
-    final activeUsers = snapshot.docs.where((d) => d.id != uid).toList();
-    final users = activeUsers.where((d) {
-      final role = d.data()['role'];
-      if (admin) return ['admin', 'supervisor', 'security_officer'].contains(role);
-      if (supervisor) return role == 'security_officer';
-      return ['admin', 'supervisor'].contains(role);
-    }).toList();
 
     final title = TextEditingController();
     final body = TextEditingController();
@@ -264,21 +254,52 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
     bool busy = false;
     String employeeSearch = '';
     String shiftFilter = 'all';
+    int currentStep = 0;
 
-    await showModalBottomSheet<void>(
+    const pastelBg = Color(0xFFF5F7FB);
+    const pastelBlue = Color(0xFF7898B8);
+    const pastelMint = Color(0xFF8FB9AD);
+    const pastelInk = Color(0xFF43566D);
+    const pastelLine = Color(0xFFE2E9F1);
+    const stepNames = ['نوع الرسالة', 'المستلمون', 'المحتوى', 'المرفقات', 'المراجعة'];
+
+    await showDialog<void>(
       context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
-      builder: (sheet) => StatefulBuilder(
-        builder: (ctx, refresh) => Padding(
-          padding: EdgeInsets.fromLTRB(16, 16, 16, MediaQuery.of(ctx).viewInsets.bottom + 16),
-          child: SizedBox(
-            height: MediaQuery.of(ctx).size.height * .82,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text(widget.userRole == 'security_officer' ? 'إرسال بلاغ أو ملاحظة' : 'إرسال ملاحظة أو تنبيه',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: navy)),
+      barrierDismissible: false,
+      builder: (sheet) => Dialog(
+        insetPadding: EdgeInsets.zero,
+        backgroundColor: pastelBg,
+        child: SizedBox.expand(
+          child: StatefulBuilder(
+            builder: (ctx, refresh) {
+              final pageWidgets = <Widget>[
+                SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(20, 22, 20, 18),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(18),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFEAF0F7),
+                          borderRadius: BorderRadius.circular(22),
+                        ),
+                        child: const Row(children: [
+                          Icon(Icons.mark_email_unread_rounded, color: pastelBlue, size: 30),
+                          SizedBox(width: 12),
+                          Expanded(child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('اختر نوع الرسالة', style: TextStyle(
+                                color: pastelInk, fontSize: 19, fontWeight: FontWeight.w800)),
+                              SizedBox(height: 4),
+                              Text('حدد طبيعة الرسالة قبل اختيار المستلمين.',
+                                style: TextStyle(color: Color(0xFF8291A3), fontSize: 13)),
+                            ],
+                          )),
+                        ]),
+                      ),
+                      const SizedBox(height: 18),
                 if (admin || supervisor)
                   DropdownButtonFormField<String>(
                     value: messageType,
@@ -291,7 +312,43 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
                   )
                 else
                   const Text('نوع الرسالة: ملاحظة ميدانية'),
-                const SizedBox(height: 8),
+
+                    ],
+                  ),
+                ),
+                SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(16, 18, 16, 18),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFEDF5F3),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Row(children: [
+                          const Icon(Icons.groups_2_rounded, color: pastelMint, size: 30),
+                          const SizedBox(width: 10),
+                          Expanded(child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text('تحديد المستلمين', style: TextStyle(
+                                color: pastelInk, fontSize: 19, fontWeight: FontWeight.w800)),
+                              const SizedBox(height: 4),
+                              Text('تم اختيار ${selected.length} مستلم',
+                                style: const TextStyle(color: Color(0xFF8291A3), fontSize: 13)),
+                            ],
+                          )),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(14)),
+                            child: Text('${selected.length}', style: const TextStyle(
+                              color: pastelInk, fontWeight: FontWeight.w800)),
+                          ),
+                        ]),
+                      ),
+                      const SizedBox(height: 14),
                 Text(supervisor
                     ? 'اختر ضباط الأمن — نسخة الإدارة تُرسل تلقائياً مع التعليمات فقط: ${selected.length}'
                     : 'اختر المستلمين — المختار: ${selected.length}'),
@@ -329,7 +386,7 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
                     child: const Text('جميع المشرفين')),
                   TextButton(onPressed: () => refresh(selected.clear), child: const Text('إلغاء التحديد')),
                 ]),
-                Expanded(child: Builder(builder: (listContext) {
+                SizedBox(height: 300, child: Builder(builder: (listContext) {
                   final filteredUsers = users.where((d) {
                     final data = d.data();
                     final name = (data['displayName'] ?? data['fullName'] ?? '').toString().toLowerCase();
@@ -382,11 +439,43 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
                     );
                   }).toList());
                 })),
+
+                    ],
+                  ),
+                ),
+                SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(20, 22, 20, 18),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      const Row(children: [
+                        Icon(Icons.edit_note_rounded, color: Color(0xFF9C91B5), size: 30),
+                        SizedBox(width: 10),
+                        Text('اكتب تفاصيل الرسالة', style: TextStyle(
+                          color: pastelInk, fontSize: 19, fontWeight: FontWeight.w800)),
+                      ]),
+                      const SizedBox(height: 18),
                 TextField(controller: title,
                   decoration: const InputDecoration(labelText: 'عنوان الملاحظة')),
                 const SizedBox(height: 8),
                 TextField(controller: body, minLines: 3, maxLines: 5,
                   decoration: const InputDecoration(labelText: 'التفاصيل النصية')),
+
+                    ],
+                  ),
+                ),
+                SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(18, 18, 18, 20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      const Row(children: [
+                        Icon(Icons.attach_file_rounded, color: pastelBlue, size: 28),
+                        SizedBox(width: 10),
+                        Text('المرفقات وخيارات الرسالة', style: TextStyle(
+                          color: pastelInk, fontSize: 19, fontWeight: FontWeight.w800)),
+                      ]),
+                      const SizedBox(height: 14),
                 const SizedBox(height: 6),
                 Wrap(
                   spacing: 8,
@@ -574,8 +663,208 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
                   value: requestReply,
                   onChanged: (v) => refresh(() => requestReply = v),
                 ),
-                const SizedBox(height: 8),
-                FilledButton.icon(
+
+                    ],
+                  ),
+                ),
+                SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(20, 22, 20, 22),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(18),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFEAF3EF),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: const Column(children: [
+                          Icon(Icons.fact_check_rounded, color: pastelMint, size: 38),
+                          SizedBox(height: 8),
+                          Text('راجع رسالتك قبل الإرسال', style: TextStyle(
+                            color: pastelInk, fontSize: 19, fontWeight: FontWeight.w800)),
+                          SizedBox(height: 4),
+                          Text('تأكد من صحة المستلمين والمحتوى والخيارات.',
+                            style: TextStyle(color: Color(0xFF8291A3), fontSize: 13)),
+                        ]),
+                      ),
+                      const SizedBox(height: 18),
+                      _reviewTile(Icons.description_outlined, 'نوع الرسالة',
+                        messageType == 'instruction' ? 'تعليمة إدارية' : 'ملاحظة ميدانية'),
+                      _reviewTile(Icons.people_alt_outlined, 'المستلمون',
+                        '${selected.length} مستلم'),
+                      _reviewTile(Icons.title_rounded, 'العنوان',
+                        title.text.trim().isEmpty ? 'غير مكتمل' : title.text.trim()),
+                      _reviewTile(Icons.notes_rounded, 'التفاصيل',
+                        body.text.trim().isEmpty ? 'غير مكتملة' : body.text.trim()),
+                      _reviewTile(Icons.attach_file_rounded, 'المرفقات',
+                        '${pickedImages.length} من 5'),
+                      _reviewTile(Icons.flag_outlined, 'الأهمية',
+                        priority == 'urgent' ? 'عاجلة' : priority == 'important' ? 'مهمة' : 'عادية'),
+                      _reviewTile(Icons.reply_rounded, 'طلب الرد',
+                        requestReply ? 'مطلوب' : 'غير مطلوب'),
+                      if (supervisor && customTickerStyle)
+                        _reviewTile(Icons.tune_rounded, 'تنسيق الشريط',
+                          'حجم ${tickerFontSize.round()} • ${tickerBold ? 'عريض' : 'عادي'}'),
+                    ],
+                  ),
+                ),
+              ];
+
+              return SafeArea(
+                child: Column(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 14),
+                      decoration: const BoxDecoration(
+                        color: Colors.white,
+                        border: Border(bottom: BorderSide(color: pastelLine)),
+                      ),
+                      child: Column(children: [
+                        Row(children: [
+                          IconButton(
+                            tooltip: 'إغلاق',
+                            onPressed: busy ? null : () => Navigator.pop(sheet),
+                            icon: const Icon(Icons.close_rounded, color: pastelInk),
+                          ),
+                          const Expanded(child: Text('إنشاء رسالة جديدة', textAlign: TextAlign.center,
+                            style: TextStyle(color: pastelInk, fontSize: 18, fontWeight: FontWeight.w800))),
+                          const SizedBox(width: 48),
+                        ]),
+                        const SizedBox(height: 8),
+                        Row(
+                          children: List.generate(stepNames.length, (index) {
+                            final active = index == currentStep;
+                            final completed = index < currentStep;
+                            return Expanded(child: Column(children: [
+                              Row(children: [
+                                Expanded(child: Container(height: 3,
+                                  color: index == 0 ? Colors.transparent :
+                                    (completed || active ? pastelBlue : pastelLine))),
+                                Container(
+                                  width: 29, height: 29,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: completed ? pastelMint : active ? pastelBlue : const Color(0xFFE9EEF4),
+                                  ),
+                                  child: Center(child: completed
+                                    ? const Icon(Icons.check_rounded, color: Colors.white, size: 17)
+                                    : Text('${index + 1}', style: TextStyle(
+                                      color: active ? Colors.white : const Color(0xFF94A1B0),
+                                      fontWeight: FontWeight.w800, fontSize: 12))),
+                                ),
+                                Expanded(child: Container(height: 3,
+                                  color: index == stepNames.length - 1 ? Colors.transparent :
+                                    (completed ? pastelBlue : pastelLine))),
+                              ]),
+                              const SizedBox(height: 5),
+                              Text(stepNames[index], maxLines: 1, overflow: TextOverflow.ellipsis,
+                                style: TextStyle(fontSize: 10,
+                                  color: active ? pastelInk : const Color(0xFF98A4B2),
+                                  fontWeight: active ? FontWeight.w800 : FontWeight.w500)),
+                            ]));
+                          }),
+                        ),
+                        const SizedBox(height: 10),
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(20),
+                          child: LinearProgressIndicator(
+                            value: (currentStep + 1) / stepNames.length,
+                            minHeight: 4,
+                            backgroundColor: const Color(0xFFEDF1F5),
+                            valueColor: const AlwaysStoppedAnimation<Color>(pastelBlue),
+                          ),
+                        ),
+                      ]),
+                    ),
+                    Expanded(
+                      child: Theme(
+                        data: Theme.of(ctx).copyWith(
+                          colorScheme: Theme.of(ctx).colorScheme.copyWith(
+                            primary: pastelBlue,
+                            secondary: pastelMint,
+                            surface: Colors.white,
+                          ),
+                          inputDecorationTheme: InputDecorationTheme(
+                            filled: true,
+                            fillColor: Colors.white,
+                            labelStyle: const TextStyle(color: Color(0xFF8492A3)),
+                            hintStyle: const TextStyle(color: Color(0xFFA1ACB9)),
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(17),
+                              borderSide: const BorderSide(color: pastelLine),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(17),
+                              borderSide: const BorderSide(color: pastelLine),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(17),
+                              borderSide: const BorderSide(color: pastelBlue, width: 1.4),
+                            ),
+                          ),
+                          cardTheme: CardTheme(
+                            color: Colors.white,
+                            elevation: 0,
+                            margin: const EdgeInsets.symmetric(vertical: 5),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(17),
+                              side: const BorderSide(color: pastelLine),
+                            ),
+                          ),
+                        ),
+                        child: IndexedStack(index: currentStep, children: pageWidgets),
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 14),
+                      decoration: const BoxDecoration(
+                        color: Colors.white,
+                        border: Border(top: BorderSide(color: pastelLine)),
+                      ),
+                      child: Row(children: [
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: busy || currentStep == 0 ? null :
+                              () => refresh(() => currentStep--),
+                            icon: const Icon(Icons.arrow_back_rounded, size: 18),
+                            label: const Text('السابق'),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: pastelInk,
+                              side: const BorderSide(color: pastelLine),
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: currentStep < 4
+                            ? FilledButton.icon(
+                                onPressed: () {
+                                  if (currentStep == 1 && selected.isEmpty) {
+                                    toast('اختر مستلماً واحداً على الأقل للمتابعة.');
+                                    return;
+                                  }
+                                  if (currentStep == 2 &&
+                                      (title.text.trim().length < 3 || body.text.trim().length < 3)) {
+                                    toast('أدخل عنواناً وتفاصيل نصية لا تقل عن ثلاثة أحرف.');
+                                    return;
+                                  }
+                                  refresh(() => currentStep++);
+                                },
+                                icon: const Icon(Icons.arrow_forward_rounded, size: 18),
+                                label: const Text('التالي'),
+                                style: FilledButton.styleFrom(
+                                  backgroundColor: pastelBlue,
+                                  foregroundColor: Colors.white,
+                                  elevation: 0,
+                                  padding: const EdgeInsets.symmetric(vertical: 14),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                                ),
+                              )
+                            :                 FilledButton.icon(
                   onPressed: busy ? null : () async {
                     if (selected.isEmpty) {
                       toast('اختر مستلماً واحداً على الأقل.');
@@ -798,8 +1087,13 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
                   icon: const Icon(Icons.send_rounded),
                   label: Text(busy ? 'جارٍ إرسال الرسالة...' : 'إرسال الرسالة النصية'),
                 ),
-              ],
-            ),
+                        ),
+                      ]),
+                    ),
+                  ],
+                ),
+              );
+            },
           ),
         ),
       ),
@@ -807,6 +1101,25 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
     title.dispose();
     body.dispose();
   }
+
+  Widget _reviewTile(IconData icon, String label, String value) => Container(
+    margin: const EdgeInsets.only(bottom: 9),
+    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(16),
+      border: Border.all(color: const Color(0xFFE2E9F1)),
+    ),
+    child: Row(children: [
+      Icon(icon, color: const Color(0xFF8CA5BC), size: 21),
+      const SizedBox(width: 11),
+      Expanded(child: Text(label, style: const TextStyle(
+        color: Color(0xFF7D8B9B), fontWeight: FontWeight.w600))),
+      const SizedBox(width: 8),
+      Flexible(child: Text(value, textAlign: TextAlign.end, style: const TextStyle(
+        color: Color(0xFF43566D), fontWeight: FontWeight.w800))),
+    ]),
+  );
 
   bool archived(Map<String, dynamic> d) {
     final ts = d['createdAt'];
