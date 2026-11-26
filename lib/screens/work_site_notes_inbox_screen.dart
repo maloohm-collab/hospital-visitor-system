@@ -45,6 +45,14 @@ class _WorkSiteNotesInboxScreenState extends State<WorkSiteNotesInboxScreen> {
     if (yes != true || !mounted) return;
     setState(() => deleting.add(doc.id));
     try {
+      final reads = await doc.reference.collection('reads').get();
+      for (var start = 0; start < reads.docs.length; start += 400) {
+        final batch = FirebaseFirestore.instance.batch();
+        for (final readDoc in reads.docs.skip(start).take(400)) {
+          batch.delete(readDoc.reference);
+        }
+        await batch.commit();
+      }
       await doc.reference.delete();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -100,6 +108,16 @@ class _WorkSiteNotesInboxScreenState extends State<WorkSiteNotesInboxScreen> {
     );
     if (yes != true || !mounted) return;
     try {
+      for (final doc in docs) {
+        final reads = await doc.reference.collection('reads').get();
+        for (var readStart = 0; readStart < reads.docs.length; readStart += 400) {
+          final readBatch = FirebaseFirestore.instance.batch();
+          for (final readDoc in reads.docs.skip(readStart).take(400)) {
+            readBatch.delete(readDoc.reference);
+          }
+          await readBatch.commit();
+        }
+      }
       for (var start = 0; start < docs.length; start += 400) {
         final batch = FirebaseFirestore.instance.batch();
         for (final doc in docs.skip(start).take(400)) {
