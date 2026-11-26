@@ -77,7 +77,7 @@ jobs:
           import re
           manifest = Path("android/app/src/main/AndroidManifest.xml")
           content = manifest.read_text()
-          for perm in ("POST_NOTIFICATIONS", "VIBRATE", "FOREGROUND_SERVICE", "FOREGROUND_SERVICE_REMOTE_MESSAGING", "WAKE_LOCK", "REQUEST_IGNORE_BATTERY_OPTIMIZATIONS"):
+          for perm in ("POST_NOTIFICATIONS", "VIBRATE", "CAMERA", "FOREGROUND_SERVICE", "FOREGROUND_SERVICE_REMOTE_MESSAGING", "WAKE_LOCK", "REQUEST_IGNORE_BATTERY_OPTIMIZATIONS"):
               tag = f'<uses-permission android:name="android.permission.{perm}"/>'
               if perm not in content:
                   content = content.replace("<application", tag + "\n    <application", 1)
