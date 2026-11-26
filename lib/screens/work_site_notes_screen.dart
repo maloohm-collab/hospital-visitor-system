@@ -200,7 +200,7 @@ class _WorkSiteNotesScreenState extends State<WorkSiteNotesScreen> {
                   if(edited) const Chip(label:Text('معدّلة'),visualDensity:VisualDensity.compact),
                 ]),
                 const SizedBox(height:7),
-                Text(data['body'] as String? ?? '',style:const TextStyle(color:Color(0xFF26384A),fontSize:15,height:1.5)),
+                Text(data['body'] as String? ?? '',style:const TextStyle(color:Color(0xFF26384A),fontSize:16,height:1.7)),
                 const SizedBox(height:8),
                 Text('أُرسلت: '+dateText(data['createdAt']),style:const TextStyle(color:Color(0xFF64748B),fontSize:12)),
                 StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
