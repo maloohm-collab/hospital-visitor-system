@@ -16,6 +16,8 @@ class _WorkSiteNotesInboxScreenState extends State<WorkSiteNotesInboxScreen> {
   static const navy = Color(0xFF0A1B33);
   final String uid = FirebaseAuth.instance.currentUser?.uid ?? '';
   final Set<String> deleting = <String>{};
+  final Set<String> markingRead = <String>{};
+  bool get isAdmin => widget.userRole == 'admin';
 
   String dateText(dynamic value) => value is Timestamp
       ? DateFormat('yyyy/MM/dd  HH:mm').format(value.toDate().toLocal())
@@ -57,6 +59,65 @@ class _WorkSiteNotesInboxScreenState extends State<WorkSiteNotesInboxScreen> {
       }
     } finally {
       if (mounted) setState(() => deleting.remove(doc.id));
+    }
+  }
+
+  Future<void> markRead(DocumentSnapshot<Map<String, dynamic>> doc) async {
+    if (markingRead.contains(doc.id)) return;
+    setState(() => markingRead.add(doc.id));
+    try {
+      await doc.reference.collection('reads').doc(uid).set({
+        'readerUid': uid,
+        'readAt': FieldValue.serverTimestamp(),
+      });
+    } on FirebaseException catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('تعذر تسجيل القراءة (${error.code}).')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => markingRead.remove(doc.id));
+    }
+  }
+
+  Future<void> deleteAllNotes(List<QueryDocumentSnapshot<Map<String, dynamic>>> docs) async {
+    if (!isAdmin || docs.isEmpty) return;
+    final yes = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('حذف جميع الملاحظات الواردة؟'),
+        content: Text('سيتم حذف ${docs.length} ملاحظة نهائياً من قاعدة البيانات، وبالتالي ستختفي من صناديق وارد جميع مستلميها.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('إلغاء')),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('حذف الجميع'),
+          ),
+        ],
+      ),
+    );
+    if (yes != true || !mounted) return;
+    try {
+      for (var start = 0; start < docs.length; start += 400) {
+        final batch = FirebaseFirestore.instance.batch();
+        for (final doc in docs.skip(start).take(400)) {
+          batch.delete(doc.reference);
+        }
+        await batch.commit();
+      }
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('تم حذف ${docs.length} ملاحظة.')),
+        );
+      }
+    } on FirebaseException catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('تعذر حذف جميع الملاحظات (${error.code}).')),
+        );
+      }
     }
   }
 
@@ -122,10 +183,34 @@ class _WorkSiteNotesInboxScreenState extends State<WorkSiteNotesInboxScreen> {
           }
           return ListView.separated(
             padding: const EdgeInsets.all(16),
-            itemCount: docs.length,
+            itemCount: docs.length + (isAdmin ? 1 : 0),
             separatorBuilder: (_, __) => const SizedBox(height: 10),
             itemBuilder: (context, index) {
-              final doc = docs[index];
+              if (isAdmin && index == 0) {
+                return Card(
+                  color: const Color(0xFFFFF7F5),
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Row(
+                      children: [
+                        const Expanded(
+                          child: Text(
+                            'تنظيف صندوق الوارد',
+                            style: TextStyle(color: navy, fontWeight: FontWeight.w800),
+                          ),
+                        ),
+                        OutlinedButton.icon(
+                          onPressed: docs.isEmpty ? null : () => deleteAllNotes(docs),
+                          style: OutlinedButton.styleFrom(foregroundColor: Colors.red),
+                          icon: const Icon(Icons.delete_sweep_outlined),
+                          label: const Text('حذف الكل'),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }
+              final doc = docs[index - (isAdmin ? 1 : 0)];
               final data = doc.data();
               final edited = data['updatedAt'] is Timestamp;
               final isDeleting = deleting.contains(doc.id);
@@ -178,6 +263,32 @@ class _WorkSiteNotesInboxScreenState extends State<WorkSiteNotesInboxScreen> {
                           color: Color(0xFF33485C),
                           fontWeight: FontWeight.w800,
                         ),
+                      ),
+                      StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+                        stream: doc.reference.collection('reads').doc(uid).snapshots(),
+                        builder: (context, readSnapshot) {
+                          final isRead = readSnapshot.data?.exists == true;
+                          final isMarking = markingRead.contains(doc.id);
+                          return Align(
+                            alignment: AlignmentDirectional.centerStart,
+                            child: isRead
+                                ? const Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(Icons.done_all_rounded, color: Color(0xFF16845B), size: 18),
+                                      SizedBox(width: 5),
+                                      Text('تم الاطلاع على الملاحظة', style: TextStyle(color: Color(0xFF16845B), fontWeight: FontWeight.w800)),
+                                    ],
+                                  )
+                                : TextButton.icon(
+                                    onPressed: isMarking ? null : () => markRead(doc),
+                                    icon: isMarking
+                                        ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                                        : const Icon(Icons.mark_email_read_outlined),
+                                    label: const Text('تأكيد الاطلاع'),
+                                  ),
+                          );
+                        },
                       ),
                       const SizedBox(height: 4),
                       Text(
