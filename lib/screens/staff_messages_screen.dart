@@ -1327,12 +1327,14 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
       return x is Timestamp && y is Timestamp ? y.compareTo(x) : 0;
     });
     final canManageNotes = (admin || supervisor) && !archive;
-    final deletableNotes = canManageNotes
+    final canManageArchive = admin && archive;
+    final canManageContent = canManageNotes || canManageArchive;
+    final deletableNotes = canManageContent
         ? source.where((doc) {
             final data = doc.data();
             return data['recipientUid'] == uid &&
                 (admin || data['messageType'] == 'note') &&
-                !archived(data) &&
+                archived(data) == archive &&
                 !((data['hiddenFor'] as List<dynamic>? ?? []).contains(uid));
           }).toList()
         : <QueryDocumentSnapshot<Map<String, dynamic>>>[];
@@ -1340,7 +1342,7 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
     final selectedCount = selectedMessageIds.where(validIds.contains).length;
     return Column(
       children: [
-        if (canManageNotes)
+        if (canManageContent)
           Padding(
             padding: const EdgeInsets.fromLTRB(12, 4, 12, 4),
             child: Wrap(
@@ -1370,7 +1372,7 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
                       ? null
                       : () => _deleteManagedNotes(deletableNotes, deleteAll: true),
                   icon: const Icon(Icons.delete_sweep_outlined, size: 18),
-                  label: const Text('حذف كل الوارد'),
+                  label: Text(archive ? 'حذف الأرشيف نهائياً' : 'حذف كل الوارد'),
                 ),
                 if (selectedCount > 0)
                   FilledButton.icon(
@@ -1390,7 +1392,7 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
       itemBuilder: (_, i) {
         final doc = docs[i], d = doc.data();
         final sent = d['senderUid'] == uid;
-        final canDeleteThis = canManageNotes && !sent && (admin || d['messageType'] == 'note');
+        final canDeleteThis = canManageContent && !sent && (admin || d['messageType'] == 'note');
         final read = d['read'] == true, created = d['createdAt'];
         return Card(
           child: Column(
@@ -1461,7 +1463,13 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
                 style: TextStyle(color: teal, fontWeight: FontWeight.w800)),
           ]),
           trailing: archive
-              ? IconButton(icon: const Icon(Icons.delete_outline, color: Colors.red), onPressed: () => hideFromArchive(doc))
+              ? (admin && !sent
+                  ? IconButton(
+                      tooltip: 'حذف الرسالة نهائياً',
+                      icon: const Icon(Icons.delete_forever_outlined, color: Colors.red),
+                      onPressed: () => _deleteManagedNotes([doc], deleteAll: true),
+                    )
+                  : IconButton(icon: const Icon(Icons.delete_outline, color: Colors.red), onPressed: () => hideFromArchive(doc)))
               : (!read && !sent ? const Icon(Icons.circle, size: 9, color: teal) : null),
               ),
               if (!archive && !sent)
