@@ -869,7 +869,7 @@ service cloud.firestore {
         && request.resource.data.readAt == request.time
       );
 
-      allow delete: if false;
+      allow delete: if isActiveAdmin() && resource.data.recipientUid == request.auth.uid;
     }
 
 
