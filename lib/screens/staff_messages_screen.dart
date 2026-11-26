@@ -1155,7 +1155,7 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
     } on FirebaseException catch (e) {
       toast('تعذر حذف العناصر (${e.code}). تحقق من صلاحيات Firestore.');
     } catch (_) {
-      toast('تعذر إكمال حذف الملاحظات.');
+      toast('تعذر إكمال حذف العناصر.');
     }
   }
 
@@ -1175,7 +1175,7 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
         ? source.where((doc) {
             final data = doc.data();
             return data['recipientUid'] == uid &&
-                data['messageType'] == 'note' &&
+                (admin || data['messageType'] == 'note') &&
                 !archived(data) &&
                 !((data['hiddenFor'] as List<dynamic>? ?? []).contains(uid));
           }).toList()
