@@ -1122,7 +1122,7 @@ service cloud.firestore {
           && (
             request.auth.uid == readerUid
             || parentNote().officerUid == request.auth.uid
-            || isActiveAdmin()
+            || (isActiveAdmin() && request.auth.uid in parentNote().recipientUids)
           );
 
         allow create: if isActiveUser()
