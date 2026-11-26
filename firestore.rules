@@ -1111,6 +1111,31 @@ service cloud.firestore {
           && request.auth.uid in resource.data.recipientUids
           && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['supervisor', 'admin']
         );
+
+      // Independent read receipt for each work-note recipient.
+      match /reads/{readerUid} {
+        function parentNote() {
+          return get(/databases/$(database)/documents/work_shift_notes/$(noteId)).data;
+        }
+
+        allow get, list: if isActiveUser()
+          && (
+            request.auth.uid == readerUid
+            || parentNote().officerUid == request.auth.uid
+            || isActiveAdmin()
+          );
+
+        allow create: if isActiveUser()
+          && request.auth.uid == readerUid
+          && request.auth.uid in parentNote().recipientUids
+          && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['supervisor', 'admin']
+          && request.resource.data.keys().hasOnly(['readerUid', 'readAt'])
+          && request.resource.data.keys().hasAll(['readerUid', 'readAt'])
+          && request.resource.data.readerUid == request.auth.uid
+          && request.resource.data.readAt == request.time;
+
+        allow update, delete: if false;
+      }
     }
 
 
