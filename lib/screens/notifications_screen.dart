@@ -243,7 +243,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     try {
       await doc.reference.delete();
     } on FirebaseException catch (error) {
-      _message('تعذر حذف الإشعار (${error.code}).');
+      message('تعذر حذف الإشعار (${error.code}).');
     }
   }
 
@@ -274,9 +274,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         }
         await batch.commit();
       }
-      _message('تم حذف ${docs.length} إشعار.');
+      message('تم حذف ${docs.length} إشعار.');
     } on FirebaseException catch (error) {
-      _message('تعذر حذف الإشعارات (${error.code}).');
+      message('تعذر حذف الإشعارات (${error.code}).');
     }
   }
 
