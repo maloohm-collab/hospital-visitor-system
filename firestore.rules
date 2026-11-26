@@ -1138,7 +1138,10 @@ service cloud.firestore {
         allow delete: if isActiveUser()
           && (
             parentNote().officerUid == request.auth.uid
-            || (isActiveAdmin() && request.auth.uid in parentNote().recipientUids)
+            || (
+              request.auth.uid in parentNote().recipientUids
+              && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['supervisor', 'admin']
+            )
           );
       }
     }
