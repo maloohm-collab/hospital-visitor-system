@@ -236,6 +236,17 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
   }
 
 
+  Future<void> compose() async {
+    final snapshot = await db.collection('users').where('status', isEqualTo: 'active').get();
+    if (!mounted) return;
+    final activeUsers = snapshot.docs.where((d) => d.id != uid).toList();
+    final users = activeUsers.where((d) {
+      final role = d.data()['role'];
+      if (admin) return ['admin', 'supervisor', 'security_officer'].contains(role);
+      if (supervisor) return role == 'security_officer';
+      return ['admin', 'supervisor'].contains(role);
+    }).toList();
+
     final title = TextEditingController();
     final body = TextEditingController();
     final selected = <String>{};
@@ -804,15 +815,6 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
                               borderSide: const BorderSide(color: pastelBlue, width: 1.4),
                             ),
                           ),
-                          cardTheme: CardTheme(
-                            color: Colors.white,
-                            elevation: 0,
-                            margin: const EdgeInsets.symmetric(vertical: 5),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(17),
-                              side: const BorderSide(color: pastelLine),
-                            ),
-                          ),
                         ),
                         child: IndexedStack(index: currentStep, children: pageWidgets),
                       ),
@@ -1085,6 +1087,13 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
                     }
                   },
                   icon: const Icon(Icons.send_rounded),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: pastelBlue,
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  ),
                   label: Text(busy ? 'جارٍ إرسال الرسالة...' : 'إرسال الرسالة النصية'),
                 ),
                         ),
