@@ -5,10 +5,12 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import '../widgets/app_search_field.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'staff_messages_screen.dart';
 
 /// دليل التواصل المباشر بين الموظفين النشطين.
 class DirectContactScreen extends StatefulWidget {
-  const DirectContactScreen({super.key});
+  const DirectContactScreen({super.key, this.userRole = 'security_officer'});
+  final String userRole;
 
   @override
   State<DirectContactScreen> createState() => _DirectContactScreenState();
@@ -352,6 +354,31 @@ class _DirectContactScreenState extends State<DirectContactScreen> {
                               ),
                             ],
                           ),
+                          if (widget.userRole == 'admin') ...[
+                            const SizedBox(height: 8),
+                            SizedBox(
+                              width: double.infinity,
+                              child: FilledButton.icon(
+                                onPressed: () {
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                      builder: (_) => StaffMessagesScreen(
+                                        userRole: widget.userRole,
+                                        openComposerOnStart: true,
+                                        initialRecipientUid: doc.id,
+                                      ),
+                                    ),
+                                  );
+                                },
+                                icon: const Icon(Icons.send_rounded),
+                                label: const Text('رسالة داخلية'),
+                                style: FilledButton.styleFrom(
+                                  backgroundColor: _navy,
+                                  minimumSize: const Size(0, 44),
+                                ),
+                              ),
+                            ),
+                          ],
                         ],
                       ),
                     );

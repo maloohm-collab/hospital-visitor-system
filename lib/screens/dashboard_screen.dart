@@ -95,12 +95,12 @@ class DashboardScreen extends StatelessWidget {
               ));
             } else if (index == 4) {
               Navigator.push(context, MaterialPageRoute(
-                builder: (_) => const DirectContactScreen(),
+                builder: (_) => DirectContactScreen(userRole: userRole),
               ));
             }
             return;
           }
-          if (index == 1) { Navigator.push(context, MaterialPageRoute(builder: (_) => const AccountProfileScreen())); } else if (index == 2) { Navigator.push(context, MaterialPageRoute(builder: (_) => const DirectContactScreen())); } else if (index == 3) {
+          if (index == 1) { Navigator.push(context, MaterialPageRoute(builder: (_) => const AccountProfileScreen())); } else if (index == 2) { Navigator.push(context, MaterialPageRoute(builder: (_) => DirectContactScreen(userRole: userRole))); } else if (index == 3) {
             Navigator.push(context, MaterialPageRoute(
               builder: (_) => const FounderScreen(),
             ));
@@ -158,6 +158,43 @@ class DashboardScreen extends StatelessWidget {
         DashboardNewsTicker(userRole: userRole),
         const SizedBox(height: 4),
       ],
+    );
+  }
+
+  Widget _roleGuideCard() {
+    return Card(
+      margin: const EdgeInsets.fromLTRB(16, 4, 16, 10),
+      elevation: 0,
+      color: Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: const BorderSide(color: Color(0xFFDCE5ED)),
+      ),
+      child: ExpansionTile(
+        leading: const Icon(Icons.groups_2_outlined, color: Color(0xFF087E78)),
+        title: const Text(
+          'دليل الأدوار الثلاثة في التطبيق',
+          style: TextStyle(color: Color(0xFF082B55), fontWeight: FontWeight.w900, fontSize: 15),
+        ),
+        subtitle: const Text('من يوجّه؟ من ينسّق؟ ومن ينفّذ؟'),
+        childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
+        children: const [
+          _RoleGuideRow(
+            title: 'الإدارة / مدير الموقع',
+            description: 'توجّه العمل، تتابع التقارير والملاحظات، وتتواصل مع جميع الموظفين وتتأكد من معالجة الأمور.',
+          ),
+          SizedBox(height: 10),
+          _RoleGuideRow(
+            title: 'المشرف',
+            description: 'حلقة الوصل الميدانية؛ يتابع الضباط، يراجع ما يرد من الميدان، ويرفع ما يحتاج قراراً إلى الإدارة.',
+          ),
+          SizedBox(height: 10),
+          _RoleGuideRow(
+            title: 'ضابط الأمن',
+            description: 'ينفّذ التعليمات في موقع العمل، يرصد الأحداث، ويرسل الملاحظات والبلاغات والتقارير للمشرف.',
+          ),
+        ],
+      ),
     );
   }
 
@@ -306,6 +343,7 @@ class DashboardScreen extends StatelessWidget {
         padding: EdgeInsets.zero,
         children: [
           _buildHero(currentUid),
+          _roleGuideCard(),
           const SizedBox(height: 4),
           if (userRole == 'security_officer')
             _buildSecurityCategories(context, actions)
@@ -566,6 +604,7 @@ class DashboardScreen extends StatelessWidget {
         padding: EdgeInsets.zero,
         children: [
         _buildHero(currentUid),
+        _roleGuideCard(),
         const SizedBox(height: 4),
         StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
           stream: FirebaseFirestore.instance.collection('account_requests')
@@ -969,6 +1008,22 @@ class _ActionCategory {
   final String subtitle;
   final Color color;
   final List<String> actionTitles;
+}
+
+class _RoleGuideRow extends StatelessWidget {
+  const _RoleGuideRow({required this.title, required this.description});
+  final String title;
+  final String description;
+
+  @override
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text(title, style: const TextStyle(color: Color(0xFF173653), fontWeight: FontWeight.w900)),
+      const SizedBox(height: 3),
+      Text(description, style: const TextStyle(color: Color(0xFF263B55), fontSize: 13, height: 1.55)),
+    ],
+  );
 }
 
 class _ActionCategoryScreen extends StatelessWidget {

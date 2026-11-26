@@ -222,6 +222,64 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     ));
   }
 
+  Future<void> _deleteNotification(DocumentSnapshot<Map<String, dynamic>> doc) async {
+    if (!admin || doc.data()?['recipientUid'] != uid) return;
+    final yes = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('حذف الإشعار؟'),
+        content: const Text('سيتم حذف هذا الإشعار من صندوق الإدارة نهائياً.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('إلغاء')),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('حذف'),
+          ),
+        ],
+      ),
+    );
+    if (yes != true) return;
+    try {
+      await doc.reference.delete();
+    } on FirebaseException catch (error) {
+      message('تعذر حذف الإشعار (${error.code}).');
+    }
+  }
+
+  Future<void> _deleteAllNotifications(
+      List<QueryDocumentSnapshot<Map<String, dynamic>>> docs) async {
+    if (!admin || docs.isEmpty) return;
+    final yes = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('حذف جميع الإشعارات؟'),
+        content: Text('سيتم حذف ${docs.length} إشعار من صندوق الإدارة نهائياً.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('إلغاء')),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('حذف الجميع'),
+          ),
+        ],
+      ),
+    );
+    if (yes != true) return;
+    try {
+      for (var start = 0; start < docs.length; start += 400) {
+        final batch = FirebaseFirestore.instance.batch();
+        for (final doc in docs.skip(start).take(400)) {
+          batch.delete(doc.reference);
+        }
+        await batch.commit();
+      }
+      message('تم حذف ${docs.length} إشعار.');
+    } on FirebaseException catch (error) {
+      message('تعذر حذف الإشعارات (${error.code}).');
+    }
+  }
+
   @override
   Widget build(BuildContext context) => Scaffold(
     appBar: widget.embedded ? null : AppBar(title: Text(admin ? 'الإشعارات والملحوظات الإدارية' : 'الإشعارات')),
@@ -247,6 +305,19 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         });
         return Column(children: [
           Padding(padding: const EdgeInsets.fromLTRB(16, 12, 16, 4), child: AppSearchField(hint: 'ابحث في عنوان الإشعار أو نصه أو المرسل...', onChanged: (v) => setState(() => _searchTerm = v))),
+          if (admin && docs.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+              child: Align(
+                alignment: AlignmentDirectional.centerEnd,
+                child: OutlinedButton.icon(
+                  onPressed: () => _deleteAllNotifications(docs),
+                  style: OutlinedButton.styleFrom(foregroundColor: Colors.red),
+                  icon: const Icon(Icons.delete_sweep_outlined),
+                  label: const Text('حذف جميع الإشعارات'),
+                ),
+              ),
+            ),
           if (docs.isEmpty) Expanded(child: Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
             Icon(Icons.notifications_none_rounded, size: 56, color: Color(0xFF8796A5)), SizedBox(height: 12),
             Text(_searchTerm.isEmpty ? 'لا توجد إشعارات جديدة' : 'لا توجد إشعارات مطابقة للبحث', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: navy))])))
@@ -259,7 +330,13 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
               child: Padding(padding: const EdgeInsets.all(15), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Row(children: [Icon(d['priority'] == 'urgent' ? Icons.priority_high_rounded : Icons.notifications_active_outlined, color: d['priority'] == 'urgent' ? Colors.red : teal),
                   const SizedBox(width: 9), Expanded(child: Text(d['title'] as String? ?? 'ملحوظة إدارية', style: TextStyle(fontSize: 16, fontWeight: read ? FontWeight.w600 : FontWeight.w800, color: navy))),
-                  if (!read) const CircleAvatar(radius: 4, backgroundColor: teal)]),
+                  if (!read) const CircleAvatar(radius: 4, backgroundColor: teal),
+                  if (admin)
+                    IconButton(
+                      tooltip: 'حذف الإشعار',
+                      onPressed: () => _deleteNotification(doc),
+                      icon: const Icon(Icons.delete_outline_rounded, color: Colors.red),
+                    )]),
                 const SizedBox(height: 8), Text(d['body'] as String? ?? '', style: const TextStyle(fontSize: 14, height: 1.6, color: Color(0xFF33485C))),
                 const SizedBox(height: 8), Row(children: [
                   Expanded(child: Text('من: ${d['senderName'] ?? d['senderEmail'] ?? 'الإدارة'}', style: const TextStyle(fontSize: 11, color: Color(0xFF526579)))),

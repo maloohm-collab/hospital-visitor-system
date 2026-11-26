@@ -23,6 +23,7 @@ class ReportCenterScreen extends StatefulWidget {
 class _ReportCenterScreenState extends State<ReportCenterScreen> {
   static const navy = Color(0xFF082B55), teal = Color(0xFF12B8B0);
   String _searchTerm = '';
+  final Set<String> _selectedReportIds = <String>{};
   late final Stream<QuerySnapshot<Map<String, dynamic>>> _reportsStream;
   User? get user => FirebaseAuth.instance.currentUser;
   bool get admin => widget.userRole == 'admin';
@@ -229,6 +230,48 @@ class _ReportCenterScreenState extends State<ReportCenterScreen> {
     }
   }
 
+  Future<void> _deleteSelectedReports(
+      List<QueryDocumentSnapshot<Map<String, dynamic>>> reports) async {
+    if (!admin) return;
+    final targets = reports.where((doc) =>
+      _selectedReportIds.contains(doc.id) && _canDelete(doc.data())).toList();
+    if (targets.isEmpty) {
+      _message('حدد تقريراً واحداً على الأقل للحذف.');
+      return;
+    }
+    final yes = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('حذف التقارير المحددة؟'),
+        content: Text('سيتم حذف ${targets.length} تقرير من صندوق الإدارة نهائياً.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('إلغاء')),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('حذف التقارير'),
+          ),
+        ],
+      ),
+    );
+    if (yes != true) return;
+    try {
+      for (var start = 0; start < targets.length; start += 400) {
+        final batch = FirebaseFirestore.instance.batch();
+        for (final doc in targets.skip(start).take(400)) {
+          batch.delete(doc.reference);
+        }
+        await batch.commit();
+      }
+      if (mounted) {
+        setState(() => _selectedReportIds.removeAll(targets.map((doc) => doc.id)));
+        _message('تم حذف ${targets.length} تقرير بنجاح.');
+      }
+    } on FirebaseException catch (error) {
+      _message('تعذر حذف التقارير المحددة (${error.code}).');
+    }
+  }
+
   Future<void> _delete(DocumentSnapshot<Map<String, dynamic>> doc) async {
     final yes = await showDialog<bool>(context: context, builder: (c) => AlertDialog(
       title: const Text('حذف التقرير؟'), content: const Text('لا يمكن التراجع عن الحذف.'),
@@ -429,6 +472,15 @@ class _ReportCenterScreenState extends State<ReportCenterScreen> {
     final file = File('${folder.path}/report_${DateFormat('yyyyMMdd_HHmmss').format(DateTime.now())}.pdf');
     await file.writeAsBytes(await pdf.save(), flush: true);
     return file;
+  }
+
+  Future<void> _markReportRead(DocumentSnapshot<Map<String, dynamic>> doc) async {
+    if (!admin || doc.data()?['adminReadAt'] is Timestamp) return;
+    try {
+      await doc.reference.update({'adminReadAt': FieldValue.serverTimestamp()});
+    } on FirebaseException catch (error) {
+      _message('تعذر تسجيل قراءة التقرير (${error.code}).');
+    }
   }
 
   Future<void> _previewReport(Map<String, dynamic> d) async {
@@ -669,6 +721,38 @@ class _ReportCenterScreenState extends State<ReportCenterScreen> {
             });
           return Column(children: [
             Padding(padding: const EdgeInsets.fromLTRB(14, 8, 14, 4), child: AppSearchField(hint: 'ابحث بعنوان التقرير أو اسم الموظف أو الهاتف أو الموقع...', onChanged: (v) => setState(() => _searchTerm = v))),
+            if (admin)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(14, 4, 14, 8),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: docs.isEmpty ? null : () => setState(() {
+                          if (_selectedReportIds.length == docs.length) {
+                            _selectedReportIds.clear();
+                          } else {
+                            _selectedReportIds
+                              ..clear()
+                              ..addAll(docs.where((doc) => _canDelete(doc.data())).map((doc) => doc.id));
+                          }
+                        }),
+                        icon: const Icon(Icons.select_all_rounded),
+                        label: Text(_selectedReportIds.length == docs.length ? 'إلغاء التحديد' : 'تحديد الكل'),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: FilledButton.icon(
+                        onPressed: _selectedReportIds.isEmpty ? null : () => _deleteSelectedReports(docs),
+                        style: FilledButton.styleFrom(backgroundColor: Colors.red),
+                        icon: const Icon(Icons.delete_sweep_outlined),
+                        label: Text('حذف المحدد (${_selectedReportIds.length})'),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             if (docs.isEmpty) Expanded(child: Center(child: Text(_searchTerm.isEmpty ? 'لا توجد تقارير لعرضها حاليًا.' : 'لا توجد تقارير مطابقة للبحث.')))
             else Expanded(child: ListView.builder(padding: const EdgeInsets.fromLTRB(14, 8, 14, 90),
             itemCount: docs.length, itemBuilder: (context, i) {
@@ -701,6 +785,17 @@ class _ReportCenterScreenState extends State<ReportCenterScreen> {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                   Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    if (admin)
+                      Checkbox(
+                        value: _selectedReportIds.contains(doc.id),
+                        onChanged: _canDelete(d) ? (value) => setState(() {
+                          if (value == true) {
+                            _selectedReportIds.add(doc.id);
+                          } else {
+                            _selectedReportIds.remove(doc.id);
+                          }
+                        }) : null,
+                      ),
                     Container(
                       width: 42,
                       height: 42,
@@ -757,13 +852,25 @@ class _ReportCenterScreenState extends State<ReportCenterScreen> {
                     d['body'] as String? ?? '',
                     maxLines: 5,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontSize: 14, height: 1.7, color: Color(0xFF33485C)),
+                    style: const TextStyle(fontSize: 16, height: 1.75, color: Color(0xFF172B45), fontWeight: FontWeight.w600),
                   ),
                   const SizedBox(height: 8),
                   Text(
                     'الحالة: $status',
                     style: const TextStyle(fontWeight: FontWeight.w800, color: navy),
                   ),
+                  if (!admin && d['adminReadAt'] is Timestamp)
+                    Text(
+                      'اطّلعت الإدارة على التقرير ✓✓ • ${DateFormat('yyyy/MM/dd HH:mm').format((d['adminReadAt'] as Timestamp).toDate())}',
+                      style: const TextStyle(
+                        color: Color(0xFF16845B),
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  if (admin && d['adminReadAt'] is Timestamp)
+                    const Text('تم تسجيل مراجعة التقرير ✓✓',
+                      style: TextStyle(color: Color(0xFF16845B), fontWeight: FontWeight.w800)),
                   if (admin && d['status'] == 'forwarded') ...[
                     const SizedBox(height: 10),
                     SizedBox(
@@ -802,7 +909,10 @@ class _ReportCenterScreenState extends State<ReportCenterScreen> {
                     alignment: WrapAlignment.start,
                     children: [
                       OutlinedButton.icon(
-                        onPressed: () => _previewReport(d),
+                        onPressed: () async {
+                          if (admin) await _markReportRead(doc);
+                          await _previewReport(d);
+                        },
                         icon: const Icon(Icons.visibility_outlined),
                         label: const Text('عرض التقرير'),
                       ),

@@ -156,7 +156,16 @@ class _WorkSiteNotesScreenState extends State<WorkSiteNotesScreen> {
     if(yes!=true) return;
     setState(()=>busy=true);
     try {
-      await db.collection('work_shift_notes').doc(id).delete();
+      final noteRef = db.collection('work_shift_notes').doc(id);
+      final reads = await noteRef.collection('reads').get();
+      for (var start = 0; start < reads.docs.length; start += 400) {
+        final batch = db.batch();
+        for (final readDoc in reads.docs.skip(start).take(400)) {
+          batch.delete(readDoc.reference);
+        }
+        await batch.commit();
+      }
+      await noteRef.delete();
       notice('تم حذف الملاحظة.');
     } on FirebaseException catch(e) { notice('تعذر حذف الملاحظة ('+e.code+').'); }
     finally { if(mounted) setState(()=>busy=false); }
@@ -191,9 +200,24 @@ class _WorkSiteNotesScreenState extends State<WorkSiteNotesScreen> {
                   if(edited) const Chip(label:Text('معدّلة'),visualDensity:VisualDensity.compact),
                 ]),
                 const SizedBox(height:7),
-                Text(data['body'] as String? ?? '',style:const TextStyle(color:Color(0xFF26384A),fontSize:15,height:1.5)),
+                Text(data['body'] as String? ?? '',style:const TextStyle(color:Color(0xFF26384A),fontSize:16,height:1.7)),
                 const SizedBox(height:8),
                 Text('أُرسلت: '+dateText(data['createdAt']),style:const TextStyle(color:Color(0xFF64748B),fontSize:12)),
+                StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+                  stream: doc.reference.collection('reads').snapshots(),
+                  builder: (context, readSnapshot) {
+                    final readCount = readSnapshot.data?.docs.length ?? 0;
+                    final recipients = (data['recipientUids'] as List<dynamic>? ?? const []).length;
+                    return Text(
+                      'حالة القراءة: قرأها $readCount من $recipients',
+                      style: const TextStyle(
+                        color: Color(0xFF16845B),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    );
+                  },
+                ),
                 if(edited) Text('آخر تعديل: '+dateText(data['updatedAt']),style:const TextStyle(color:Color(0xFF64748B),fontSize:12)),
                 const Divider(height:18),
                 Wrap(alignment:WrapAlignment.end,spacing:8,children:[

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:gal/gal.dart';
 import 'package:image_picker/image_picker.dart';
@@ -11,9 +12,10 @@ import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class StaffMessagesScreen extends StatefulWidget {
-  const StaffMessagesScreen({super.key, required this.userRole, this.initialMessageId, this.openComposerOnStart = false, this.embedded = false});
+  const StaffMessagesScreen({super.key, required this.userRole, this.initialMessageId, this.initialRecipientUid, this.openComposerOnStart = false, this.embedded = false});
   final String userRole;
   final String? initialMessageId;
+  final String? initialRecipientUid;
   final bool openComposerOnStart;
   final bool embedded;
   @override
@@ -22,6 +24,7 @@ class StaffMessagesScreen extends StatefulWidget {
 
 class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTickerProviderStateMixin {
   static const navy = Color(0xFF082B55), teal = Color(0xFF087E78);
+  static const bool _storageFeaturesEnabled = false;
   final db = FirebaseFirestore.instance;
   final auth = FirebaseAuth.instance;
   late final TabController tabs;
@@ -65,7 +68,7 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
     tabs = TabController(length: 3, vsync: this);
     archiveRefreshTimer = Timer.periodic(const Duration(minutes: 1), (_) { if (mounted) setState(() {}); });
     final messageId = widget.initialMessageId;
-    if (widget.openComposerOnStart && (supervisor || widget.userRole == 'security_officer')) {
+    if (widget.openComposerOnStart) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) compose();
       });
@@ -82,6 +85,55 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
   void dispose() { archiveRefreshTimer?.cancel(); tabs.dispose(); super.dispose(); }
   void toast(String value) {
     if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(value)));
+  }
+
+  String _attachmentContentType(XFile file) {
+    final supplied = (file.mimeType ?? '').toLowerCase().trim();
+    if (supplied == 'image/jpg') return 'image/jpeg';
+    if (supplied.isNotEmpty) return supplied;
+    final extension = file.name.split('.').last.toLowerCase();
+    const types = <String, String>{
+      'jpg': 'image/jpeg', 'jpeg': 'image/jpeg', 'png': 'image/png',
+      'webp': 'image/webp', 'heic': 'image/heic', 'gif': 'image/gif',
+      'pdf': 'application/pdf', 'doc': 'application/msword',
+      'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'xls': 'application/vnd.ms-excel',
+      'xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'ppt': 'application/vnd.ms-powerpoint',
+      'pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+      'txt': 'text/plain', 'csv': 'text/csv', 'mp3': 'audio/mpeg',
+      'wav': 'audio/wav', 'm4a': 'audio/mp4', 'mp4': 'video/mp4',
+      'mov': 'video/quicktime', 'zip': 'application/zip',
+    };
+    return types[extension] ?? 'application/octet-stream';
+  }
+
+  bool _isAllowedAttachmentType(String type) {
+    return const {
+      'image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/gif',
+      'application/pdf', 'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'application/vnd.ms-excel',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'application/vnd.ms-powerpoint',
+      'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+      'text/plain', 'text/csv', 'audio/mpeg', 'audio/wav', 'audio/mp4',
+      'video/mp4', 'video/quicktime', 'application/zip',
+      'application/octet-stream',
+    }.contains(type);
+  }
+
+  Future<void> _showComingSoonFeature(String feature) async {
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('ستتوفر هذه الخدمة قريباً'),
+        content: Text('ميزة ' + feature + ' قيد التجهيز. ستصبح متاحة بعد تفعيل خدمة التخزين المطلوبة.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('حسناً')),
+        ],
+      ),
+    );
   }
 
   Future<void> _contactEmployee(String phone, {required bool whatsapp}) async {
@@ -197,6 +249,10 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
     final title = TextEditingController();
     final body = TextEditingController();
     final selected = <String>{};
+    final initialRecipient = widget.initialRecipientUid;
+    if (initialRecipient != null && users.any((d) => d.id == initialRecipient)) {
+      selected.add(initialRecipient);
+    }
     final pickedImages = <XFile>[];
     String messageType = widget.userRole == 'security_officer' ? 'note' : 'instruction';
     String priority = 'normal';
@@ -332,8 +388,97 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
                 TextField(controller: body, minLines: 3, maxLines: 5,
                   decoration: const InputDecoration(labelText: 'التفاصيل النصية')),
                 const SizedBox(height: 6),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 6,
+                  children: [
+                    OutlinedButton.icon(
+                      onPressed: () async {
+                        if (!_storageFeaturesEnabled) {
+                          await _showComingSoonFeature('إرفاق أي ملف من الهاتف');
+                          return;
+                        }
+                        try {
+                          final result = await FilePicker.platform.pickFiles(
+                            allowMultiple: true,
+                            withData: true,
+                            type: FileType.any,
+                          );
+                          if (result == null) return;
+                          var added = 0;
+                          for (final file in result.files) {
+                            if (pickedImages.length >= 5) break;
+                            if (file.size > 25 * 1024 * 1024) {
+                              toast('الملف ${file.name} أكبر من 25 ميغابايت ولم تتم إضافته.');
+                              continue;
+                            }
+                            final bytes = file.bytes;
+                            final XFile selectedFile;
+                            if (bytes != null) {
+                              selectedFile = XFile.fromData(
+                                bytes,
+                                name: file.name,
+                                mimeType: file.mimeType,
+                              );
+                            } else if (file.path != null) {
+                              selectedFile = XFile(file.path!, mimeType: file.mimeType);
+                            } else {
+                              continue;
+                            }
+                            if (!_isAllowedAttachmentType(_attachmentContentType(selectedFile))) {
+                              toast('نوع الملف ${file.name} غير مدعوم حالياً.');
+                              continue;
+                            }
+                            pickedImages.add(selectedFile);
+                            added++;
+                          }
+                          refresh(() {});
+                          if (added > 0) toast('تمت إضافة $added مرفق.');
+                        } catch (_) {
+                          toast('تعذر اختيار الملفات من الهاتف.');
+                        }
+                      },
+                      icon: const Icon(Icons.folder_open_outlined),
+                      label: const Text('إرفاق ملف من الهاتف'),
+                    ),
+                    OutlinedButton.icon(
+                      onPressed: () async {
+                        if (!_storageFeaturesEnabled) {
+                          await _showComingSoonFeature('فتح كاميرا الهاتف مباشرة');
+                          return;
+                        }
+                        try {
+                          final photo = await ImagePicker().pickImage(
+                            source: ImageSource.camera,
+                            imageQuality: 85,
+                            maxWidth: 1800,
+                          );
+                          if (photo == null) return;
+                          if (await photo.length() > 25 * 1024 * 1024) {
+                            toast('الصورة أكبر من 25 ميغابايت.');
+                            return;
+                          }
+                          if (pickedImages.length >= 5) {
+                            toast('الحد الأقصى خمسة مرفقات للرسالة الواحدة.');
+                            return;
+                          }
+                          pickedImages.add(photo);
+                          refresh(() {});
+                        } catch (_) {
+                          toast('تعذر فتح كاميرا الهاتف. تحقق من صلاحية الكاميرا.');
+                        }
+                      },
+                      icon: const Icon(Icons.photo_camera_outlined),
+                      label: const Text('فتح الكاميرا مباشرة'),
+                    ),
+                  ],
+                ),
                 OutlinedButton.icon(
                   onPressed: () async {
+                    if (!_storageFeaturesEnabled) {
+                      await _showComingSoonFeature('إرفاق الصور من المعرض');
+                      return;
+                    }
                     try {
                       final remaining = 5 - pickedImages.length;
                       if (remaining <= 0) {
@@ -349,8 +494,8 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
                       for (final image in images) {
                         if (pickedImages.length >= 5) break;
                         final size = await image.length();
-                        if (size > 10 * 1024 * 1024) {
-                          toast('تم تجاوز صورة أكبر من 10 ميغابايت؛ لم تتم إضافتها.');
+                        if (size > 25 * 1024 * 1024) {
+                          toast('تم تجاوز مرفق أكبر من 25 ميغابايت؛ لم تتم إضافته.');
                           continue;
                         }
                         pickedImages.add(image);
@@ -365,14 +510,14 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
                     }
                   },
                   icon: const Icon(Icons.add_photo_alternate_outlined),
-                  label: Text('إرفاق صور اختياري (${pickedImages.length}/5)'),
+                  label: Text('إرفاق صور أو ملفات (${pickedImages.length}/5)'),
                 ),
                 if (pickedImages.isNotEmpty)
                   Wrap(
                     spacing: 6,
                     runSpacing: 4,
                     children: pickedImages.asMap().entries.map((entry) => InputChip(
-                      avatar: const Icon(Icons.image_outlined, size: 18),
+                      avatar: const Icon(Icons.attach_file_rounded, size: 18),
                       label: SizedBox(
                         width: 125,
                         child: Text(entry.value.name, overflow: TextOverflow.ellipsis),
@@ -495,10 +640,12 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
                                 ? safeName.substring(safeName.length - 120)
                                 : safeName;
                             final fileName = '${DateTime.now().microsecondsSinceEpoch}_${index}_$shortName';
-                            final detectedType = image.mimeType ?? 'image/jpeg';
-                            final contentType = detectedType == 'image/jpg' ? 'image/jpeg' : detectedType;
-                            if (!contentType.startsWith('image/')) {
-                              throw StateError('المرفقات المسموح بها صور فقط.');
+                            final contentType = _attachmentContentType(image);
+                            if (!_isAllowedAttachmentType(contentType)) {
+                              throw StateError('نوع الملف غير مدعوم: ' + image.name);
+                            }
+                            if (await image.length() > 25 * 1024 * 1024) {
+                              throw StateError('حجم المرفق يتجاوز 25 ميغابايت.');
                             }
                             final storageRef = FirebaseStorage.instance
                                 .ref()
@@ -523,10 +670,10 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
                           final sendWithoutImages = await showDialog<bool>(
                             context: ctx,
                             builder: (dialogContext) => AlertDialog(
-                              title: const Text('تعذر إرفاق الصور'),
+                              title: const Text('تعذر إرفاق الملفات'),
                               content: const Text(
                                 'خدمة تخزين الصور غير متاحة حالياً أو تعذر رفع إحدى الصور. '
-                                'يمكنك إرسال الملاحظة نصياً الآن دون صور، أو إلغاء الإرسال والمحاولة لاحقاً.',
+                                'يمكنك إرسال الرسالة نصياً الآن دون مرفقات، أو إلغاء الإرسال والمحاولة لاحقاً.',
                               ),
                               actions: [
                                 TextButton(
@@ -535,7 +682,7 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
                                 ),
                                 FilledButton(
                                   onPressed: () => Navigator.pop(dialogContext, true),
-                                  child: const Text('إرسال دون صور'),
+                                  child: const Text('إرسال دون مرفقات'),
                                 ),
                               ],
                             ),
@@ -852,7 +999,7 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
                     style: const TextStyle(fontSize: 17, height: 1.8, fontWeight: FontWeight.w700, color: Color(0xFF172B45))),
                   if (attachments.isNotEmpty) ...[
                     const SizedBox(height: 14),
-                    Text('الصور المرفقة (${attachments.length})',
+                    Text('المرفقات (${attachments.length})',
                       style: const TextStyle(fontWeight: FontWeight.w900, color: navy)),
                     const SizedBox(height: 8),
                     Wrap(
@@ -864,7 +1011,34 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
                             : <String, dynamic>{};
                         final url = (attachment['url'] ?? attachment['downloadUrl'] ?? '').toString();
                         if (url.isEmpty) return const SizedBox.shrink();
-                        final fileName = (attachment['fileName'] ?? 'staff_note_image.jpg').toString();
+                        final fileName = (attachment['fileName'] ?? 'مرفق').toString();
+                        final contentType = (attachment['contentType'] ?? '').toString();
+                        if (!contentType.startsWith('image/')) {
+                          return SizedBox(
+                            width: 150,
+                            child: Card(
+                              child: Padding(
+                                padding: const EdgeInsets.all(10),
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Icon(Icons.insert_drive_file_outlined, size: 34, color: navy),
+                                    Text(fileName, maxLines: 2, overflow: TextOverflow.ellipsis,
+                                      textAlign: TextAlign.center),
+                                    TextButton.icon(
+                                      onPressed: () async {
+                                        final opened = await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+                                        if (!opened) toast('تعذر فتح المرفق.');
+                                      },
+                                      icon: const Icon(Icons.open_in_new, size: 16),
+                                      label: const Text('فتح الملف'),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          );
+                        }
                         return Stack(
                           children: [
                             InkWell(
@@ -1065,25 +1239,25 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
     required bool deleteAll,
   }) async {
     if (!admin && !supervisor) {
-      toast('صلاحية حذف الملاحظات متاحة للمشرف ومدير الموقع فقط.');
+      toast('لا تملك صلاحية حذف هذا المحتوى.');
       return;
     }
     final eligible = candidates.where((doc) {
       final data = doc.data();
-      return data['recipientUid'] == uid && data['messageType'] == 'note';
+      return data['recipientUid'] == uid && (admin || data['messageType'] == 'note');
     }).toList();
     final targets = deleteAll
         ? eligible
         : eligible.where((doc) => selectedMessageIds.contains(doc.id)).toList();
     if (targets.isEmpty) {
-      toast('لا توجد ملاحظات محددة للحذف.');
+      toast('لا توجد عناصر محددة للحذف.');
       return;
     }
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text(deleteAll ? 'حذف جميع الملاحظات؟' : 'حذف الملاحظات المحددة؟'),
-        content: Text('سيتم حذف ${targets.length} ملاحظة من صندوق الوارد الخاص بك. لا يمكن التراجع عن هذه العملية.'),
+        title: Text(deleteAll ? 'حذف جميع العناصر الواردة؟' : 'حذف العناصر المحددة؟'),
+        content: Text('سيتم حذف ${targets.length} عنصر من صندوق الوارد الخاص بك. لا يمكن التراجع عن هذه العملية.'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('إلغاء')),
           FilledButton(
@@ -1096,7 +1270,8 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
     );
     if (confirmed != true) return;
     try {
-      // Firestore does not cascade-delete subcollections; remove replies explicitly first.
+      // Firestore does not cascade-delete subcollections or Storage objects.
+      var storageCleanupFailed = false;
       for (final message in targets) {
         final replies = await message.reference.collection('replies').get();
         for (var start = 0; start < replies.docs.length; start += 400) {
@@ -1105,6 +1280,19 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
             batch.delete(replyDoc.reference);
           }
           await batch.commit();
+        }
+        final attachments = message.data()['attachments'];
+        if (attachments is List) {
+          for (final item in attachments) {
+            if (item is! Map) continue;
+            final storagePath = (item['storagePath'] ?? '').toString();
+            if (storagePath.isEmpty) continue;
+            try {
+              await FirebaseStorage.instance.ref().child(storagePath).delete();
+            } catch (_) {
+              storageCleanupFailed = true;
+            }
+          }
         }
       }
       for (var start = 0; start < targets.length; start += 400) {
@@ -1117,11 +1305,13 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
       setState(() {
         selectedMessageIds.removeAll(targets.map((doc) => doc.id));
       });
-      toast('تم حذف ${targets.length} ملاحظة بنجاح.');
+      toast(storageCleanupFailed
+          ? 'تم حذف ${targets.length} عنصر، لكن تعذر حذف بعض الملفات من التخزين.'
+          : 'تم حذف ${targets.length} عنصر بنجاح.');
     } on FirebaseException catch (e) {
-      toast('تعذر حذف الملاحظات (${e.code}). تحقق من نشر قواعد Firestore الجديدة.');
+      toast('تعذر حذف العناصر (${e.code}). تحقق من صلاحيات Firestore.');
     } catch (_) {
-      toast('تعذر إكمال حذف الملاحظات.');
+      toast('تعذر إكمال حذف العناصر.');
     }
   }
 
@@ -1137,12 +1327,14 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
       return x is Timestamp && y is Timestamp ? y.compareTo(x) : 0;
     });
     final canManageNotes = (admin || supervisor) && !archive;
-    final deletableNotes = canManageNotes
+    final canManageArchive = admin && archive;
+    final canManageContent = canManageNotes || canManageArchive;
+    final deletableNotes = canManageContent
         ? source.where((doc) {
             final data = doc.data();
             return data['recipientUid'] == uid &&
-                data['messageType'] == 'note' &&
-                !archived(data) &&
+                (admin || data['messageType'] == 'note') &&
+                archived(data) == archive &&
                 !((data['hiddenFor'] as List<dynamic>? ?? []).contains(uid));
           }).toList()
         : <QueryDocumentSnapshot<Map<String, dynamic>>>[];
@@ -1150,7 +1342,7 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
     final selectedCount = selectedMessageIds.where(validIds.contains).length;
     return Column(
       children: [
-        if (canManageNotes)
+        if (canManageContent)
           Padding(
             padding: const EdgeInsets.fromLTRB(12, 4, 12, 4),
             child: Wrap(
@@ -1180,7 +1372,7 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
                       ? null
                       : () => _deleteManagedNotes(deletableNotes, deleteAll: true),
                   icon: const Icon(Icons.delete_sweep_outlined, size: 18),
-                  label: const Text('حذف الكل'),
+                  label: Text(archive ? 'حذف الأرشيف نهائياً' : 'حذف كل الوارد'),
                 ),
                 if (selectedCount > 0)
                   FilledButton.icon(
@@ -1200,7 +1392,7 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
       itemBuilder: (_, i) {
         final doc = docs[i], d = doc.data();
         final sent = d['senderUid'] == uid;
-        final canDeleteThis = canManageNotes && !sent && d['messageType'] == 'note';
+        final canDeleteThis = canManageContent && !sent && (admin || d['messageType'] == 'note');
         final read = d['read'] == true, created = d['createdAt'];
         return Card(
           child: Column(
@@ -1254,12 +1446,30 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
             if (created is Timestamp) Text(DateFormat('yyyy/MM/dd HH:mm').format(created.toDate())),
             if (d['requestReply'] == true) Text(d['replyStatus'] == 'replied' ? 'تم الرد' : 'بانتظار الرد',
               style: TextStyle(color: d['replyStatus'] == 'replied' ? Colors.green : Colors.deepOrange)),
+            if (sent) ...[
+              Text(
+                read ? 'تمت القراءة ✓✓' : 'تم الإرسال ✓',
+                style: TextStyle(
+                  color: read ? const Color(0xFF16845B) : const Color(0xFF64748B),
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              if (read && d['readAt'] is Timestamp)
+                Text('وقت القراءة: ' + DateFormat('yyyy/MM/dd HH:mm').format((d['readAt'] as Timestamp).toDate()),
+                  style: const TextStyle(fontSize: 11, color: Color(0xFF526579))),
+            ],
             if (sent && d['liked'] == true)
               const Text('اطّلع المستلم على الملاحظة وأعجب بها 👍',
                 style: TextStyle(color: teal, fontWeight: FontWeight.w800)),
           ]),
           trailing: archive
-              ? IconButton(icon: const Icon(Icons.delete_outline, color: Colors.red), onPressed: () => hideFromArchive(doc))
+              ? (admin && !sent
+                  ? IconButton(
+                      tooltip: 'حذف الرسالة نهائياً',
+                      icon: const Icon(Icons.delete_forever_outlined, color: Colors.red),
+                      onPressed: () => _deleteManagedNotes([doc], deleteAll: true),
+                    )
+                  : IconButton(icon: const Icon(Icons.delete_outline, color: Colors.red), onPressed: () => hideFromArchive(doc)))
               : (!read && !sent ? const Icon(Icons.circle, size: 9, color: teal) : null),
               ),
               if (!archive && !sent)

@@ -435,6 +435,14 @@ service cloud.firestore {
         && request.resource.data.body.size() >= 10
         && request.resource.data.updatedAt == request.time;
 
+      // Administration records the first time it opens a forwarded report.
+      allow update: if isActiveAdmin()
+        && resource.data.destination == 'admin'
+        && resource.data.status in ['forwarded', 'acknowledged']
+        && !resource.data.keys().hasAny(['adminReadAt'])
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['adminReadAt'])
+        && request.resource.data.adminReadAt == request.time;
+
       // Administration can confirm receipt of a report forwarded by a supervisor.
       allow update: if isActiveAdmin()
         && resource.data.destination == 'admin'
@@ -861,7 +869,7 @@ service cloud.firestore {
         && request.resource.data.readAt == request.time
       );
 
-      allow delete: if false;
+      allow delete: if isActiveAdmin() && resource.data.recipientUid == request.auth.uid;
     }
 
 
@@ -1103,6 +1111,39 @@ service cloud.firestore {
           && request.auth.uid in resource.data.recipientUids
           && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['supervisor', 'admin']
         );
+
+      // Independent read receipt for each work-note recipient.
+      match /reads/{readerUid} {
+        function parentNote() {
+          return get(/databases/$(database)/documents/work_shift_notes/$(noteId)).data;
+        }
+
+        allow get, list: if isActiveUser()
+          && (
+            request.auth.uid == readerUid
+            || parentNote().officerUid == request.auth.uid
+            || (isActiveAdmin() && request.auth.uid in parentNote().recipientUids)
+          );
+
+        allow create: if isActiveUser()
+          && request.auth.uid == readerUid
+          && request.auth.uid in parentNote().recipientUids
+          && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['supervisor', 'admin']
+          && request.resource.data.keys().hasOnly(['readerUid', 'readAt'])
+          && request.resource.data.keys().hasAll(['readerUid', 'readAt'])
+          && request.resource.data.readerUid == request.auth.uid
+          && request.resource.data.readAt == request.time;
+
+        allow update: if false;
+        allow delete: if isActiveUser()
+          && (
+            parentNote().officerUid == request.auth.uid
+            || (
+              request.auth.uid in parentNote().recipientUids
+              && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['supervisor', 'admin']
+            )
+          );
+      }
     }
 
 
@@ -1120,10 +1161,20 @@ service cloud.firestore {
           && attachment.downloadUrl is string
           && attachment.downloadUrl.matches('https://.*')
           && attachment.contentType is string
-          && attachment.contentType.matches('image/(jpeg|png|webp|heic|gif)')
+          && attachment.contentType in [
+            'image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/gif',
+            'application/pdf', 'application/msword',
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            'application/vnd.ms-excel',
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'application/vnd.ms-powerpoint',
+            'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+            'text/plain', 'text/csv', 'audio/mpeg', 'audio/wav', 'audio/mp4',
+            'video/mp4', 'video/quicktime', 'application/zip', 'application/octet-stream'
+          ]
           && attachment.sizeBytes is int
           && attachment.sizeBytes > 0
-          && attachment.sizeBytes <= 10485760;
+          && attachment.sizeBytes <= 26214400;
       }
 
       function validStaffMessageAttachments(attachments, threadId, senderUid) {
@@ -1284,8 +1335,10 @@ service cloud.firestore {
 
       allow delete: if isActiveUser()
         && resource.data.recipientUid == request.auth.uid
-        && resource.data.messageType == 'note'
-        && (isActiveAdmin() || isActiveSupervisor());
+        && (
+          isActiveAdmin()
+          || (isActiveSupervisor() && resource.data.messageType == 'note')
+        );
 
       match /replies/{replyId} {
         function parentMessage() {
@@ -1314,8 +1367,10 @@ service cloud.firestore {
         allow update: if false;
         allow delete: if isActiveUser()
           && parentMessage().recipientUid == request.auth.uid
-          && parentMessage().messageType == 'note'
-          && (isActiveAdmin() || isActiveSupervisor());
+          && (
+            isActiveAdmin()
+            || (isActiveSupervisor() && parentMessage().messageType == 'note')
+          );
       }
     }
 
