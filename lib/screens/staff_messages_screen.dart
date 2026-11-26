@@ -89,6 +89,7 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
 
   String _attachmentContentType(XFile file) {
     final supplied = (file.mimeType ?? '').toLowerCase().trim();
+    if (supplied == 'image/jpg') return 'image/jpeg';
     if (supplied.isNotEmpty) return supplied;
     final extension = file.name.split('.').last.toLowerCase();
     const types = <String, String>{
@@ -108,18 +109,18 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
   }
 
   bool _isAllowedAttachmentType(String type) {
-    return type.startsWith('image/') ||
-        const {
-          'application/pdf', 'application/msword',
-          'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-          'application/vnd.ms-excel',
-          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-          'application/vnd.ms-powerpoint',
-          'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-          'text/plain', 'text/csv', 'audio/mpeg', 'audio/wav', 'audio/mp4',
-          'video/mp4', 'video/quicktime', 'application/zip',
-          'application/octet-stream',
-        }.contains(type);
+    return const {
+      'image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/gif',
+      'application/pdf', 'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'application/vnd.ms-excel',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'application/vnd.ms-powerpoint',
+      'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+      'text/plain', 'text/csv', 'audio/mpeg', 'audio/wav', 'audio/mp4',
+      'video/mp4', 'video/quicktime', 'application/zip',
+      'application/octet-stream',
+    }.contains(type);
   }
 
   Future<void> _showComingSoonFeature(String feature) async {
