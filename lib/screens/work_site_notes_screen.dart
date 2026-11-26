@@ -156,7 +156,16 @@ class _WorkSiteNotesScreenState extends State<WorkSiteNotesScreen> {
     if(yes!=true) return;
     setState(()=>busy=true);
     try {
-      await db.collection('work_shift_notes').doc(id).delete();
+      final noteRef = db.collection('work_shift_notes').doc(id);
+      final reads = await noteRef.collection('reads').get();
+      for (var start = 0; start < reads.docs.length; start += 400) {
+        final batch = db.batch();
+        for (final readDoc in reads.docs.skip(start).take(400)) {
+          batch.delete(readDoc.reference);
+        }
+        await batch.commit();
+      }
+      await noteRef.delete();
       notice('تم حذف الملاحظة.');
     } on FirebaseException catch(e) { notice('تعذر حذف الملاحظة ('+e.code+').'); }
     finally { if(mounted) setState(()=>busy=false); }
