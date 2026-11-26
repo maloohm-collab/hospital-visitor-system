@@ -1099,25 +1099,25 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
     required bool deleteAll,
   }) async {
     if (!admin && !supervisor) {
-      toast('صلاحية حذف الملاحظات متاحة للمشرف ومدير الموقع فقط.');
+      toast('لا تملك صلاحية حذف هذا المحتوى.');
       return;
     }
     final eligible = candidates.where((doc) {
       final data = doc.data();
-      return data['recipientUid'] == uid && data['messageType'] == 'note';
+      return data['recipientUid'] == uid && (admin || data['messageType'] == 'note');
     }).toList();
     final targets = deleteAll
         ? eligible
         : eligible.where((doc) => selectedMessageIds.contains(doc.id)).toList();
     if (targets.isEmpty) {
-      toast('لا توجد ملاحظات محددة للحذف.');
+      toast('لا توجد عناصر محددة للحذف.');
       return;
     }
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text(deleteAll ? 'حذف جميع الملاحظات؟' : 'حذف الملاحظات المحددة؟'),
-        content: Text('سيتم حذف ${targets.length} ملاحظة من صندوق الوارد الخاص بك. لا يمكن التراجع عن هذه العملية.'),
+        title: Text(deleteAll ? 'حذف جميع العناصر الواردة؟' : 'حذف العناصر المحددة؟'),
+        content: Text('سيتم حذف ${targets.length} عنصر من صندوق الوارد الخاص بك. لا يمكن التراجع عن هذه العملية.'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('إلغاء')),
           FilledButton(
@@ -1151,9 +1151,9 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
       setState(() {
         selectedMessageIds.removeAll(targets.map((doc) => doc.id));
       });
-      toast('تم حذف ${targets.length} ملاحظة بنجاح.');
+      toast('تم حذف ${targets.length} عنصر بنجاح.');
     } on FirebaseException catch (e) {
-      toast('تعذر حذف الملاحظات (${e.code}). تحقق من نشر قواعد Firestore الجديدة.');
+      toast('تعذر حذف العناصر (${e.code}). تحقق من صلاحيات Firestore.');
     } catch (_) {
       toast('تعذر إكمال حذف الملاحظات.');
     }
@@ -1214,7 +1214,7 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
                       ? null
                       : () => _deleteManagedNotes(deletableNotes, deleteAll: true),
                   icon: const Icon(Icons.delete_sweep_outlined, size: 18),
-                  label: const Text('حذف الكل'),
+                  label: const Text('حذف كل الوارد'),
                 ),
                 if (selectedCount > 0)
                   FilledButton.icon(
@@ -1234,7 +1234,7 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
       itemBuilder: (_, i) {
         final doc = docs[i], d = doc.data();
         final sent = d['senderUid'] == uid;
-        final canDeleteThis = canManageNotes && !sent && d['messageType'] == 'note';
+        final canDeleteThis = canManageNotes && !sent && (admin || d['messageType'] == 'note');
         final read = d['read'] == true, created = d['createdAt'];
         return Card(
           child: Column(
