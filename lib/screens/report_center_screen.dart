@@ -431,6 +431,15 @@ class _ReportCenterScreenState extends State<ReportCenterScreen> {
     return file;
   }
 
+  Future<void> _markReportRead(DocumentSnapshot<Map<String, dynamic>> doc) async {
+    if (!admin || doc.data()?['adminReadAt'] is Timestamp) return;
+    try {
+      await doc.reference.update({'adminReadAt': FieldValue.serverTimestamp()});
+    } on FirebaseException catch (error) {
+      _message('تعذر تسجيل قراءة التقرير (${error.code}).');
+    }
+  }
+
   Future<void> _previewReport(Map<String, dynamic> d) async {
     try {
       final file = await _pdf(d);
@@ -757,13 +766,25 @@ class _ReportCenterScreenState extends State<ReportCenterScreen> {
                     d['body'] as String? ?? '',
                     maxLines: 5,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontSize: 14, height: 1.7, color: Color(0xFF33485C)),
+                    style: const TextStyle(fontSize: 16, height: 1.75, color: Color(0xFF172B45), fontWeight: FontWeight.w600),
                   ),
                   const SizedBox(height: 8),
                   Text(
                     'الحالة: $status',
                     style: const TextStyle(fontWeight: FontWeight.w800, color: navy),
                   ),
+                  if (!admin && d['adminReadAt'] is Timestamp)
+                    Text(
+                      'اطّلعت الإدارة على التقرير ✓✓ • ${DateFormat('yyyy/MM/dd HH:mm').format((d['adminReadAt'] as Timestamp).toDate())}',
+                      style: const TextStyle(
+                        color: Color(0xFF16845B),
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  if (admin && d['adminReadAt'] is Timestamp)
+                    const Text('تم تسجيل مراجعة التقرير ✓✓',
+                      style: TextStyle(color: Color(0xFF16845B), fontWeight: FontWeight.w800)),
                   if (admin && d['status'] == 'forwarded') ...[
                     const SizedBox(height: 10),
                     SizedBox(
@@ -802,7 +823,10 @@ class _ReportCenterScreenState extends State<ReportCenterScreen> {
                     alignment: WrapAlignment.start,
                     children: [
                       OutlinedButton.icon(
-                        onPressed: () => _previewReport(d),
+                        onPressed: () async {
+                          if (admin) await _markReportRead(doc);
+                          await _previewReport(d);
+                        },
                         icon: const Icon(Icons.visibility_outlined),
                         label: const Text('عرض التقرير'),
                       ),
