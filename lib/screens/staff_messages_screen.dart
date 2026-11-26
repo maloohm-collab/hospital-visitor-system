@@ -1269,7 +1269,8 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
     );
     if (confirmed != true) return;
     try {
-      // Firestore does not cascade-delete subcollections; remove replies explicitly first.
+      // Firestore does not cascade-delete subcollections or Storage objects.
+      var storageCleanupFailed = false;
       for (final message in targets) {
         final replies = await message.reference.collection('replies').get();
         for (var start = 0; start < replies.docs.length; start += 400) {
@@ -1278,6 +1279,19 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
             batch.delete(replyDoc.reference);
           }
           await batch.commit();
+        }
+        final attachments = message.data()['attachments'];
+        if (attachments is List) {
+          for (final item in attachments) {
+            if (item is! Map) continue;
+            final storagePath = (item['storagePath'] ?? '').toString();
+            if (storagePath.isEmpty) continue;
+            try {
+              await FirebaseStorage.instance.ref().child(storagePath).delete();
+            } catch (_) {
+              storageCleanupFailed = true;
+            }
+          }
         }
       }
       for (var start = 0; start < targets.length; start += 400) {
@@ -1290,7 +1304,9 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
       setState(() {
         selectedMessageIds.removeAll(targets.map((doc) => doc.id));
       });
-      toast('تم حذف ${targets.length} عنصر بنجاح.');
+      toast(storageCleanupFailed
+          ? 'تم حذف ${targets.length} عنصر، لكن تعذر حذف بعض الملفات من التخزين.'
+          : 'تم حذف ${targets.length} عنصر بنجاح.');
     } on FirebaseException catch (e) {
       toast('تعذر حذف العناصر (${e.code}). تحقق من صلاحيات Firestore.');
     } catch (_) {
