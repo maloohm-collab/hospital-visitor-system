@@ -418,10 +418,9 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
                               selectedFile = XFile.fromData(
                                 bytes,
                                 name: file.name,
-                                mimeType: file.mimeType,
                               );
                             } else if (file.path != null) {
-                              selectedFile = XFile(file.path!, mimeType: file.mimeType);
+                              selectedFile = XFile(file.path!);
                             } else {
                               continue;
                             }
