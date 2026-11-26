@@ -269,9 +269,9 @@ class _WorkSiteNotesInboxScreenState extends State<WorkSiteNotesInboxScreen> {
                       Text(
                         data['body'] as String? ?? '',
                         style: const TextStyle(
-                          color: Color(0xFF26384A),
-                          fontSize: 15,
-                          height: 1.6,
+                          color: Color(0xFF172B45),
+                          fontSize: 16,
+                          height: 1.7,
                         ),
                       ),
                       const SizedBox(height: 10),
