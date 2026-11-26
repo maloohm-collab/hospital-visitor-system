@@ -194,6 +194,21 @@ class _WorkSiteNotesScreenState extends State<WorkSiteNotesScreen> {
                 Text(data['body'] as String? ?? '',style:const TextStyle(color:Color(0xFF26384A),fontSize:15,height:1.5)),
                 const SizedBox(height:8),
                 Text('أُرسلت: '+dateText(data['createdAt']),style:const TextStyle(color:Color(0xFF64748B),fontSize:12)),
+                StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+                  stream: doc.reference.collection('reads').snapshots(),
+                  builder: (context, readSnapshot) {
+                    final readCount = readSnapshot.data?.docs.length ?? 0;
+                    final recipients = (data['recipientUids'] as List<dynamic>? ?? const []).length;
+                    return Text(
+                      'حالة القراءة: قرأها $readCount من $recipients',
+                      style: const TextStyle(
+                        color: Color(0xFF16845B),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    );
+                  },
+                ),
                 if(edited) Text('آخر تعديل: '+dateText(data['updatedAt']),style:const TextStyle(color:Color(0xFF64748B),fontSize:12)),
                 const Divider(height:18),
                 Wrap(alignment:WrapAlignment.end,spacing:8,children:[
