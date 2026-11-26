@@ -1134,7 +1134,12 @@ service cloud.firestore {
           && request.resource.data.readerUid == request.auth.uid
           && request.resource.data.readAt == request.time;
 
-        allow update, delete: if false;
+        allow update: if false;
+        allow delete: if isActiveUser()
+          && (
+            parentNote().officerUid == request.auth.uid
+            || (isActiveAdmin() && request.auth.uid in parentNote().recipientUids)
+          );
       }
     }
 
