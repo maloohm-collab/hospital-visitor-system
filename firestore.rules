@@ -435,6 +435,14 @@ service cloud.firestore {
         && request.resource.data.body.size() >= 10
         && request.resource.data.updatedAt == request.time;
 
+      // Administration records the first time it opens a forwarded report.
+      allow update: if isActiveAdmin()
+        && resource.data.destination == 'admin'
+        && resource.data.status in ['forwarded', 'acknowledged']
+        && !resource.data.keys().hasAny(['adminReadAt'])
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['adminReadAt'])
+        && request.resource.data.adminReadAt == request.time;
+
       // Administration can confirm receipt of a report forwarded by a supervisor.
       allow update: if isActiveAdmin()
         && resource.data.destination == 'admin'
@@ -1284,8 +1292,10 @@ service cloud.firestore {
 
       allow delete: if isActiveUser()
         && resource.data.recipientUid == request.auth.uid
-        && resource.data.messageType == 'note'
-        && (isActiveAdmin() || isActiveSupervisor());
+        && (
+          isActiveAdmin()
+          || (isActiveSupervisor() && resource.data.messageType == 'note')
+        );
 
       match /replies/{replyId} {
         function parentMessage() {
@@ -1314,8 +1324,10 @@ service cloud.firestore {
         allow update: if false;
         allow delete: if isActiveUser()
           && parentMessage().recipientUid == request.auth.uid
-          && parentMessage().messageType == 'note'
-          && (isActiveAdmin() || isActiveSupervisor());
+          && (
+            isActiveAdmin()
+            || (isActiveSupervisor() && parentMessage().messageType == 'note')
+          );
       }
     }
 
