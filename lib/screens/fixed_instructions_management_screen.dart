@@ -37,6 +37,7 @@ class _FixedInstructionsManagementScreenState
       setState(() {
         _replaceControllers(rules);
         _loading = false;
+        _error = null;
       });
     } catch (_) {
       if (!mounted) return;
