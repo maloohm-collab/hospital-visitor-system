@@ -33,6 +33,7 @@ import 'work_location_screen.dart';
 import 'duty_roster_screen.dart';
 import 'fixed_instructions_screen.dart';
 import 'fixed_instructions_management_screen.dart';
+import 'app_settings_management_screen.dart';
 import 'security_duty_rosters_screen.dart';
 import 'staff_duty_history_screen.dart';
 import 'founder_screen.dart';
@@ -399,18 +400,11 @@ class DashboardScreen extends StatelessWidget {
         actionTitles: const ['طلبات الحسابات', 'الموظفون'],
       ),
       _ActionCategory(
-        icon: Icons.palette_outlined,
-        title: 'إدارة مظهر التطبيق',
-        subtitle: 'اختيار الخلفية وتخصيص ألوانها لجميع المستخدمين',
+        icon: Icons.settings_suggest_outlined,
+        title: 'إدارة إعدادات التطبيق',
+        subtitle: 'الوصول إلى إدارة الشريط الإخباري والتعليمات الثابتة ومظهر التطبيق',
         color: const Color(0xFF9A7436),
-        actionTitles: const ['إدارة مظهر التطبيق'],
-      ),
-      _ActionCategory(
-        icon: Icons.rule_outlined,
-        title: 'إدارة التعليمات الثابتة',
-        subtitle: 'إضافة التعليمات الدائمة وتعديلها وحذفها وترتيبها لضباط الأمن',
-        color: const Color(0xFF9A7436),
-        actionTitles: const ['إدارة التعليمات الثابتة'],
+        actionTitles: const ['إدارة إعدادات التطبيق'],
       ),
       _ActionCategory(
         icon: Icons.calendar_month_outlined,
@@ -439,13 +433,6 @@ class DashboardScreen extends StatelessWidget {
         subtitle: 'إصدار توجيهات الإدارة واستقبال المراسلات والملاحظات',
         color: const Color(0xFFB45309),
         actionTitles: const ['التعليمات والمراسلات'],
-      ),
-      _ActionCategory(
-        icon: Icons.campaign_outlined,
-        title: 'إدارة الشريط الإخباري',
-        subtitle: 'إضافة ملاحظات الشريط الإخباري وتعديلها وإدارتها',
-        color: const Color(0xFF6B2632),
-        actionTitles: const ['إدارة ملاحظات الشريط الإخباري'],
       ),
     ];
     return _buildGroupedCategories(context, actions, categories);
@@ -615,27 +602,11 @@ class DashboardScreen extends StatelessWidget {
                 onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => StaffMessagesScreen(userRole: userRole))),
               ),
               _AdminAction(
-                icon: Icons.campaign_rounded,
-                title: 'إدارة ملاحظات الشريط الإخباري',
-                color: const Color(0xFF6B2632),
-                onTap: () => Navigator.push(context, MaterialPageRoute(
-                  builder: (_) => const TickerManagementScreen(userRole: 'admin'),
-                )),
-              ),
-              _AdminAction(
-                icon: Icons.rule_rounded,
-                title: 'إدارة التعليمات الثابتة',
+                icon: Icons.settings_suggest_rounded,
+                title: 'إدارة إعدادات التطبيق',
                 color: const Color(0xFF9A7436),
                 onTap: () => Navigator.push(context, MaterialPageRoute(
-                  builder: (_) => const FixedInstructionsManagementScreen(),
-                )),
-              ),
-              _AdminAction(
-                icon: Icons.palette_rounded,
-                title: 'إدارة مظهر التطبيق',
-                color: const Color(0xFF9A7436),
-                onTap: () => Navigator.push(context, MaterialPageRoute(
-                  builder: (_) => const AppAppearanceSettingsScreen(userRole: 'admin'),
+                  builder: (_) => const AppSettingsManagementScreen(),
                 )),
               ),
               _AdminAction(
