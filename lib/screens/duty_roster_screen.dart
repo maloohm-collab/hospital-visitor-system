@@ -16,6 +16,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../data/duty_roster_pdf.dart';
 import '../data/duty_roster_personal_pdf.dart';
 import '../data/duty_roster_catalog.dart';
+import '../data/fixed_instructions.dart';
 import '../services/duty_roster_name_matcher.dart';
 import '../widgets/app_search_field.dart';
 import '../services/duty_roster_image_import_service.dart';
@@ -1401,15 +1402,7 @@ class _DutyRosterScreenState extends State<DutyRosterScreen>
     output.write(paragraph(note.isEmpty ? 'لا توجد ملاحظات' : note, size: 21));
     output.write(paragraph('التوقيع: ____________________', size: 21, bold: true));
 
-    const rules = [
-      'يمنع ترك مكان الوظيفة إلا بوجود بديل وبعد الاتصال مع المشرف ولأي سبب كان، والتعامل مع الجمهور بلباقة وحسن تصرف وبدون تصادم.',
-      'يمنع تجمع الوظائف والالتزام التام بموقع الوظيفة، ويمنع وجود الكراسي في مكان الوظيفة، ويمنع استخدام الهاتف أثناء الوظيفة.',
-      'الاهتمام بالنظافة والهندام من ناحية حلاقة الذقن، وارتداء لباس الشركة كاملاً وارتداء الباج وشعار الشركة.',
-      'يمنع توجيه أي مواطن لمراجعة المناوب الإداري، ويمنع عمل علاقات مع الكوادر سواء أطباء أو ممرضين أو شركات أخرى.',
-      'يمنع إنجاز أي معاملة طبية من قبل موظفينا، ويمنع أخذ أي وجه من أي مراجع أو زائر أو موظفي الشركات الأخرى وتعتبر تحت بند الرشوة.',
-      'تمرير أي ملاحظة كانت صغيرة أو كبيرة، وتفعيل الحس الأمني، ويمنع مراجعة إدارة المستشفى إلا بواجب رسمي وبالأمر.',
-      'عند الحصول على إجازة مرضية يجب أن تكون مختومة من السجل الطبي أو ختم وتوقيع المناوب الإداري عندما يكون السجل مغلقاً وإلا لن تعتمد.',
-    ];
+    final rules = FixedInstructions.rules;
     output.write(paragraph('التعليمات الثابتة', size: 23, bold: true));
     for (var i = 0; i < rules.length; i++) {
       output.write(paragraph('${i + 1}. ${rules[i]}', size: 18));

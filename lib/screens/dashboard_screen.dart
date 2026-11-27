@@ -31,6 +31,7 @@ import 'staff_messages_screen.dart';
 import 'security_inbox_screen.dart';
 import 'work_location_screen.dart';
 import 'duty_roster_screen.dart';
+import 'fixed_instructions_screen.dart';
 import 'security_duty_rosters_screen.dart';
 import 'staff_duty_history_screen.dart';
 import 'founder_screen.dart';
@@ -161,48 +162,19 @@ class DashboardScreen extends StatelessWidget {
     );
   }
 
-  Widget _roleGuideCard() {
-    return Card(
-      margin: const EdgeInsets.fromLTRB(16, 4, 16, 10),
-      elevation: 0,
-      color: Colors.white,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: const BorderSide(color: Color(0xFFDCE5ED)),
-      ),
-      child: ExpansionTile(
-        leading: const Icon(Icons.groups_2_outlined, color: Color(0xFF087E78)),
-        title: const Text(
-          'دليل الأدوار الثلاثة في التطبيق',
-          style: TextStyle(color: Color(0xFF082B55), fontWeight: FontWeight.w900, fontSize: 15),
-        ),
-        subtitle: const Text('من يوجّه؟ من ينسّق؟ ومن ينفّذ؟'),
-        childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
-        children: const [
-          _RoleGuideRow(
-            title: 'الإدارة / مدير الموقع',
-            description: 'توجّه العمل، تتابع التقارير والملاحظات، وتتواصل مع جميع الموظفين وتتأكد من معالجة الأمور.',
-          ),
-          SizedBox(height: 10),
-          _RoleGuideRow(
-            title: 'المشرف',
-            description: 'حلقة الوصل الميدانية؛ يتابع الضباط، يراجع ما يرد من الميدان، ويرفع ما يحتاج قراراً إلى الإدارة.',
-          ),
-          SizedBox(height: 10),
-          _RoleGuideRow(
-            title: 'ضابط الأمن',
-            description: 'ينفّذ التعليمات في موقع العمل، يرصد الأحداث، ويرسل الملاحظات والبلاغات والتقارير للمشرف.',
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildStaffDashboard(BuildContext context, String? currentUid) {
     final actions = <_AdminAction>[];
 
     if (userRole == 'security_officer') {
       actions.addAll([
+        _AdminAction(
+          icon: Icons.rule_rounded,
+          title: 'التعليمات الثابتة',
+          color: const Color(0xFF9A7436),
+          onTap: () => Navigator.push(context, MaterialPageRoute(
+            builder: (_) => const FixedInstructionsScreen(),
+          )),
+        ),
         _AdminAction(
           icon: Icons.location_on_rounded,
           title: 'مباشرة العمل',
@@ -343,7 +315,6 @@ class DashboardScreen extends StatelessWidget {
         padding: EdgeInsets.zero,
         children: [
           _buildHero(currentUid),
-          _roleGuideCard(),
           const SizedBox(height: 4),
           if (userRole == 'security_officer')
             _buildSecurityCategories(context, actions)
@@ -358,6 +329,13 @@ class DashboardScreen extends StatelessWidget {
 
   Widget _buildSecurityCategories(BuildContext context, List<_AdminAction> actions) {
     final categories = <_ActionCategory>[
+      _ActionCategory(
+        icon: Icons.rule_outlined,
+        title: 'التعليمات الثابتة',
+        subtitle: 'الاطلاع على التعليمات الدائمة الخاصة بعمل ضابط الأمن',
+        color: const Color(0xFF9A7436),
+        actionTitles: const ['التعليمات الثابتة'],
+      ),
       _ActionCategory(
         icon: Icons.location_on_outlined,
         title: 'مباشرة العمل',
@@ -604,7 +582,6 @@ class DashboardScreen extends StatelessWidget {
         padding: EdgeInsets.zero,
         children: [
         _buildHero(currentUid),
-        _roleGuideCard(),
         const SizedBox(height: 4),
         StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
           stream: FirebaseFirestore.instance.collection('account_requests')
@@ -1008,22 +985,6 @@ class _ActionCategory {
   final String subtitle;
   final Color color;
   final List<String> actionTitles;
-}
-
-class _RoleGuideRow extends StatelessWidget {
-  const _RoleGuideRow({required this.title, required this.description});
-  final String title;
-  final String description;
-
-  @override
-  Widget build(BuildContext context) => Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      Text(title, style: const TextStyle(color: Color(0xFF173653), fontWeight: FontWeight.w900)),
-      const SizedBox(height: 3),
-      Text(description, style: const TextStyle(color: Color(0xFF263B55), fontSize: 13, height: 1.55)),
-    ],
-  );
 }
 
 class _ActionCategoryScreen extends StatelessWidget {
