@@ -32,6 +32,7 @@ import 'security_inbox_screen.dart';
 import 'work_location_screen.dart';
 import 'duty_roster_screen.dart';
 import 'fixed_instructions_screen.dart';
+import 'fixed_instructions_management_screen.dart';
 import 'security_duty_rosters_screen.dart';
 import 'staff_duty_history_screen.dart';
 import 'founder_screen.dart';
@@ -405,6 +406,13 @@ class DashboardScreen extends StatelessWidget {
         actionTitles: const ['إدارة مظهر التطبيق'],
       ),
       _ActionCategory(
+        icon: Icons.rule_outlined,
+        title: 'إدارة التعليمات الثابتة',
+        subtitle: 'إضافة التعليمات الدائمة وتعديلها وحذفها وترتيبها لضباط الأمن',
+        color: const Color(0xFF9A7436),
+        actionTitles: const ['إدارة التعليمات الثابتة'],
+      ),
+      _ActionCategory(
         icon: Icons.calendar_month_outlined,
         title: 'جدول المناوبات',
         subtitle: 'إعداد كشوف المناوبات وتعديلها واعتمادها ونشرها — مسؤولية الإدارة',
@@ -601,6 +609,14 @@ class DashboardScreen extends StatelessWidget {
                 color: const Color(0xFF6B2632),
                 onTap: () => Navigator.push(context, MaterialPageRoute(
                   builder: (_) => const TickerManagementScreen(userRole: 'admin'),
+                )),
+              ),
+              _AdminAction(
+                icon: Icons.rule_rounded,
+                title: 'إدارة التعليمات الثابتة',
+                color: const Color(0xFF9A7436),
+                onTap: () => Navigator.push(context, MaterialPageRoute(
+                  builder: (_) => const FixedInstructionsManagementScreen(),
                 )),
               ),
               _AdminAction(

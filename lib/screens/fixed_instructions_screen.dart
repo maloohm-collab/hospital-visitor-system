@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import '../data/fixed_instructions.dart';
 
@@ -15,50 +16,71 @@ class FixedInstructionsScreen extends StatelessWidget {
         backgroundColor: navy,
         foregroundColor: Colors.white,
       ),
-      body: ListView.separated(
-        padding: const EdgeInsets.fromLTRB(16, 18, 16, 28),
-        itemCount: FixedInstructions.rules.length,
-        separatorBuilder: (_, __) => const SizedBox(height: 10),
-        itemBuilder: (context, index) => Card(
-          elevation: 0,
-          color: Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
-            side: const BorderSide(color: Color(0xFFDCE5ED)),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                CircleAvatar(
-                  radius: 15,
-                  backgroundColor: const Color(0xFFE8F1F7),
-                  child: Text(
-                    '${index + 1}',
-                    style: const TextStyle(
-                      color: navy,
-                      fontWeight: FontWeight.w800,
+      body: StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+        stream: FirebaseFirestore.instance
+            .collection('app_settings')
+            .doc('fixed_instructions')
+            .snapshots(),
+        builder: (context, snapshot) {
+          final stored = snapshot.data?.data()?['rules'];
+          final rules = stored is List
+              ? stored.map((item) => item.toString()).where((item) => item.trim().isNotEmpty).toList()
+              : FixedInstructions.rules;
+          if (snapshot.hasError) {
+            return const Center(child: Text('تعذر تحميل التعليمات حالياً.'));
+          }
+          if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (rules.isEmpty) {
+            return const Center(child: Text('لا توجد تعليمات ثابتة حالياً.'));
+          }
+          return ListView.separated(
+            padding: const EdgeInsets.fromLTRB(16, 18, 16, 28),
+            itemCount: rules.length,
+            separatorBuilder: (_, __) => const SizedBox(height: 10),
+            itemBuilder: (context, index) => Card(
+              elevation: 0,
+              color: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+                side: const BorderSide(color: Color(0xFFDCE5ED)),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    CircleAvatar(
+                      radius: 15,
+                      backgroundColor: const Color(0xFFE8F1F7),
+                      child: Text(
+                        '${index + 1}',
+                        style: const TextStyle(
+                          color: navy,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
                     ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    FixedInstructions.rules[index],
-                    textAlign: TextAlign.start,
-                    style: const TextStyle(
-                      color: Color(0xFF173653),
-                      fontSize: 15,
-                      height: 1.7,
-                      fontWeight: FontWeight.w600,
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        rules[index],
+                        textAlign: TextAlign.start,
+                        style: const TextStyle(
+                          color: Color(0xFF173653),
+                          fontSize: 15,
+                          height: 1.7,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
                     ),
-                  ),
+                  ],
                 ),
-              ],
+              ),
             ),
-          ),
-        ),
+          );
+        },
       ),
     );
   }
