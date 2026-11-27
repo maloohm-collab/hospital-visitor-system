@@ -551,6 +551,17 @@ class DashboardScreen extends StatelessWidget {
               ),
             ),
           ],
+          if (visible.length > 7) ...[
+            const SizedBox(height: 12),
+            IntrinsicHeight(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Expanded(child: buildTile(visible[7], featured: false)),
+                ],
+              ),
+            ),
+          ],
         ],
       ),
     );
