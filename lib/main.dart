@@ -45,6 +45,7 @@ class HospitalVisitorApp extends StatelessWidget {
       locale: const Locale('ar'),
       theme: ThemeData(
         useMaterial3: true,
+        fontFamily: 'IBM Plex Sans Arabic',
         colorScheme: ColorScheme.fromSeed(
           seedColor: teal,
           primary: navy,
@@ -81,7 +82,7 @@ class HospitalVisitorApp extends StatelessWidget {
                   : FontWeight.w600,
               color: states.contains(WidgetState.selected)
                   ? navy
-                  : const Color(0xFF65788A),
+                  : const Color(0xFF394858),
             ),
           ),
         ),
@@ -97,14 +98,14 @@ class HospitalVisitorApp extends StatelessWidget {
           ),
         ),
         textTheme: const TextTheme(
-          headlineLarge: TextStyle(fontSize: 28, height: 1.25, fontWeight: FontWeight.w900, color: navy),
-          headlineMedium: TextStyle(fontSize: 24, height: 1.3, fontWeight: FontWeight.w800, color: navy),
-          titleLarge: TextStyle(fontSize: 19, height: 1.35, fontWeight: FontWeight.w800, color: navy),
-          titleMedium: TextStyle(fontSize: 16, height: 1.4, fontWeight: FontWeight.w700, color: navy),
-          titleSmall: TextStyle(fontSize: 14, height: 1.4, fontWeight: FontWeight.w700, color: navy),
-          bodyLarge: TextStyle(fontSize: 15, height: 1.65, color: Color(0xFF33485C)),
-          bodyMedium: TextStyle(fontSize: 14, height: 1.6, color: Color(0xFF526579)),
-          bodySmall: TextStyle(fontSize: 12, height: 1.55, color: Color(0xFF526579)),
+          headlineLarge: TextStyle(fontSize: 28, height: 1.25, fontWeight: FontWeight.w900, color: Color(0xFF101820)),
+          headlineMedium: TextStyle(fontSize: 24, height: 1.3, fontWeight: FontWeight.w900, color: Color(0xFF101820)),
+          titleLarge: TextStyle(fontSize: 19, height: 1.35, fontWeight: FontWeight.w900, color: Color(0xFF101820)),
+          titleMedium: TextStyle(fontSize: 16, height: 1.4, fontWeight: FontWeight.w800, color: Color(0xFF17212B)),
+          titleSmall: TextStyle(fontSize: 14, height: 1.4, fontWeight: FontWeight.w800, color: Color(0xFF17212B)),
+          bodyLarge: TextStyle(fontSize: 15, height: 1.65, fontWeight: FontWeight.w600, color: Color(0xFF17212B)),
+          bodyMedium: TextStyle(fontSize: 14, height: 1.6, fontWeight: FontWeight.w600, color: Color(0xFF263341)),
+          bodySmall: TextStyle(fontSize: 12, height: 1.55, fontWeight: FontWeight.w500, color: Color(0xFF344252)),
           labelLarge: TextStyle(fontSize: 14, fontWeight: FontWeight.w800),
           labelMedium: TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
         ),
@@ -119,8 +120,8 @@ class HospitalVisitorApp extends StatelessWidget {
           filled: true,
           fillColor: Colors.white,
           contentPadding: const EdgeInsets.symmetric(horizontal: 15, vertical: 15),
-          labelStyle: const TextStyle(color: Color(0xFF526579), fontWeight: FontWeight.w600),
-          hintStyle: const TextStyle(color: Color(0xFF65788A), fontSize: 13),
+          labelStyle: const TextStyle(color: Color(0xFF263341), fontWeight: FontWeight.w700),
+          hintStyle: const TextStyle(color: Color(0xFF4A5968), fontSize: 13, fontWeight: FontWeight.w500),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(13),
             borderSide: const BorderSide(color: Color(0xFFDCE5ED)),
