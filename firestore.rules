@@ -655,7 +655,7 @@ service cloud.firestore {
     // Shared news ticker configuration: readable by active users, writable only by admins.
     match /app_settings/{settingId} {
       allow get: if isActiveUser()
-        && settingId in ['news_ticker', 'app_appearance'];
+        && settingId in ['news_ticker', 'app_appearance', 'fixed_instructions'];
       allow list: if false;
 
       allow create, update: if isActiveAdmin()
@@ -717,6 +717,17 @@ service cloud.firestore {
         && request.resource.data.normalChipBackground is int
         && request.resource.data.normalChipText is int
         && request.resource.data.updatedAt == request.time;
+
+      // Fixed instructions: all active users may read; only the active site manager may write.
+      allow create, update: if isActiveAdmin()
+        && settingId == 'fixed_instructions'
+        && request.resource.data.keys().hasOnly(['rules', 'updatedAt', 'updatedBy'])
+        && request.resource.data.keys().hasAll(['rules', 'updatedAt', 'updatedBy'])
+        && request.resource.data.rules is list
+        && request.resource.data.rules.size() >= 1
+        && request.resource.data.rules.size() <= 50
+        && request.resource.data.updatedAt == request.time
+        && request.resource.data.updatedBy == request.auth.uid;
 
       // Only the active site administrator may publish the shared app background.
       allow create, update: if isActiveAdmin()
