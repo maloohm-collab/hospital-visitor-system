@@ -103,6 +103,8 @@ jobs:
           sed -i '/^plugins {/a\    id("com.google.gms.google-services")' android/app/build.gradle.kts
       - name: Validate Firebase Cloud Functions syntax
         run: node --check functions/index.js
+      - name: Download IBM Plex Sans Arabic font assets
+        run: bash tool/download_fonts.sh
       - name: Resolve dependencies
         run: flutter pub get
       - name: Analyze Dart and Flutter code

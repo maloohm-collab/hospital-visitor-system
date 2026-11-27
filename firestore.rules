@@ -1253,7 +1253,7 @@ service cloud.firestore {
             && request.resource.data.tickerStyle.fontSize is number
             && request.resource.data.tickerStyle.fontSize >= 12
             && request.resource.data.tickerStyle.fontSize <= 30
-            && request.resource.data.tickerStyle.fontFamily in ['sans-serif', 'serif', 'monospace']
+            && request.resource.data.tickerStyle.fontFamily in ['IBM Plex Sans Arabic', 'sans-serif', 'serif', 'monospace']
             && request.resource.data.tickerStyle.bold is bool
           ))
         && request.resource.data.createdAt == request.time
@@ -1264,8 +1264,7 @@ service cloud.firestore {
               request.resource.data.recipientRole == 'security_officer'
               || (
                 request.resource.data.recipientRole == 'admin'
-                && request.resource.data.messageType == 'instruction'
-                && request.resource.data.isAdminCopy == true
+                && request.resource.data.messageType in ['instruction', 'note']
               )
             ))
           || (

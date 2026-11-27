@@ -243,7 +243,7 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
     final users = activeUsers.where((d) {
       final role = d.data()['role'];
       if (admin) return ['admin', 'supervisor', 'security_officer'].contains(role);
-      if (supervisor) return role == 'security_officer';
+      if (supervisor) return ['security_officer', 'admin'].contains(role);
       return ['admin', 'supervisor'].contains(role);
     }).toList();
 
@@ -260,18 +260,18 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
     bool requestReply = false;
     bool customTickerStyle = false;
     double tickerFontSize = 17;
-    String tickerFontFamily = 'sans-serif';
+    const tickerFontFamily = 'IBM Plex Sans Arabic';
     bool tickerBold = true;
     bool busy = false;
     String employeeSearch = '';
     String shiftFilter = 'all';
     int currentStep = 0;
 
-    const pastelBg = Color(0xFFF5F7FB);
-    const pastelBlue = Color(0xFF7898B8);
-    const pastelMint = Color(0xFF8FB9AD);
-    const pastelInk = Color(0xFF43566D);
-    const pastelLine = Color(0xFFE2E9F1);
+    const pastelBg = Color(0xFFEDF1F6);
+    const pastelBlue = Color(0xFF245A86);
+    const pastelMint = Color(0xFFB9D8D0);
+    const pastelInk = Color(0xFF111827);
+    const pastelLine = Color(0xFFB7C5D4);
     const stepNames = ['نوع الرسالة', 'المستلمون', 'المحتوى', 'المرفقات', 'المراجعة'];
 
     await showDialog<void>(
@@ -292,7 +292,7 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
                       Container(
                         padding: const EdgeInsets.all(18),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFEAF0F7),
+                          color: const Color(0xFFDCE6F0),
                           borderRadius: BorderRadius.circular(22),
                         ),
                         child: const Row(children: [
@@ -316,7 +316,7 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
                     value: messageType,
                     decoration: const InputDecoration(labelText: 'نوع الرسالة'),
                     items: const [
-                      DropdownMenuItem(value: 'instruction', child: Text('تعليمة')),
+                      DropdownMenuItem(value: 'instruction', child: Text('توجيه إداري')),
                       DropdownMenuItem(value: 'note', child: Text('ملاحظة')),
                     ],
                     onChanged: (value) => refresh(() => messageType = value ?? 'instruction'),
@@ -335,7 +335,7 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
                       Container(
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFEDF5F3),
+                          color: const Color(0xFFDCEBE7),
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: Row(children: [
@@ -361,7 +361,7 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
                       ),
                       const SizedBox(height: 14),
                 Text(supervisor
-                    ? 'اختر ضباط الأمن — نسخة الإدارة تُرسل تلقائياً مع التعليمات فقط: ${selected.length}'
+                    ? 'اختر ضباط الأمن أو مدير الموقع — تصل نسخة لمدير الموقع تلقائياً مع التوجيه الإداري: ${selected.length}'
                     : 'اختر المستلمين — المختار: ${selected.length}'),
                 TextField(
                   decoration: const InputDecoration(
@@ -387,6 +387,10 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
                       users.where((u) => !supervisor ||
                         u.data()['role'] == 'security_officer').map((u) => u.id))),
                     child: Text(supervisor ? 'جميع ضباط الأمن' : 'اختيار الجميع')),
+                  if (supervisor) TextButton(
+                    onPressed: () => refresh(() => selected.addAll(
+                      users.where((u) => u.data()['role'] == 'admin').map((u) => u.id))),
+                    child: const Text('مدير الموقع')),
                   if (admin) TextButton(
                     onPressed: () => refresh(() => selected.addAll(
                       users.where((u) => u.data()['role'] == 'security_officer').map((u) => u.id))),
@@ -411,7 +415,7 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
                   }
                   return ListView(children: filteredUsers.map((d) {
                     final data = d.data();
-                    final role = data['role'] == 'admin' ? 'الإدارة' :
+                    final role = data['role'] == 'admin' ? 'مدير الموقع' :
                       data['role'] == 'supervisor' ? 'مشرف' : 'ضابط أمن';
                     final phone = (data['phone'] ?? '').toString().trim();
                     final shift = (data['currentShift'] ?? 'غير محدد').toString();
@@ -650,15 +654,9 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
                       min: 12, max: 30, divisions: 18, value: tickerFontSize,
                       onChanged: (v) => refresh(() => tickerFontSize = v),
                     ),
-                    DropdownButtonFormField<String>(
-                      value: tickerFontFamily,
-                      decoration: const InputDecoration(labelText: 'نوع الخط لهذه الملاحظة'),
-                      items: const [
-                        DropdownMenuItem(value: 'sans-serif', child: Text('خط واضح')),
-                        DropdownMenuItem(value: 'serif', child: Text('خط كلاسيكي')),
-                        DropdownMenuItem(value: 'monospace', child: Text('خط ثابت العرض')),
-                      ],
-                      onChanged: (v) => refresh(() => tickerFontFamily = v ?? 'sans-serif'),
+                    const Text(
+                      'نوع الخط: IBM Plex Sans Arabic',
+                      style: TextStyle(fontWeight: FontWeight.w700, color: pastelInk),
                     ),
                     SwitchListTile(
                       contentPadding: EdgeInsets.zero,
@@ -686,7 +684,7 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
                       Container(
                         padding: const EdgeInsets.all(18),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFEAF3EF),
+                          color: const Color(0xFFDCEBE4),
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: const Column(children: [
@@ -701,7 +699,7 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
                       ),
                       const SizedBox(height: 18),
                       _reviewTile(Icons.description_outlined, 'نوع الرسالة',
-                        messageType == 'instruction' ? 'تعليمة إدارية' : 'ملاحظة ميدانية'),
+                        messageType == 'instruction' ? 'توجيه إداري' : 'ملاحظة ميدانية'),
                       _reviewTile(Icons.people_alt_outlined, 'المستلمون',
                         '${selected.length} مستلم'),
                       _reviewTile(Icons.title_rounded, 'العنوان',
@@ -771,7 +769,7 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
                               const SizedBox(height: 5),
                               Text(stepNames[index], maxLines: 1, overflow: TextOverflow.ellipsis,
                                 style: TextStyle(fontSize: 10,
-                                  color: active ? pastelInk : const Color(0xFF98A4B2),
+                                  color: active ? pastelInk : const Color(0xFF526171),
                                   fontWeight: active ? FontWeight.w800 : FontWeight.w500)),
                             ]));
                           }),
@@ -799,8 +797,8 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
                           inputDecorationTheme: InputDecorationTheme(
                             filled: true,
                             fillColor: Colors.white,
-                            labelStyle: const TextStyle(color: Color(0xFF8492A3)),
-                            hintStyle: const TextStyle(color: Color(0xFFA1ACB9)),
+                            labelStyle: const TextStyle(color: Color(0xFF263341), fontWeight: FontWeight.w700),
+                            hintStyle: const TextStyle(color: Color(0xFF4A5968), fontWeight: FontWeight.w500),
                             contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(17),
@@ -909,7 +907,7 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
                       if (senderRole == 'supervisor' &&
                           messageType == 'instruction' &&
                           adminCopies.isEmpty) {
-                        throw StateError('لا يوجد حساب إداري نشط لاستلام نسخة من التعليمة.');
+                        throw StateError('لا يوجد حساب إداري نشط لاستلام نسخة من التوجيه الإداري.');
                       }
                       final recipientsByUid = <String, QueryDocumentSnapshot<Map<String, dynamic>>>{};
                       for (final recipient in selectedRecipients) {
@@ -1064,12 +1062,9 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
                         }
                       }
                       if (ctx.mounted) Navigator.pop(sheet);
-                      final copySummary = adminCopies.isEmpty
-                          ? ''
-                          : '، مع إرسال نسخة للإدارة (' + adminCopies.length.toString() + ')';
                       toast(notificationFailures == 0
-                        ? 'تم إرسال ' + (messageType == 'instruction' ? 'التعليمة' : 'الملاحظة') +
-                          ' إلى ' + selectedRecipients.length.toString() + ' مستلم' + copySummary + '.'
+                        ? 'تم إرسال ' + (messageType == 'instruction' ? 'التوجيه الإداري' : 'الملاحظة') +
+                          ' إلى ' + refs.length.toString() + ' مستلم.'
                         : 'تم إرسال الرسالة إلى ' + refs.length.toString() +
                           ' مستلم، لكن تعذر إنشاء ' + notificationFailures.toString() + ' إشعار.');
                     } on FirebaseException catch (e) {
@@ -1749,7 +1744,7 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> with SingleTi
             style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900, color: navy)),
           subtitle: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text(d['messageType'] == 'instruction'
-                ? (d['isAdminCopy'] == true ? 'تعليمة إشرافية — نسخة للإدارة' : 'تعليمة')
+                ? (d['isAdminCopy'] == true ? 'توجيه إشرافي — نسخة لمدير الموقع' : 'توجيه إداري')
                 : 'ملاحظة',
               style: TextStyle(
                 fontSize: 12,

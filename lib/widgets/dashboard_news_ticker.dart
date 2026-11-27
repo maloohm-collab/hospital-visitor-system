@@ -686,16 +686,13 @@ class _DashboardNewsTickerState extends State<DashboardNewsTicker>
     final override = entry.data['tickerStyle'];
 
     if (override is! Map) {
-      return settings.textStyle.copyWith(color: settings.text);
+      return settings.textStyle.copyWith(
+        fontFamily: 'IBM Plex Sans Arabic',
+        color: settings.text,
+      );
     }
 
-    final family = [
-      'sans-serif',
-      'serif',
-      'monospace'
-    ].contains(override['fontFamily'])
-        ? override['fontFamily'] as String
-        : settings.fontFamily;
+    const family = 'IBM Plex Sans Arabic';
 
     final size = override['fontSize'] is num
         ? (override['fontSize'] as num)
