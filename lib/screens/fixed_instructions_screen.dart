@@ -26,9 +26,6 @@ class FixedInstructionsScreen extends StatelessWidget {
           final rules = stored is List
               ? stored.map((item) => item.toString()).where((item) => item.trim().isNotEmpty).toList()
               : FixedInstructions.rules;
-          if (snapshot.hasError) {
-            return const Center(child: Text('تعذر تحميل التعليمات حالياً.'));
-          }
           if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
             return const Center(child: CircularProgressIndicator());
           }
@@ -37,9 +34,20 @@ class FixedInstructionsScreen extends StatelessWidget {
           }
           return ListView.separated(
             padding: const EdgeInsets.fromLTRB(16, 18, 16, 28),
-            itemCount: rules.length,
+            itemCount: rules.length + (snapshot.hasError ? 1 : 0),
             separatorBuilder: (_, __) => const SizedBox(height: 10),
-            itemBuilder: (context, index) => Card(
+            itemBuilder: (context, index) {
+              if (snapshot.hasError && index == 0) {
+                return const Padding(
+                  padding: EdgeInsets.only(bottom: 8),
+                  child: Text(
+                    'تعذر تحديث القائمة من الخادم؛ المعروض حالياً هو الإصدار الأساسي من التعليمات.',
+                    style: TextStyle(color: Colors.deepOrange, fontSize: 12),
+                  ),
+                );
+              }
+              final ruleIndex = index - (snapshot.hasError ? 1 : 0);
+              return Card(
               elevation: 0,
               color: Colors.white,
               shape: RoundedRectangleBorder(
@@ -55,7 +63,7 @@ class FixedInstructionsScreen extends StatelessWidget {
                       radius: 15,
                       backgroundColor: const Color(0xFFE8F1F7),
                       child: Text(
-                        '${index + 1}',
+                        '${ruleIndex + 1}',
                         style: const TextStyle(
                           color: navy,
                           fontWeight: FontWeight.w800,
@@ -65,7 +73,7 @@ class FixedInstructionsScreen extends StatelessWidget {
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text(
-                        rules[index],
+                        rules[ruleIndex],
                         textAlign: TextAlign.start,
                         style: const TextStyle(
                           color: Color(0xFF173653),
@@ -78,7 +86,8 @@ class FixedInstructionsScreen extends StatelessWidget {
                   ],
                 ),
               ),
-            ),
+            );
+            },
           );
         },
       ),
