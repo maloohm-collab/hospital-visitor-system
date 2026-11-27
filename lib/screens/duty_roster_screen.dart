@@ -1431,6 +1431,7 @@ class _DutyRosterScreenState extends State<DutyRosterScreen>
   }
 
   Future<void> _exportRoster(Map<String, dynamic> data, String format, bool share) async {
+    if (format == 'Word') await _loadFixedInstructions();
     final extension = format == 'صورة' ? 'png' : format == 'Word' ? 'rtf' : 'pdf';
     final filename = '${_exportBaseName()}.$extension';
     try {
